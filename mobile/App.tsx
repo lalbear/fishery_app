@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 /**
  * Fishing God Mobile App - Entry Point
  * React Native with Expo and WatermelonDB
@@ -11,10 +12,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import './src/i18n';
 import { DatabaseProvider } from '@nozbe/watermelondb/react';
 import database from './src/database';
+import { theme } from './src/theme';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -78,35 +81,47 @@ function MainTabs() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#2E7D32',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+          marginBottom: 4,
+        },
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+          elevation: 8,
+          height: 60,
+          paddingVertical: 8,
+        },
         headerShown: false,
       })}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: t('navigation.home') }}
+        options={{ title: t('navigation.home') || 'Home' }}
       />
       <Tab.Screen
         name="Species"
         component={SpeciesScreen}
-        options={{ title: t('navigation.species') }}
+        options={{ title: t('navigation.species') || 'Species' }}
       />
       <Tab.Screen
         name="Economics"
         component={EconomicsScreen}
-        options={{ title: t('navigation.economics') }}
+        options={{ title: t('navigation.economics') || 'Economics' }}
       />
       <Tab.Screen
         name="Maps"
         component={MapScreen}
-        options={{ title: t('navigation.maps') }}
+        options={{ title: t('navigation.maps') || 'Map' }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: t('navigation.profile') }}
+        options={{ title: t('navigation.profile') || 'Profile' }}
       />
     </Tab.Navigator>
   );
@@ -117,7 +132,17 @@ function App() {
     <DatabaseProvider database={database}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <Stack.Navigator>
+          <Stack.Navigator
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: theme.colors.surface,
+              },
+              headerTintColor: theme.colors.primary,
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          >
             <Stack.Screen
               name="Main"
               component={MainTabs}

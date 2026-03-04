@@ -1,0 +1,62 @@
+# 💻 Laptop Local Setup (Desktop/Web Experience)
+
+Since you're starting from scratch, here is exactly what you need to download to run this on your laptop for free.
+
+## 1. What to Download (The "Tools")
+You only need to install these three things on your laptop:
+
+1.  **Node.js (v20)**: This is the engine that runs the code. 
+    - [Download here](https://nodejs.org/en/download/prebuilt-installer) (Choose the "LTS" version).
+2.  **Docker Desktop**: This is the most critical tool. 
+    - **CRITICAL NOTE**: You do **NOT** need to download PostgreSQL or Redis separately. Docker will package them both for you automatically for free.
+    - [Download here](https://www.docker.com/products/docker-desktop/)
+3.  **Visual Studio Code (VS Code)**: This is the best free editor to look at and manage your code.
+    - [Download here](https://code.visualstudio.com/)
+
+---
+
+## 2. Setting Up the "Desktop" Experience (Phase 1)
+To see the app on your laptop screen (like a desktop app), follow these steps:
+
+1.  **Open Docker Desktop**: Make sure it is running in the background.
+2.  **Open your Terminal** (or the terminal inside VS Code) and navigate to the project:
+    - `cd fishery_app`
+3.  **Start the Database & Redis** (Free & Automatic):
+    - Run: `docker-compose up -d`
+    - *This will automatically set up PostgreSQL and Redis for you. No accounts or separate installs needed.*
+### 📱 STEP 4: RUNNING THE APP ON YOUR PHONE
+
+1.  **Open Docker Desktop** (Make sure the whale icon is visible in your taskbar).
+2.  **Start the Backend**:
+    In your terminal, run:
+    ```bash
+    docker-compose up -d
+    ```
+3.  **Start the Mobile Server**:
+    ```bash
+    cd mobile
+    npx expo start -c
+    ```
+4.  **Connect Your Phone**:
+    - Ensure your phone and laptop are on the **SAME Wi-Fi**.
+    - Scan the QR code with your iPhone Camera or Expo Go (Android).
+
+### 🛠 Troubleshooting (Mobile Incompatibility)
+If you see "Project is incompatible":
+- I have already upgraded the project to **SDK 54** to match your phone.
+- If it still fails, just restart the terminal command with `npx expo start -c`.
+
+### 🔑 About .env Files
+- I have created a `.env` file inside the `mobile` folder.
+- It uses your laptop's IP address (`192.168.1.7`) so your phone can talk to the database on your laptop.
+- You do NOT need to manually add data to `.env.local` for the app to start!
+
+---
+
+## Summary of "Free" Accounts:
+- **Docker**: No account needed for local use (you can skip the login).
+- **Expo**: You can create a free account to make builds easier, but you don't strictly need it for local testing.
+- **Postgres/Redis**: They are free and run inside Docker.
+
+**Status Update**: I have already restored the missing backend files for you! You are now ready to start.
+

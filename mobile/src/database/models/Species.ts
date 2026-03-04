@@ -2,7 +2,8 @@
  * Species Model - WatermelonDB
  */
 
-import { Model, field, date, readonly } from '@nozbe/watermelondb/decorators';
+import { Model } from '@nozbe/watermelondb';
+import { field, date, readonly } from '@nozbe/watermelondb/decorators';
 
 export default class Species extends Model {
   static table = 'species';

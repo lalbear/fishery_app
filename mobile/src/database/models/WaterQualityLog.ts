@@ -2,7 +2,8 @@
  * Water Quality Log Model - WatermelonDB
  */
 
-import { Model, field, date, readonly } from '@nozbe/watermelondb/decorators';
+import { Model } from '@nozbe/watermelondb';
+import { field, date, readonly } from '@nozbe/watermelondb/decorators';
 
 export interface WaterQualityAlert {
   parameter: string;
@@ -26,7 +27,7 @@ export default class WaterQualityLog extends Model {
   @field('nitrite') nitrite?: number;
   @field('turbidity') turbidity?: number;
   @field('alerts') alerts?: string; // JSON string
-  @field('sync_status') syncStatus!: string;
+  @field('sync_status') localSyncStatus!: string;
   @readonly @date('created_at') createdAt!: Date;
 
   getDate(): Date {

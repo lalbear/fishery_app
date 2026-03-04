@@ -2,7 +2,8 @@
  * Pond Model - WatermelonDB
  */
 
-import { Model, field, date, readonly } from '@nozbe/watermelondb/decorators';
+import { Model } from '@nozbe/watermelondb';
+import { field, date, readonly } from '@nozbe/watermelondb/decorators';
 
 export default class Pond extends Model {
   static table = 'ponds';
@@ -17,7 +18,7 @@ export default class Pond extends Model {
   @field('status') status!: string;
   @field('latitude') latitude?: number;
   @field('longitude') longitude?: number;
-  @field('sync_status') syncStatus!: string;
+  @field('sync_status') localSyncStatus!: string;
   @readonly @date('created_at') createdAt!: Date;
   @readonly @date('updated_at') updatedAt!: Date;
 

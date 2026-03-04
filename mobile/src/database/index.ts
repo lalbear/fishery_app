@@ -1,11 +1,11 @@
 /**
  * WatermelonDB Database Initialization
+ * Optimized for Mobile (Native)
  */
 
 import { Database } from '@nozbe/watermelondb';
-import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
-
 import schema from './schema';
+import adapter from './adapter';
 import Species from './models/Species';
 import Pond from './models/Pond';
 import WaterQualityLog from './models/WaterQualityLog';
@@ -14,27 +14,17 @@ import EconomicsSimulation from './models/EconomicsSimulation';
 import MarketPrice from './models/MarketPrice';
 import SyncQueueItem from './models/SyncQueueItem';
 
-// Initialize adapter
-const adapter = new SQLiteAdapter({
-  schema,
-  dbName: 'fishing_god_db',
-  jsi: true, // Enable JSI for better performance
-  onSetUpError: (error) => {
-    console.error('Database setup error:', error);
-  }
-});
-
 // Initialize database
 export const database = new Database({
   adapter,
   modelClasses: [
-    Species,
-    Pond,
-    WaterQualityLog,
-    KnowledgeNode,
-    EconomicsSimulation,
-    MarketPrice,
-    SyncQueueItem,
+    Species as any,
+    Pond as any,
+    WaterQualityLog as any,
+    KnowledgeNode as any,
+    EconomicsSimulation as any,
+    MarketPrice as any,
+    SyncQueueItem as any,
   ],
 });
 

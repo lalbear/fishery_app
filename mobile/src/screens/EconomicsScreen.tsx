@@ -1,7 +1,3 @@
-/**
- * Economics Screen - ROI Calculator
- */
-
 import React, { useState } from 'react';
 import {
   View,
@@ -10,15 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  SafeAreaView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { theme } from '../theme';
 
 export default function EconomicsScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  
+
   const [landSize, setLandSize] = useState('');
   const [salinity, setSalinity] = useState('');
   const [capital, setCapital] = useState('');
@@ -33,72 +31,178 @@ export default function EconomicsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('economics.title')}</Text>
-        <Text style={styles.subtitle}>{t('economics.subtitle')}</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.sectionTitle}>{t('economics.inputParameters')}</Text>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('economics.landSize')}</Text>
-          <TextInput style={styles.input} value={landSize} onChangeText={setLandSize} keyboardType="decimal-pad" placeholder="1.0" />
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{t('economics.title') || 'Calculate ROI'}</Text>
+          <Text style={styles.subtitle}>{t('economics.subtitle') || 'Estimate your returns'}</Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('economics.salinity')}</Text>
-          <TextInput style={styles.input} value={salinity} onChangeText={setSalinity} keyboardType="decimal-pad" placeholder="500" />
-        </View>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>{t('economics.inputParameters') || 'Input Parameters'}</Text>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t('economics.capital')}</Text>
-          <TextInput style={styles.input} value={capital} onChangeText={setCapital} keyboardType="decimal-pad" placeholder="100000" />
-        </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('economics.landSize') || 'Land Size (Acres)'}</Text>
+            <TextInput
+              style={styles.input}
+              value={landSize}
+              onChangeText={setLandSize}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 1.0"
+              placeholderTextColor={theme.colors.textMuted}
+            />
+          </View>
 
-        <Text style={styles.label}>{t('economics.riskTolerance')}</Text>
-        <View style={styles.optionsRow}>
-          {riskOptions.map((risk) => (
-            <TouchableOpacity key={risk} style={[styles.optionButton, riskTolerance === risk && styles.optionButtonActive]} onPress={() => setRiskTolerance(risk)}>
-              <Text style={[styles.optionText, riskTolerance === risk && styles.optionTextActive]}>{t(`economics.${risk.toLowerCase()}Risk`)}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('economics.salinity') || 'Water Salinity'}</Text>
+            <TextInput
+              style={styles.input}
+              value={salinity}
+              onChangeText={setSalinity}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 500"
+              placeholderTextColor={theme.colors.textMuted}
+            />
+          </View>
 
-        <Text style={styles.label}>{t('economics.farmerCategory')}</Text>
-        <View style={styles.optionsRow}>
-          {categoryOptions.map((cat) => (
-            <TouchableOpacity key={cat} style={[styles.optionButton, farmerCategory === cat && styles.optionButtonActive]} onPress={() => setFarmerCategory(cat)}>
-              <Text style={[styles.optionText, farmerCategory === cat && styles.optionTextActive]}>{t(`economics.categories.${cat}`)}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{t('economics.capital') || 'Investment Capital'}</Text>
+            <TextInput
+              style={styles.input}
+              value={capital}
+              onChangeText={setCapital}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 100000"
+              placeholderTextColor={theme.colors.textMuted}
+            />
+          </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={runSimulation}>
-          <Ionicons name="calculator-outline" size={20} color="#fff" />
-          <Text style={styles.submitButtonText}>{t('economics.runSimulation')}</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <Text style={styles.label}>{t('economics.riskTolerance') || 'Risk Tolerance'}</Text>
+          <View style={styles.optionsRow}>
+            {riskOptions.map((risk) => (
+              <TouchableOpacity
+                key={risk}
+                style={[styles.optionButton, riskTolerance === risk && styles.optionButtonActive]}
+                onPress={() => setRiskTolerance(risk)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.optionText, riskTolerance === risk && styles.optionTextActive]}>
+                  {t(`economics.${risk.toLowerCase()}Risk`) || risk}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>{t('economics.farmerCategory') || 'Farmer Category'}</Text>
+          <View style={styles.optionsRow}>
+            {categoryOptions.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.optionButton, farmerCategory === cat && styles.optionButtonActive]}
+                onPress={() => setFarmerCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.optionText, farmerCategory === cat && styles.optionTextActive]}>
+                  {t(`economics.categories.${cat}`) || cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.submitButton} onPress={runSimulation} activeOpacity={0.8}>
+            <Ionicons name="calculator-outline" size={24} color="#fff" />
+            <Text style={styles.submitButtonText}>{t('economics.runSimulation') || 'Calculate Now'}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1B5E20' },
-  subtitle: { fontSize: 14, color: '#666', marginTop: 4 },
-  form: { padding: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 16 },
-  inputGroup: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8 },
-  input: { backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 16, borderWidth: 1, borderColor: '#ddd' },
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  optionButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd' },
-  optionButtonActive: { backgroundColor: '#2E7D32', borderColor: '#2E7D32' },
-  optionText: { color: '#333', fontWeight: '500' },
-  optionTextActive: { color: '#fff' },
-  submitButton: { backgroundColor: '#2E7D32', borderRadius: 8, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background
+  },
+  scrollContent: {
+    padding: theme.spacing.lg,
+  },
+  header: {
+    marginBottom: theme.spacing.lg
+  },
+  title: {
+    ...theme.typography.h1,
+    color: theme.colors.primary
+  },
+  subtitle: {
+    ...theme.typography.bodyLarge,
+    marginTop: theme.spacing.xs
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.sm,
+  },
+  sectionTitle: {
+    ...theme.typography.h3,
+    marginBottom: theme.spacing.lg
+  },
+  inputGroup: {
+    marginBottom: theme.spacing.md
+  },
+  label: {
+    ...theme.typography.body,
+    fontWeight: '600',
+    marginBottom: theme.spacing.sm
+  },
+  input: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    color: theme.colors.textPrimary
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg
+  },
+  optionButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  optionButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary
+  },
+  optionText: {
+    ...theme.typography.body,
+    fontWeight: '500'
+  },
+  optionTextActive: {
+    color: theme.colors.textInverse
+  },
+  submitButton: {
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    ...theme.shadows.md,
+  },
+  submitButtonText: {
+    ...theme.typography.buttonText,
+    color: theme.colors.textInverse
+  },
 });

@@ -10,11 +10,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { theme } from '../theme';
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -25,25 +26,29 @@ export default function HomeScreen() {
       icon: 'fish-outline' as const,
       title: t('home.checkSpecies'),
       onPress: () => navigation.navigate('Species' as never),
-      color: '#4CAF50',
+      color: theme.colors.primary,
+      bgColor: theme.colors.primaryLight,
     },
     {
       icon: 'calculator-outline' as const,
       title: t('home.calculateROI'),
       onPress: () => navigation.navigate('Economics' as never),
-      color: '#2196F3',
+      color: theme.colors.secondary,
+      bgColor: theme.colors.secondaryLight,
     },
     {
       icon: 'water-outline' as const,
       title: t('home.logWaterQuality'),
       onPress: () => navigation.navigate('WaterQuality' as never),
-      color: '#00BCD4',
+      color: '#0284C7', // Slate blue for water
+      bgColor: '#E0F2FE',
     },
     {
       icon: 'trending-up-outline' as const,
       title: t('home.viewMarkets'),
       onPress: () => navigation.navigate('MarketPrices' as never),
-      color: '#FF9800',
+      color: theme.colors.accent,
+      bgColor: '#FEF3C7',
     },
   ];
 
@@ -51,22 +56,27 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="fish" size={64} color="#2E7D32" />
-          <Text style={styles.title}>{t('home.welcome')}</Text>
-          <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
+          <View style={styles.iconContainer}>
+            <Ionicons name="fish" size={48} color={theme.colors.primary} />
+          </View>
+          <Text style={styles.title}>{t('home.welcome') || 'Fishing God'}</Text>
+          <Text style={styles.subtitle}>{t('home.subtitle') || 'Manage your ponds'}</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('home.quickActions')}</Text>
+          <Text style={styles.sectionTitle}>{t('home.quickActions') || 'Quick Actions'}</Text>
           <View style={styles.actionGrid}>
             {quickActions.map((action, index) => (
               <TouchableOpacity
                 key={index}
-                style={[styles.actionCard, { borderColor: action.color }]}
+                style={styles.actionCard}
                 onPress={action.onPress}
+                activeOpacity={0.7}
               >
-                <Ionicons name={action.icon} size={32} color={action.color} />
-                <Text style={[styles.actionText, { color: action.color }]}>
+                <View style={[styles.iconWrapper, { backgroundColor: action.bgColor }]}>
+                  <Ionicons name={action.icon} size={28} color={action.color} />
+                </View>
+                <Text style={styles.actionText}>
                   {action.title}
                 </Text>
               </TouchableOpacity>
@@ -81,53 +91,69 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    padding: 16,
+    padding: theme.spacing.lg,
   },
   header: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: theme.spacing.xl,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.sm,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1B5E20',
-    marginTop: 16,
+    ...theme.typography.h1,
+    marginBottom: theme.spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
+    ...theme.typography.bodyLarge,
+    textAlign: 'center',
   },
   section: {
-    marginTop: 24,
+    marginTop: theme.spacing.sm,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
+    ...theme.typography.h3,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
   },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
   },
   actionCard: {
     width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     alignItems: 'center',
-    borderWidth: 2,
-    elevation: 2,
+    ...theme.shadows.sm,
+  },
+  iconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.sm,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
+    ...theme.typography.body,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });

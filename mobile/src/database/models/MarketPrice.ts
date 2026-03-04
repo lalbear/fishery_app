@@ -2,7 +2,8 @@
  * Market Price Model - WatermelonDB
  */
 
-import { Model, field, date, readonly } from '@nozbe/watermelondb/decorators';
+import { Model } from '@nozbe/watermelondb';
+import { field, date, readonly } from '@nozbe/watermelondb/decorators';
 
 export default class MarketPrice extends Model {
   static table = 'market_prices';
