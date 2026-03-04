@@ -182,7 +182,7 @@ export class EconomicsSimulatorService {
     if (waterType === WaterType.BRACKISH || waterType === WaterType.SALINE) {
       queryText += `
         AND (
-          data->'biological_parameters'->'salinity_tolerance_ppt'->>'min'::numeric > 0
+          (data->'biological_parameters'->'salinity_tolerance_ppt'->>'max')::numeric > 5
           OR data->>'scientific_name' LIKE '%vannamei%'
           OR data->>'scientific_name' LIKE '%Macrobrachium%'
         )
@@ -235,7 +235,19 @@ export class EconomicsSimulatorService {
     `, [system]);
 
     if (result.rows.length === 0) {
-      throw new Error(`No economic model found for system: ${system}`);
+      logger.warn(`No economic model found for system: ${system}. Falling back to TRADITIONAL_POND.`);
+
+      const fallback = await query<{ data: EconomicData }>(`
+        SELECT data FROM knowledge_nodes 
+        WHERE node_type = 'ECONOMIC_MODEL' 
+        AND data->>'system_type' = 'TRADITIONAL_POND'
+        LIMIT 1
+      `);
+
+      if (fallback.rows.length === 0) {
+        throw new Error(`Critical: No economic models found in database.`);
+      }
+      return fallback.rows[0].data;
     }
 
     return result.rows[0].data;
@@ -264,8 +276,8 @@ export class EconomicsSimulatorService {
       total += (EQUIPMENT_COSTS.UV_STERILIZER_40W * 2) * landSizeHectares;
     }
 
-    total += capex.initial_stocking_cost_inr * landSizeHectares;
-    total += total * (capex.contingency_percent / 100);
+    total += (capex.initial_stocking_cost_inr || 0) * landSizeHectares;
+    total += total * ((capex.contingency_percent || 0) / 100);
 
     return total;
   }

@@ -1,0 +1,31 @@
+# Feature Audit - Fisheries App
+
+This document tracks the current implementation status of all features in the Fishery App.
+
+## 🟢 Fully Working
+Features that are end-to-end integrated with the backend and ready for use.
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Geo Suitability** | Real-time map analysis based on State, District, and Water Source. | End-to-end integrated with backend API. |
+| **Location Services** | Real-time GPS location acquisition and reverse geocoding. | Fully functional on mobile. |
+| **Backend API Core** | Centralized [apiService.ts](file:///Users/pranjalupadhyay/Desktop/projects/fishery_app/mobile/src/services/apiService.ts) for mobile-to-backend communication. | Operational and tested. |
+
+## 🟡 Partially Working
+Features that have been started but require more work (e.g., backend exists but frontend uses mock data).
+
+| Feature | Current State | Missing Parts |
+|---------|---------------|---------------|
+| **ROI Calculator** | Backend has economic models and simulation logic. Mobile has input form. | Mobile form needs to call `POST /api/v1/economics/simulate`. Current navigation is mock. |
+| **Market Prices** | Backend has price database and trend logic. | Mobile screen uses `mockPrices` instead of calling `GET /api/v1/market/prices`. |
+| **Species Intelligence**| Backend has knowledge nodes for various species. | Mobile card list uses `mockSpecies` instead of calling `GET /api/v1/species`. |
+| **Water Quality Logs** | Mobile has basic logging UI. Backend has `water_quality_logs` tables. | Requires integration of data persistence to the backend database. |
+
+## 🔴 Not Working / Next Steps
+Features currently in development or planned.
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Real-time Notifications**| Alerts for water quality thresholds. | Not implemented. |
+| **Equipment Catalog** | Browse aquaculture equipment. | Backend seeded, frontend screen needed. |
+| **User Profiles** | Management of farmer and pond profiles. | Basic UI exists, sync logic pending. |

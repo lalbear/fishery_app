@@ -28,10 +28,10 @@ A production-grade, offline-first aquaculture intelligence platform specifically
 ## ✨ Features
 
 ### Core Intelligence
-- **Species Intelligence**: Empirical data for Indian Major Carps (Rohu, Catla), Pangasius, Vannamei Shrimp, Scampi, and Tilapia
-- **Economics Simulator**: ROI calculations with PMMSY subsidy integration (40% General / 60% Women/SC/ST)
-- **Geospatial Suitability**: Salinity-based species recommendations with soil and climate analysis
-- **Market Price Tracking**: Live integration with NFDB FMPIS and AGMARKNET
+- **Geospatial Intelligence**: Comprehensive Indian administrative coverage with all 36 States/UTs and 700+ Districts.
+- **ROI Simulator**: High-fidelity ROI projections including PMMSY subsidy logic (40% General / 60% Women/SC/ST) and sensitivity analysis.
+- **Species Intelligence**: Expert-level biological and economic data for Indian Major Carps (Rohu, Catla), Pangasius, Vannamei Shrimp, Scampi, and Tilapia.
+- **Regional Suitability**: Salinity-based species recommendations with local soil and climate constraints.
 
 ### Offline-First Mobile App
 - WatermelonDB for local SQLite storage
@@ -169,17 +169,17 @@ curl http://localhost:3000/health
 # Get all species
 curl http://localhost:3000/api/v1/species
 
-# Run economics simulation
+# Run economics simulation (e.g., 100 acres in Karnataka)
 curl -X POST http://localhost:3000/api/v1/economics/simulate \
   -H "Content-Type: application/json" \
   -d '{
-    "landSizeHectares": 1.0,
-    "waterSourceSalinityUsCm": 500,
-    "availableCapitalInr": 200000,
+    "landSizeHectares": 40.47,
+    "waterSourceSalinityUsCm": 350,
+    "availableCapitalInr": 500000,
     "riskTolerance": "MEDIUM",
-    "farmerCategory": "GENERAL",
-    "stateCode": "AP",
-    "districtCode": "EG"
+    "farmerCategory": "WOMEN",
+    "stateCode": "KA",
+    "districtCode": "Bangalore"
   }'
 ```
 
@@ -729,13 +729,21 @@ Authorization: Bearer <token>
 ```bash
 POST /economics/simulate
 Body: {
-  "landSizeHectares": 1.0,
-  "waterSourceSalinityUsCm": 500,
-  "availableCapitalInr": 200000,
-  "riskTolerance": "MEDIUM",
-  "farmerCategory": "GENERAL",
-  "stateCode": "AP",
-  "districtCode": "EG"
+  "landSizeHectares": 40.47,
+  "waterSourceSalinityUsCm": 350,
+  "availableCapitalInr": 500000,
+  "riskTolerance": "LOW" | "MEDIUM" | "HIGH",
+  "farmerCategory": "GENERAL" | "WOMEN" | "SC" | "ST",
+  "stateCode": "KA",
+  "districtCode": "Bangalore"
+}
+
+POST /economics/subsidy
+Body: {
+  "projectType": "FRESHWATER" | "BRACKISH" | "INTEGRATED" | "RAS",
+  "beneficiaryCategory": "GENERAL" | "WOMEN" | "SC" | "ST",
+  "unitCostInr": 400000,
+  "landAreaHectares": 1.0
 }
 ```
 

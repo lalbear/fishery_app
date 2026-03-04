@@ -1,34 +1,128 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
+  View as RNView,
+  Text as RNText,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  SafeAreaView,
+  ScrollView as RNScrollView,
+  TouchableOpacity as RNTouchableOpacity,
+  TextInput as RNTextInput,
+  Modal as RNModal,
+  FlatList as RNFlatList,
+  Alert,
+  ActivityIndicator as RNActivityIndicator,
 } from 'react-native';
+
+const View = RNView as any;
+const Text = RNText as any;
+const ScrollView = RNScrollView as any;
+const TouchableOpacity = RNTouchableOpacity as any;
+const TextInput = RNTextInput as any;
+const Modal = RNModal as any;
+const FlatList = RNFlatList as any;
+const ActivityIndicator = RNActivityIndicator as any;
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme';
+import { geoService, economicsService } from '../services/apiService';
+
+const WATER_SOURCES = [
+  { label: 'Borewell', value: 'BOREWELL' },
+  { label: 'Open Well', value: 'OPEN_WELL' },
+  { label: 'Canal', value: 'CANAL' },
+  { label: 'River', value: 'RIVER' },
+  { label: 'Tank', value: 'TANK' },
+];
 
 export default function EconomicsScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
 
+  // Form state
   const [landSize, setLandSize] = useState('');
-  const [salinity, setSalinity] = useState('');
+  const [salinity, setSalinity] = useState('500');
   const [capital, setCapital] = useState('');
   const [riskTolerance, setRiskTolerance] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
   const [farmerCategory, setFarmerCategory] = useState<'GENERAL' | 'WOMEN' | 'SC' | 'ST'>('GENERAL');
+  const [stateCode, setStateCode] = useState('');
+  const [districtCode, setDistrictCode] = useState('');
+
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [zones, setZones] = useState<any[]>([]);
+  const [isStateOpen, setIsStateOpen] = useState(false);
+  const [isDistrictOpen, setIsDistrictOpen] = useState(false);
 
   const riskOptions: Array<'LOW' | 'MEDIUM' | 'HIGH'> = ['LOW', 'MEDIUM', 'HIGH'];
   const categoryOptions: Array<'GENERAL' | 'WOMEN' | 'SC' | 'ST'> = ['GENERAL', 'WOMEN', 'SC', 'ST'];
 
-  const runSimulation = () => {
-    navigation.navigate('EconomicsResult' as never, { simulationId: 'sim-001' } as never);
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await geoService.getZones();
+        if (response.success && response.data.length > 0) {
+          setZones(response.data);
+          if (!stateCode) {
+            const firstZone = response.data[0];
+            setStateCode(firstZone.state_code);
+            if (firstZone.district_codes?.length > 0) {
+              setDistrictCode(firstZone.district_codes[0]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch zones for economics', error);
+      }
+    })();
+  }, []);
+
+  // Sync district when state changes
+  useEffect(() => {
+    if (stateCode) {
+      setDistrictCode(''); // Clear district as requested
+    }
+  }, [stateCode]);
+
+
+  const runSimulation = async () => {
+    if (!landSize || !capital || !stateCode || !districtCode) {
+      Alert.alert("Missing Information", "Please fill in all required fields.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 1.0 Acre = 0.4047 Hectares (approx)
+      const landHectares = parseFloat(landSize) * 0.4047;
+
+      const result = await economicsService.simulate({
+        landSizeHectares: landHectares,
+        waterSourceSalinityUsCm: parseFloat(salinity),
+        availableCapitalInr: parseFloat(capital),
+        riskTolerance,
+        farmerCategory,
+        stateCode,
+        districtCode
+      });
+
+      if (result.success) {
+        navigation.navigate('EconomicsResult' as never, { simulationData: result.data } as never);
+      } else {
+        Alert.alert("Simulation Error", result.message || "Failed to calculate ROI.");
+      }
+    } catch (error) {
+      Alert.alert("Connection Failed", "Could not reach simulation server.");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
+  const relevantDistricts = zones.find(z => z.state_code === stateCode)?.district_codes || [];
+  const selectedStateName = statesList.find(s => s.value === stateCode)?.label || 'Select State';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,8 +147,26 @@ export default function EconomicsScreen() {
             />
           </View>
 
+          <View style={styles.row}>
+            <View style={styles.inputHalf}>
+              <Text style={styles.label}>State</Text>
+              <TouchableOpacity style={styles.pickerButton} onPress={() => setIsStateOpen(true)}>
+                <Text style={styles.pickerText}>{selectedStateName}</Text>
+                <Ionicons name="chevron-down" size={16} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputHalf}>
+              <Text style={styles.label}>District</Text>
+              <TouchableOpacity style={styles.pickerButton} onPress={() => setIsDistrictOpen(true)}>
+                <Text style={styles.pickerText} numberOfLines={1}>{districtCode || 'Select'}</Text>
+                <Ionicons name="chevron-down" size={16} color="#666" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('economics.salinity') || 'Water Salinity'}</Text>
+            <Text style={styles.label}>{t('economics.salinity') || 'Water Salinity (μS/cm)'}</Text>
             <TextInput
               style={styles.input}
               value={salinity}
@@ -66,7 +178,7 @@ export default function EconomicsScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('economics.capital') || 'Investment Capital'}</Text>
+            <Text style={styles.label}>{t('economics.capital') || 'Investment Capital (₹)'}</Text>
             <TextInput
               style={styles.input}
               value={capital}
@@ -109,13 +221,75 @@ export default function EconomicsScreen() {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.submitButton} onPress={runSimulation} activeOpacity={0.8}>
-            <Ionicons name="calculator-outline" size={24} color="#fff" />
-            <Text style={styles.submitButtonText}>{t('economics.runSimulation') || 'Calculate Now'}</Text>
+          <TouchableOpacity
+            style={[styles.submitButton, isLoading && { opacity: 0.7 }]}
+            onPress={runSimulation}
+            activeOpacity={0.8}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="calculator-outline" size={24} color="#fff" />
+                <Text style={styles.submitButtonText}>{t('economics.runSimulation') || 'Calculate Now'}</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Select Modals */}
+      <SelectionModal
+        visible={isStateOpen}
+        items={statesList}
+        onSelect={(val: string) => { setStateCode(val); setIsStateOpen(false); }}
+        onClose={() => setIsStateOpen(false)}
+        title="Select State"
+      />
+      <SelectionModal
+        visible={isDistrictOpen}
+        items={relevantDistricts.map((d: string) => ({ label: d, value: d }))}
+        onSelect={(val: string) => { setDistrictCode(val); setIsDistrictOpen(false); }}
+        onClose={() => setIsDistrictOpen(false)}
+        title="Select District"
+      />
     </SafeAreaView>
+  );
+}
+
+function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          {items.length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={{ marginTop: 10, color: '#666' }}>Loading data...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={items}
+              keyExtractor={(item: any) => item.value}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              renderItem={({ item }: { item: any }) => (
+                <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item.value)}>
+                  <Text style={styles.modalItemText}>{item.label}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -151,6 +325,15 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: theme.spacing.md
   },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: theme.spacing.md
+  },
+  inputHalf: {
+    flex: 1,
+  },
   label: {
     ...theme.typography.body,
     fontWeight: '600',
@@ -164,6 +347,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     color: theme.colors.textPrimary
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background
+  },
+  pickerText: {
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+    flex: 1
   },
   optionsRow: {
     flexDirection: 'row',
@@ -205,4 +403,37 @@ const styles = StyleSheet.create({
     ...theme.typography.buttonText,
     color: theme.colors.textInverse
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end'
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    paddingBottom: 30
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee'
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold'
+  },
+  modalItem: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f9f9f9'
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#333'
+  }
 });

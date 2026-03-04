@@ -14,7 +14,7 @@ const router = Router();
 
 // Validation schema for simulation request
 const simulationSchema = z.object({
-  landSizeHectares: z.number().positive().max(50),
+  landSizeHectares: z.number().positive().max(1000),
   waterSourceSalinityUsCm: z.number().min(0).max(10000),
   availableCapitalInr: z.number().positive(),
   riskTolerance: z.enum(['LOW', 'MEDIUM', 'HIGH']),
