@@ -55,25 +55,37 @@ export default function EquipmentCatalogScreen() {
         loadData();
     };
 
+    const EquipmentImage = ({ item, isModal = false }: { item: any, isModal?: boolean }) => {
+        const [imgError, setImgError] = useState(false);
+        const iconSize = isModal ? 48 : 32;
+
+        if (item.image_url && !imgError) {
+            return (
+                <Image
+                    source={{ uri: item.image_url }}
+                    style={isModal ? styles.modalFullImage : styles.cardImage}
+                    resizeMode={isModal ? "contain" : "cover"}
+                    onError={() => setImgError(true)}
+                />
+            );
+        }
+
+        return (
+            <Ionicons
+                name={item.category === 'AERATION' ? 'options-outline' :
+                    item.category === 'TANK' ? 'cube-outline' :
+                        item.category === 'CIRCULATION' ? 'sync-outline' :
+                            'construct-outline'}
+                size={iconSize}
+                color={theme.colors.primary}
+            />
+        );
+    };
+
     const renderItem = ({ item }: { item: any }) => (
         <View style={styles.card}>
             <View style={styles.cardIcon}>
-                {item.image_url ? (
-                    <Image
-                        source={{ uri: item.image_url }}
-                        style={styles.cardImage}
-                        resizeMode="cover"
-                    />
-                ) : (
-                    <Ionicons
-                        name={item.category === 'AERATION' ? 'options-outline' :
-                            item.category === 'TANK' ? 'cube-outline' :
-                                item.category === 'CIRCULATION' ? 'sync-outline' :
-                                    'construct-outline'}
-                        size={32}
-                        color={theme.colors.primary}
-                    />
-                )}
+                <EquipmentImage item={item} />
             </View>
             <View style={styles.cardContent}>
                 <Text style={styles.categoryText}>{item.category}</Text>
@@ -163,22 +175,7 @@ export default function EquipmentCatalogScreen() {
                         {selectedItem && (
                             <ScrollView style={styles.modalBody}>
                                 <View style={styles.modalIconWrap}>
-                                    {selectedItem.image_url ? (
-                                        <Image
-                                            source={{ uri: selectedItem.image_url }}
-                                            style={styles.modalFullImage}
-                                            resizeMode="contain"
-                                        />
-                                    ) : (
-                                        <Ionicons
-                                            name={selectedItem.category === 'AERATION' ? 'options-outline' :
-                                                selectedItem.category === 'TANK' ? 'cube-outline' :
-                                                    selectedItem.category === 'CIRCULATION' ? 'sync-outline' :
-                                                        'construct-outline'}
-                                            size={48}
-                                            color={theme.colors.primary}
-                                        />
-                                    )}
+                                    <EquipmentImage item={selectedItem} isModal />
                                 </View>
 
                                 <Text style={styles.modalItemTitle}>{selectedItem.name}</Text>
