@@ -70,7 +70,7 @@ const SpeciesCard = ({ species, onPress }: { species: any; onPress: () => void }
 };
 
 export default function SpeciesScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
   const [speciesList, setSpeciesList] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
