@@ -2,11 +2,11 @@ import { query, closePool } from '../db';
 import { logger } from '../utils/logger';
 
 async function migrate() {
-    logger.info('Starting database migration...');
+  logger.info('Starting database migration...');
 
-    try {
-        // Create knowledge_nodes table (Hierarchical JSONB properties)
-        await query(`
+  try {
+    // Create knowledge_nodes table (Hierarchical JSONB properties)
+    await query(`
       CREATE TABLE IF NOT EXISTS knowledge_nodes (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         parent_id UUID REFERENCES knowledge_nodes(id) ON DELETE CASCADE,
@@ -18,14 +18,14 @@ async function migrate() {
       );
     `);
 
-        // Index on parent_id for hierarchical queries
-        await query(`CREATE INDEX IF NOT EXISTS idx_knowledge_nodes_parent_id ON knowledge_nodes(parent_id);`);
+    // Index on parent_id for hierarchical queries
+    await query(`CREATE INDEX IF NOT EXISTS idx_knowledge_nodes_parent_id ON knowledge_nodes(parent_id);`);
 
-        // GIN index for robust JSONB querying
-        await query(`CREATE INDEX IF NOT EXISTS idx_knowledge_nodes_data ON knowledge_nodes USING GIN (data);`);
+    // GIN index for robust JSONB querying
+    await query(`CREATE INDEX IF NOT EXISTS idx_knowledge_nodes_data ON knowledge_nodes USING GIN (data);`);
 
-        // Create market_prices table
-        await query(`
+    // Create market_prices table
+    await query(`
       CREATE TABLE IF NOT EXISTS market_prices (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         species_name VARCHAR(100) NOT NULL,
@@ -41,8 +41,8 @@ async function migrate() {
       );
     `);
 
-        // Create equipment_catalog table
-        await query(`
+    // Create equipment_catalog table
+    await query(`
       CREATE TABLE IF NOT EXISTS equipment_catalog (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name VARCHAR(255) NOT NULL,
@@ -59,8 +59,8 @@ async function migrate() {
       );
     `);
 
-        // Create users table
-        await query(`
+    // Create users table
+    await query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         phone_number VARCHAR(20) UNIQUE NOT NULL,
@@ -75,8 +75,8 @@ async function migrate() {
       );
     `);
 
-        // Create ponds table
-        await query(`
+    // Create ponds table
+    await query(`
       CREATE TABLE IF NOT EXISTS ponds (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -90,8 +90,8 @@ async function migrate() {
       );
     `);
 
-        // Create water_quality_logs table
-        await query(`
+    // Create water_quality_logs table
+    await query(`
       CREATE TABLE IF NOT EXISTS water_quality_logs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -105,8 +105,8 @@ async function migrate() {
       );
     `);
 
-        // Create economics_simulations table for saved user simulations
-        await query(`
+    // Create economics_simulations table for saved user simulations
+    await query(`
       CREATE TABLE IF NOT EXISTS economics_simulations (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -119,16 +119,34 @@ async function migrate() {
       );
     `);
 
-        logger.info('Database migration completed successfully!');
-    } catch (error) {
-        logger.error('Failed to run migration:', error);
-        process.exit(1);
-    } finally {
-        await closePool();
-    }
+
+    // Create water_quality_readings table (device-level, no user FK required)
+    await query(`
+      CREATE TABLE IF NOT EXISTS water_quality_readings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        device_id VARCHAR(100) NOT NULL DEFAULT 'mobile-app',
+        temperature NUMERIC(5, 2),
+        dissolved_oxygen NUMERIC(5, 2),
+        ph NUMERIC(4, 2),
+        salinity NUMERIC(8, 2),
+        ammonia NUMERIC(6, 3),
+        notes TEXT,
+        recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await query(`CREATE INDEX IF NOT EXISTS idx_wq_device_time ON water_quality_readings(device_id, recorded_at DESC);`);
+
+    logger.info('Database migration completed successfully!');
+  } catch (error) {
+    logger.error('Failed to run migration:', error);
+    process.exit(1);
+  } finally {
+    await closePool();
+  }
 }
 
 // Call if executed directly
 if (require.main === module) {
-    migrate();
+  migrate();
 }

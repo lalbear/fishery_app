@@ -47,4 +47,44 @@ export const economicsService = {
     },
 };
 
+export const marketService = {
+    getPrices: async (params?: { species?: string; state?: string }) => {
+        const response = await api.get('/api/v1/market/prices', { params });
+        return response.data;
+    },
+    getTrends: async () => {
+        const response = await api.get('/api/v1/market/trends');
+        return response.data;
+    },
+};
+
+export const speciesService = {
+    getAll: async () => {
+        const response = await api.get('/api/v1/species');
+        return response.data;
+    },
+    getById: async (id: string) => {
+        const response = await api.get(`/api/v1/species/${id}`);
+        return response.data;
+    },
+};
+
+export const waterQualityService = {
+    saveReading: async (data: {
+        temperature?: number;
+        dissolvedOxygen?: number;
+        ph?: number;
+        salinity?: number;
+        ammonia?: number;
+        notes?: string;
+    }) => {
+        const response = await api.post('/api/v1/water-quality/readings', data);
+        return response.data;
+    },
+    getReadings: async () => {
+        const response = await api.get('/api/v1/water-quality/readings');
+        return response.data;
+    },
+};
+
 export default api;

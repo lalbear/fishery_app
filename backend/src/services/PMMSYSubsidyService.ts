@@ -27,23 +27,24 @@ export class PMMSYSubsidyService {
    * @returns Calculated subsidy details
    */
   static calculateSubsidy(input: PMMSYSubsidyInput): PMMSYSubsidyOutput {
-    const { projectType, beneficiaryCategory, unitCostInr } = input;
+    const { projectType, beneficiaryCategory, unitCostInr, landAreaHectares } = input;
 
     // Determine subsidy percentage based on category
     const eligibleSubsidyPercent = this.getSubsidyPercentage(beneficiaryCategory);
-    
+
     // Determine maximum subsidy cap based on project type
-    const maximumSubsidyCapInr = this.getSubsidyCap(projectType);
-    
+    // Scale by land area (Bug 3 fix)
+    const maximumSubsidyCapInr = this.getSubsidyCap(projectType) * landAreaHectares;
+
     // Calculate raw subsidy amount
     const rawSubsidy = (unitCostInr * eligibleSubsidyPercent) / 100;
-    
+
     // Apply cap if necessary
     const calculatedSubsidyInr = Math.min(rawSubsidy, maximumSubsidyCapInr);
-    
+
     // Calculate beneficiary contribution
     const beneficiaryContributionInr = unitCostInr - calculatedSubsidyInr;
-    
+
     // Effective cost after subsidy
     const effectiveCostInr = beneficiaryContributionInr;
 
@@ -101,19 +102,19 @@ export class PMMSYSubsidyService {
     category: FarmerCategory
   ): string[] {
     const schemes: string[] = ['PMMSY-2024'];
-    
+
     if (projectType === 'RAS') {
       schemes.push('Blue-Revolution-RAS');
     }
-    
+
     if (category === FarmerCategory.WOMEN) {
       schemes.push('Mahila-Sashaktikaran-Aquaculture');
     }
-    
+
     if (category === FarmerCategory.SC || category === FarmerCategory.ST) {
       schemes.push('Scheduled-Caste-Tribe-Fisheries');
     }
-    
+
     return schemes;
   }
 
@@ -157,13 +158,14 @@ export class PMMSYSubsidyService {
   static calculateEffectiveCapex(
     totalCapex: number,
     farmerCategory: FarmerCategory,
-    projectType: PMMSYSubsidyInput['projectType']
+    projectType: PMMSYSubsidyInput['projectType'],
+    landAreaHectares: number
   ): { effectiveCapex: number; subsidyAmount: number } {
     const result = this.calculateSubsidy({
       projectType,
       beneficiaryCategory: farmerCategory,
       unitCostInr: totalCapex,
-      landAreaHectares: 1 // Default for calculation
+      landAreaHectares: landAreaHectares
     });
 
     return {

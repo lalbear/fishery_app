@@ -17,6 +17,7 @@ import { geoRouter } from './routes/geography';
 import { speciesRouter } from './routes/species';
 import { syncRouter } from './routes/sync';
 import { marketRouter } from './routes/market';
+import { waterQualityRouter } from './routes/waterQuality';
 
 // Load environment variables
 dotenv.config();
@@ -28,7 +29,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? ['https://fishinggod.app', 'https://*.fishinggod.app']
     : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -64,6 +65,7 @@ app.use('/api/v1/geo', geoRouter);
 app.use('/api/v1/species', speciesRouter);
 app.use('/api/v1/sync', syncRouter);
 app.use('/api/v1/market', marketRouter);
+app.use('/api/v1/water-quality', waterQualityRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -95,8 +97,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   logger.error('Express error', { error: err.message, stack: err.stack });
   res.status(err.status || 500).json({
     error: err.name || 'Internal Server Error',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'An unexpected error occurred' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred'
       : err.message
   });
 });

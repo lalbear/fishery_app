@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View as RNView,
   Text as RNText,
@@ -36,12 +36,80 @@ const WATER_SOURCES = [
   { label: 'Tank', value: 'TANK' },
 ];
 
+// Helper to reliably map state names to abbreviations when Google returns full names
+const STATE_MAP: Record<string, string> = {
+  "Andhra Pradesh": "AP",
+  "Arunachal Pradesh": "AR",
+  "Assam": "AS",
+  "Bihar": "BR",
+  "Chhattisgarh": "CT",
+  "Goa": "GA",
+  "Gujarat": "GJ",
+  "Haryana": "HR",
+  "Himachal Pradesh": "HP",
+  "Jharkhand": "JH",
+  "Karnataka": "KA",
+  "Kerala": "KL",
+  "Madhya Pradesh": "MP",
+  "Maharashtra": "MH",
+  "Manipur": "MN",
+  "Meghalaya": "ML",
+  "Mizoram": "MZ",
+  "Nagaland": "NL",
+  "Odisha": "OR",
+  "Punjab": "PB",
+  "Rajasthan": "RJ",
+  "Sikkim": "SK",
+  "Tamil Nadu": "TN",
+  "Telangana": "TG",
+  "Tripura": "TR",
+  "Uttar Pradesh": "UP",
+  "Uttarakhand": "UT",
+  "West Bengal": "WB",
+  "Andaman and Nicobar Islands": "AN",
+  "Chandigarh": "CH",
+  "Dadra and Nagar Haveli and Daman and Diu": "DN",
+  "Delhi": "DL",
+  "Jammu and Kashmir": "JK",
+  "Ladakh": "LA",
+  "Lakshadweep": "LD",
+  "Puducherry": "PY"
+};
+
+// --- Free geocoding via OpenStreetMap Nominatim (no API key, no rate-limit issues) ---
+interface NominatimResult {
+  display_name: string;
+  address: {
+    state?: string;
+    state_district?: string;
+    county?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    suburb?: string;
+  };
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<NominatimResult | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'FisheryApp/1.0 (contact@fisheryapp.in)' }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function MapScreen() {
   const { t } = useTranslation();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState<string | null>(null);
   const [suitabilityData, setSuitabilityData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isGettingLocation, setIsGettingLocation] = useState<boolean>(true);
 
   // Form state
   const [stateCode, setStateCode] = useState('');
@@ -55,29 +123,13 @@ export default function MapScreen() {
   const [isDistrictOpen, setIsDistrictOpen] = useState(false);
   const [isWaterOpen, setIsWaterOpen] = useState(false);
 
+  // Load Zones first
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required for maps');
-        return;
-      }
-      let loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc);
-
-      // Fetch zones to populate dropdowns
       try {
         const response = await geoService.getZones();
         if (response.success && response.data.length > 0) {
           setZones(response.data);
-          // Set initial defaults if not set
-          if (!stateCode) {
-            const firstZone = response.data[0];
-            setStateCode(firstZone.state_code);
-            if (firstZone.district_codes && firstZone.district_codes.length > 0) {
-              setDistrictCode(firstZone.district_codes[0]);
-            }
-          }
         }
       } catch (error) {
         console.error('Failed to fetch zones', error);
@@ -85,44 +137,132 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Sync district when state changes
+  // Set default state/district safely if nothing selected and zones arrive
+  useEffect(() => {
+    if (zones.length > 0 && !stateCode) {
+      const firstZone = zones[0];
+      setStateCode(firstZone.state_code);
+      if (firstZone.district_codes && firstZone.district_codes.length > 0) {
+        setDistrictCode(firstZone.district_codes[0]);
+      }
+    }
+  }, [zones]); // run if zones load and no stateCode yet
+
+  // Load Location
+  useEffect(() => {
+    let locationSubscription: Location.LocationSubscription | null = null;
+
+    const initLocation = async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
+          setIsGettingLocation(false);
+          return;
+        }
+
+        // Get initial location with balanced accuracy for speed
+        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setLocation(loc);
+        await autoFillLocation(loc); // Trigger geocoding + form autofill
+        setIsGettingLocation(false);
+
+        // Start real-time watching for high accuracy
+        locationSubscription = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, distanceInterval: 100, timeInterval: 10000 },
+          (newLoc) => {
+            setLocation(newLoc);
+          }
+        );
+      } catch (err) {
+        console.error("Location acquisition failed:", err);
+        setIsGettingLocation(false);
+      }
+    };
+
+    if (zones.length > 0) {
+      initLocation(); // Only perform location stuff once zones are loaded so we can auto-fill
+    }
+
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
+  }, [zones.length]); // run after zones array populates
+
+  // Keep track of the last geocoded coordinates to prevent spamming the geocoder
+  const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
+
+  const autoFillLocation = async (loc: Location.LocationObject) => {
+    try {
+      // Prevent rapid requests for very near locations (< ~50 meters)
+      // 0.0005 degrees is approx 55 meters
+      if (lastGeocodedCoords.current) {
+        const dLat = Math.abs(lastGeocodedCoords.current.lat - loc.coords.latitude);
+        const dLng = Math.abs(lastGeocodedCoords.current.lng - loc.coords.longitude);
+        if (dLat < 0.0005 && dLng < 0.0005) {
+          return; // Skip reverse geocoding if we haven't moved far
+        }
+      }
+      lastGeocodedCoords.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+
+      // Use OSM Nominatim instead of expo-location to avoid rate limits
+      const nominatim = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+      if (!nominatim) return;
+
+      setAddress(nominatim.display_name || 'Unknown Location');
+
+      const stateName = nominatim.address?.state;
+      const districtName = nominatim.address?.state_district
+        || nominatim.address?.county
+        || nominatim.address?.city
+        || nominatim.address?.town
+        || nominatim.address?.village;
+
+      if (stateName) {
+        const mappedCode = STATE_MAP[stateName] || stateName;
+        const foundState = zones.find((z: any) => z.state_code === mappedCode || z.zone_name === stateName);
+        if (foundState) {
+          setStateCode(foundState.state_code);
+          if (districtName && foundState.district_codes) {
+            const match = foundState.district_codes.find((d: string) =>
+              d.toLowerCase() === districtName.toLowerCase()
+            );
+            setDistrictCode(match || foundState.district_codes[0]);
+          } else {
+            setDistrictCode(foundState.district_codes[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Auto fill reverse geocode error', err);
+    }
+  };
+
+
+
+  // Sync district when user manually changes state ONLY if current district is invalid for new state
   useEffect(() => {
     if (stateCode && zones.length > 0) {
       const selectedZone = zones.find(z => z.state_code === stateCode);
       if (selectedZone && selectedZone.district_codes.length > 0) {
-        // If current district is not in the new state's districts, reset it to the first one
         if (!selectedZone.district_codes.includes(districtCode)) {
           setDistrictCode(selectedZone.district_codes[0]);
         }
       }
     }
-  }, [stateCode]);
+  }, [stateCode, zones]);
 
   const analyzeLocation = async () => {
     if (!location) return;
     setIsLoading(true);
 
     try {
-      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+      // We removed the redundant reverse geocoding here to prevent hitting
+      // rate limits. The address should already be populated by autoFillLocation.
 
-      if (!apiKey) {
-        Alert.alert("API Key Missing", "Please add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file.");
-        setIsLoading(false);
-        return;
-      }
-
-      // 1. Reverse Geocoding to get the area name
-      const reverseGeoUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.coords.latitude},${location.coords.longitude}&key=${apiKey}`;
-      const geoResponse = await fetch(reverseGeoUrl);
-      const geoData = await geoResponse.json();
-
-      if (geoData.results && geoData.results.length > 0) {
-        setAddress(geoData.results[0].formatted_address);
-      } else {
-        setAddress("Unknown Location");
-      }
-
-      // 2. Call real backend API
+      // Call real backend API
       const result = await geoService.analyzeSuitability({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -138,11 +278,29 @@ export default function MapScreen() {
         Alert.alert("Analysis Failed", result.message || "Failed to analyze location data.");
       }
 
-    } catch (error) {
-      Alert.alert("Error", "Failed to connect to backend service. Please check your network and BACKEND_URL.");
-      console.error(error);
+    } catch (error: any) {
+      const apiErrorMsg = error.response?.data?.message || error.response?.data?.error;
+      const genericMsg = error?.message || "Failed to connect to backend service. Please check your network.";
+      Alert.alert("Analysis Error", apiErrorMsg || genericMsg);
+      console.error("Analysis Error:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMapPress = async (e: any) => {
+    if (location) {
+      const newLoc = {
+        ...location,
+        coords: {
+          ...location.coords,
+          latitude: e.nativeEvent.coordinate.latitude,
+          longitude: e.nativeEvent.coordinate.longitude
+        }
+      };
+      setLocation(newLoc);
+      // re-autofill using the selected map point!
+      await autoFillLocation(newLoc);
     }
   };
 
@@ -160,18 +318,35 @@ export default function MapScreen() {
 
         <View style={styles.mapContainer}>
           {location ? (
-            <MapView style={styles.map} initialRegion={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}>
-              <Marker coordinate={{ latitude: location.coords.latitude, longitude: location.coords.longitude }} title="Current Location" />
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              }}
+              showsUserLocation={true}
+              showsMyLocationButton={true}
+              onPress={handleMapPress}
+            >
+              <Marker
+                coordinate={{ latitude: location.coords.latitude, longitude: location.coords.longitude }}
+                title="Selected Location"
+                draggable
+                onDragEnd={handleMapPress}
+              />
             </MapView>
           ) : (
             <View style={styles.loadingMap}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
+              {isGettingLocation ? (
+                <>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                  <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
+                </>
+              ) : (
+                <Text style={styles.loadingText}>GPS Unavailable</Text>
+              )}
             </View>
           )}
         </View>

@@ -50,6 +50,13 @@ export default function HomeScreen() {
       color: theme.colors.accent,
       bgColor: '#FEF3C7',
     },
+    {
+      icon: 'construct-outline' as const,
+      title: 'Equipment Catalog',
+      onPress: () => navigation.navigate('EquipmentCatalog' as never),
+      color: theme.colors.primary,
+      bgColor: theme.colors.primaryLight,
+    },
   ];
 
   return (

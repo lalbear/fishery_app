@@ -38,7 +38,7 @@ const WATER_SOURCES = [
 
 export default function EconomicsScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   // Form state
   const [landSize, setLandSize] = useState('');
@@ -48,15 +48,28 @@ export default function EconomicsScreen() {
   const [farmerCategory, setFarmerCategory] = useState<'GENERAL' | 'WOMEN' | 'SC' | 'ST'>('GENERAL');
   const [stateCode, setStateCode] = useState('');
   const [districtCode, setDistrictCode] = useState('');
+  const [preferredSpecies, setPreferredSpecies] = useState<string>('');
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
   const [isStateOpen, setIsStateOpen] = useState(false);
   const [isDistrictOpen, setIsDistrictOpen] = useState(false);
+  const [isSpeciesOpen, setIsSpeciesOpen] = useState(false);
 
   const riskOptions: Array<'LOW' | 'MEDIUM' | 'HIGH'> = ['LOW', 'MEDIUM', 'HIGH'];
   const categoryOptions: Array<'GENERAL' | 'WOMEN' | 'SC' | 'ST'> = ['GENERAL', 'WOMEN', 'SC', 'ST'];
+
+  const SPECIES_OPTIONS = [
+    { label: 'Auto Recommend', value: '' },
+    { label: 'Vannamei Shrimp', value: 'Litopenaeus vannamei' },
+    { label: 'Black Tiger Shrimp', value: 'Penaeus monodon' },
+    { label: 'Pangasius', value: 'Pangasianodon hypophthalmus' },
+    { label: 'Tilapia', value: 'Oreochromis niloticus' },
+    { label: 'Labeo rohita (Rohu)', value: 'Labeo rohita' },
+    { label: 'Catla catla (Catla)', value: 'Catla catla' },
+    { label: 'Cirrhinus mrigala (Mrigal)', value: 'Cirrhinus mrigala' },
+  ];
 
   useEffect(() => {
     (async () => {
@@ -97,7 +110,7 @@ export default function EconomicsScreen() {
       // 1.0 Acre = 0.4047 Hectares (approx)
       const landHectares = parseFloat(landSize) * 0.4047;
 
-      const result = await economicsService.simulate({
+      const payload: any = {
         landSizeHectares: landHectares,
         waterSourceSalinityUsCm: parseFloat(salinity),
         availableCapitalInr: parseFloat(capital),
@@ -105,10 +118,16 @@ export default function EconomicsScreen() {
         farmerCategory,
         stateCode,
         districtCode
-      });
+      };
+
+      if (preferredSpecies) {
+        payload.preferredSpecies = [preferredSpecies];
+      }
+
+      const result = await economicsService.simulate(payload);
 
       if (result.success) {
-        navigation.navigate('EconomicsResult' as never, { simulationData: result.data } as never);
+        navigation.navigate('EconomicsResult', { simulationData: result.data });
       } else {
         Alert.alert("Simulation Error", result.message || "Failed to calculate ROI.");
       }
@@ -221,6 +240,16 @@ export default function EconomicsScreen() {
             ))}
           </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Target Species (Optional)</Text>
+            <TouchableOpacity style={styles.pickerButton} onPress={() => setIsSpeciesOpen(true)}>
+              <Text style={styles.pickerText}>
+                {SPECIES_OPTIONS.find(s => s.value === preferredSpecies)?.label || 'Auto Recommend'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#666" />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={[styles.submitButton, isLoading && { opacity: 0.7 }]}
             onPress={runSimulation}
@@ -253,6 +282,13 @@ export default function EconomicsScreen() {
         onSelect={(val: string) => { setDistrictCode(val); setIsDistrictOpen(false); }}
         onClose={() => setIsDistrictOpen(false)}
         title="Select District"
+      />
+      <SelectionModal
+        visible={isSpeciesOpen}
+        items={SPECIES_OPTIONS}
+        onSelect={(val: string) => { setPreferredSpecies(val); setIsSpeciesOpen(false); }}
+        onClose={() => setIsSpeciesOpen(false)}
+        title="Select Target Species"
       />
     </SafeAreaView>
   );

@@ -125,7 +125,7 @@ export class GeoSuitabilityService {
       LIMIT 1
     `, [stateCode, districtCode]);
 
-    if (result.rows.length > 0) {
+    if (result.rows.length > 0 && result.rows[0].data) {
       const zone = result.rows[0].data;
       return {
         texture: zone.soil_texture || 'Loamy',
@@ -240,7 +240,7 @@ export class GeoSuitabilityService {
         climateAnalysis,
         input
       );
-      
+
       if (suitability.suitabilityScore > 0) {
         systems.push(suitability);
       }
@@ -273,12 +273,12 @@ export class GeoSuitabilityService {
           score -= 20;
           limitingFactors.push('Not suitable for brackish/saline water');
         }
-        
+
         if (soilAnalysis.suitability === 'EXCELLENT' || soilAnalysis.suitability === 'GOOD') {
           score += 10;
           advantages.push('Soil suitable for pond construction');
         }
-        
+
         if (input.waterSourceType === 'CANAL' || input.waterSourceType === 'RIVER') {
           score += 10;
           advantages.push('Reliable water source available');
@@ -290,7 +290,7 @@ export class GeoSuitabilityService {
           score += 25;
           advantages.push('Suitable for intensive freshwater production');
         }
-        
+
         if (climateAnalysis.extremeWeatherRisk === 'LOW') {
           score += 10;
           advantages.push('Climate suitable for biofloc management');
@@ -298,7 +298,7 @@ export class GeoSuitabilityService {
           score -= 5;
           limitingFactors.push('Extreme temperatures may affect biofloc stability');
         }
-        
+
         advantages.push('Higher yield per unit area');
         advantages.push('Lower water requirement than traditional ponds');
         break;
@@ -308,12 +308,12 @@ export class GeoSuitabilityService {
           score += 10;
           advantages.push('Controlled environment protects from extreme weather');
         }
-        
+
         score -= 10; // Higher complexity
         limitingFactors.push('Requires technical expertise');
         limitingFactors.push('High capital investment required');
         limitingFactors.push('Continuous power supply essential');
-        
+
         advantages.push('Highest production per unit area');
         advantages.push('Water-independent operation');
         break;
@@ -327,7 +327,7 @@ export class GeoSuitabilityService {
           score = 0; // Not applicable for freshwater
           limitingFactors.push('Requires brackish/saline water');
         }
-        
+
         if (soilAnalysis.permeability === 'Low to Moderate') {
           score += 10;
           advantages.push('Soil suitable for brackish water ponds');
@@ -342,7 +342,7 @@ export class GeoSuitabilityService {
           score -= 20;
           limitingFactors.push('Requires large open water body');
         }
-        
+
         if (waterType === WaterType.FRESHWATER) {
           score += 10;
         }
@@ -403,9 +403,9 @@ export class GeoSuitabilityService {
 
     // Adjust for soil and climate
     const soilMultiplier = soilAnalysis.suitability === 'EXCELLENT' ? 1.1 :
-                          soilAnalysis.suitability === 'GOOD' ? 1.0 :
-                          soilAnalysis.suitability === 'FAIR' ? 0.85 : 0.7;
-    
+      soilAnalysis.suitability === 'GOOD' ? 1.0 :
+        soilAnalysis.suitability === 'FAIR' ? 0.85 : 0.7;
+
     const climateMultiplier = climateAnalysis.temperatureSuitability / 100;
 
     return Math.round(systemScore * soilMultiplier * climateMultiplier);
@@ -428,7 +428,7 @@ export class GeoSuitabilityService {
       FROM knowledge_nodes
       WHERE node_type = 'SPECIES'
       AND (
-        data->'biological_parameters'->'salinity_tolerance_ppt'->>'max'::numeric < 5
+        (data->'biological_parameters'->'salinity_tolerance_ppt'->>'max')::numeric < 5
         OR data->>'category' = 'INDIAN_MAJOR_CARP'
       )
     `);

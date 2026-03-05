@@ -29,14 +29,16 @@ import MapScreen from './src/screens/MapScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WaterQualityScreen from './src/screens/WaterQualityScreen';
 import MarketPricesScreen from './src/screens/MarketPricesScreen';
+import EquipmentCatalogScreen from './src/screens/EquipmentCatalogScreen';
 
 // Types
 export type RootStackParamList = {
   Main: undefined;
   SpeciesDetail: { speciesId: string };
-  EconomicsResult: { simulationId: string };
+  EconomicsResult: { simulationData: any };
   WaterQuality: undefined;
   MarketPrices: undefined;
+  EquipmentCatalog: undefined;
 };
 
 export type MainTabParamList = {
@@ -167,6 +169,11 @@ function App() {
               name="MarketPrices"
               component={MarketPricesScreen}
               options={{ title: 'Market Prices' }}
+            />
+            <Stack.Screen
+              name="EquipmentCatalog"
+              component={EquipmentCatalogScreen}
+              options={{ title: 'Equipment Catalog' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

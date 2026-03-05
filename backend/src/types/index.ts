@@ -113,6 +113,7 @@ export interface SystemData {
 export interface EconomicData {
   model_name: string;
   system_type: CultivationSystem;
+  target_species?: string; // Links economic model explicitly to a specific species scientific_name
   capital_expenditure: CapitalExpenditure;
   operational_expenditure: OperationalExpenditure;
   revenue_projections: RevenueProjections;

@@ -15,12 +15,12 @@ const router = Router();
 // Validation schema for simulation request
 const simulationSchema = z.object({
   landSizeHectares: z.number().positive().max(1000),
-  waterSourceSalinityUsCm: z.number().min(0).max(10000),
+  waterSourceSalinityUsCm: z.number().min(0).max(50000),
   availableCapitalInr: z.number().positive(),
   riskTolerance: z.enum(['LOW', 'MEDIUM', 'HIGH']),
   farmerCategory: z.enum(['GENERAL', 'WOMEN', 'SC', 'ST']),
   stateCode: z.string().length(2),
-  districtCode: z.string().min(2).max(10),
+  districtCode: z.string().min(2).max(50),
   preferredSpecies: z.array(z.string()).optional()
 });
 
