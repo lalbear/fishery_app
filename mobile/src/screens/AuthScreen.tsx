@@ -64,23 +64,23 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                     <>
                         <View style={styles.inputWrap}>
                             <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                            <TextInput style={styles.input} placeholder="Full Name" value={name} onChangeText={setName} />
+                            <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor="#888" value={name} onChangeText={setName} />
                         </View>
                         <View style={styles.inputWrap}>
                             <Ionicons name="map-outline" size={20} color="#666" style={styles.icon} />
-                            <TextInput style={styles.input} placeholder="State Code (e.g. AP, WB)" value={stateCode} onChangeText={setStateCode} autoCapitalize="characters" maxLength={2} />
+                            <TextInput style={styles.input} placeholder="State Code (e.g. AP, WB)" placeholderTextColor="#888" value={stateCode} onChangeText={setStateCode} autoCapitalize="characters" maxLength={2} />
                         </View>
                     </>
                 )}
 
                 <View style={styles.inputWrap}>
                     <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
-                    <TextInput style={styles.input} placeholder="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={10} />
+                    <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#888" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={10} />
                 </View>
 
                 <View style={styles.inputWrap}>
                     <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
-                    <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+                    <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#888" value={password} onChangeText={setPassword} secureTextEntry />
                 </View>
 
                 <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
