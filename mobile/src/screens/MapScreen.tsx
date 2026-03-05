@@ -110,6 +110,7 @@ export default function MapScreen() {
   const [suitabilityData, setSuitabilityData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGettingLocation, setIsGettingLocation] = useState<boolean>(true);
+  const scrollViewRef = useRef<any>(null);
 
   // Form state
   const [stateCode, setStateCode] = useState('');
@@ -274,6 +275,9 @@ export default function MapScreen() {
 
       if (result.success) {
         setSuitabilityData(result.data);
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
       } else {
         Alert.alert("Analysis Failed", result.message || "Failed to analyze location data.");
       }
@@ -310,7 +314,7 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>{t('maps.title') || 'Geo Suitability'}</Text>
           <Text style={styles.subtitle}>{t('maps.subtitle') || 'Analyze your pond environment'}</Text>

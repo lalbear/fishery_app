@@ -7,6 +7,7 @@ import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, Alert,
   ActivityIndicator, RefreshControl,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,7 +106,10 @@ export default function WaterQualityScreen() {
   const onRefresh = () => { setRefreshing(true); loadHistory(); };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>{t('waterQuality.title') || 'Water Quality'}</Text>
         <View style={styles.tabContainer}>
@@ -208,7 +212,7 @@ export default function WaterQualityScreen() {
           )}
         </ScrollView>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
