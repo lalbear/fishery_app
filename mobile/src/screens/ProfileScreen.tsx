@@ -42,8 +42,18 @@ export default function ProfileScreen({ navigation }: any) {
       icon: 'language-outline',
       title: t('profile.language'),
       subtitle: 'App language',
-      value: i18n.language.toUpperCase(),
-      onPress: () => Alert.alert('Coming Soon', 'Language settings will be available in the next update.'),
+      value: i18n.language === 'hi' ? 'HINDI' : 'ENGLISH',
+      onPress: () => {
+        Alert.alert(
+          'Select Language',
+          'Choose your preferred language / अपनी पसंदीदा भाषा चुनें',
+          [
+            { text: 'English', onPress: () => i18n.changeLanguage('en') },
+            { text: 'हिंदी (Hindi)', onPress: () => i18n.changeLanguage('hi') },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      },
     },
     {
       icon: 'cloud-offline-outline',
