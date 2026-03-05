@@ -68,7 +68,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                         </View>
                         <View style={styles.inputWrap}>
                             <Ionicons name="map-outline" size={20} color="#666" style={styles.icon} />
-                            <TextInput style={styles.input} placeholder="State Code (e.g. AP, WB)" placeholderTextColor="#888" value={stateCode} onChangeText={setStateCode} autoCapitalize="characters" maxLength={2} />
+                            <TextInput style={styles.input} placeholder="State (e.g. Andhra Pradesh)" placeholderTextColor="#888" value={stateCode} onChangeText={setStateCode} />
                         </View>
                     </>
                 )}
