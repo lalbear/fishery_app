@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,9 +31,17 @@ export default function SpeciesDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="fish" size={48} color="#fff" />
-        </View>
+        {d.image_url ? (
+          <Image
+            source={{ uri: d.image_url }}
+            style={{ width: '100%', height: 220, borderRadius: 16, marginBottom: 16 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.iconWrap}>
+            <Ionicons name="fish" size={48} color="#fff" />
+          </View>
+        )}
         <Text style={styles.title}>{commonName}</Text>
         <Text style={styles.scientificName}>{d.scientific_name}</Text>
         {d.category && <Text style={styles.badge}>{(d.category || '').replace(/_/g, ' ')}</Text>}

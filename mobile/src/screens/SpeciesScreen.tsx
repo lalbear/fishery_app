@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, TextInput, RefreshControl,
+  ActivityIndicator, TextInput, RefreshControl, Image
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +27,15 @@ const SpeciesCard = ({ species, onPress }: { species: any; onPress: () => void }
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.cardHeader}>
         <View style={styles.iconWrap}>
-          <Ionicons name="fish" size={28} color="#fff" />
+          {d.image_url ? (
+            <Image
+              source={{ uri: d.image_url }}
+              style={{ width: '100%', height: '100%', borderRadius: 23 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons name="fish" size={28} color="#fff" />
+          )}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.speciesName}>{commonName}</Text>
