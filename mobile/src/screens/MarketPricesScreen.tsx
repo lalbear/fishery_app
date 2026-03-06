@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { marketService } from '../services/apiService';
 import { useTheme } from '../ThemeContext';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface PriceRow {
   id: string;
@@ -101,7 +102,8 @@ export default function MarketPricesScreen() {
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [globalAvg, setGlobalAvg] = useState(200);
+  // B10 FIX: initialized as null so we don't show a fake "200" before data loads
+  const [globalAvg, setGlobalAvg] = useState<number | null>(null);
 
   const loadPrices = useCallback(async () => {
     try {
@@ -111,6 +113,8 @@ export default function MarketPricesScreen() {
         if (res.data.length > 0) {
           const total = res.data.reduce((s: number, r: PriceRow) => s + parseFloat(r.price_inr_per_kg), 0);
           setGlobalAvg(total / res.data.length);
+        } else {
+          setGlobalAvg(null);
         }
       }
     } catch (err) {
@@ -136,20 +140,11 @@ export default function MarketPricesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
-      {/* Top Navigation Header */}
-      <View style={styles.navHeader}>
-        <TouchableOpacity
-          onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          style={[styles.backBtn, { flexDirection: 'row', alignItems: 'center' }]}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
-          <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.textPrimary, fontWeight: '600' }}>Home</Text>
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>{t('markets.title') || 'Market Prices'}</Text>
-        <View style={{ width: 64 }} />
-      </View>
-
+      <ScreenHeader
+        title={t('markets.title') || 'Market Prices'}
+        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+        variant="surface"
+      />
       <View style={styles.subHeader}>
         <Text style={styles.subtitle}>{t('markets.subtitle') || 'Live aquaculture commodity prices'}</Text>
       </View>
@@ -160,7 +155,8 @@ export default function MarketPricesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         renderItem={({ item }) => {
           const price = parseFloat(item.price_inr_per_kg);
-          const speciesAvg = getSpeciesAvgPrice(item.species_name, globalAvg);
+          // Use species benchmark avg if global is not yet loaded
+          const speciesAvg = getSpeciesAvgPrice(item.species_name, globalAvg ?? 0);
           const { name: iconName, color: iconColor } = trendIcon(price, speciesAvg, theme);
           const fishImg = getFishImage(item.species_name);
 
@@ -183,7 +179,9 @@ export default function MarketPricesScreen() {
                   </View>
                   <View style={styles.avgPriceBadge}>
                     <Text style={styles.avgPriceLabel}>Avg. Price</Text>
-                    <Text style={styles.avgPrice}>₹{speciesAvg.toFixed(0)}/kg</Text>
+                    <Text style={styles.avgPrice}>
+                      {speciesAvg > 0 ? `₹${speciesAvg.toFixed(0)}/kg` : '—'}
+                    </Text>
                   </View>
                 </View>
 
@@ -231,19 +229,7 @@ function FishImageComponent({ imageUrl, speciesName, theme, styles }: { imageUrl
 
 const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  navHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  backBtn: { padding: 4 },
-  navTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.textPrimary },
-  subHeader: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: theme.colors.surface },
+  subHeader: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   subtitle: { fontSize: 13, color: theme.colors.textSecondary },
   list: { padding: 12 },
   priceCard: {

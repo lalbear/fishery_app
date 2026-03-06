@@ -4,23 +4,18 @@
 
 import React from 'react';
 import {
-  View as RNView,
-  Text as RNText,
+  View,
+  Text,
   StyleSheet,
-  ScrollView as RNScrollView,
-  TouchableOpacity as RNTouchableOpacity
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
-
-const View = RNView as any;
-const Text = RNText as any;
-const ScrollView = RNScrollView as any;
-const TouchableOpacity = RNTouchableOpacity as any;
-
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function EconomicsResultScreen() {
   const { theme } = useTheme();
@@ -32,9 +27,10 @@ export default function EconomicsResultScreen() {
 
   if (!simulationData) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={{ color: theme.colors.textPrimary }}>No simulation data available.</Text>
-      </View>
+      <SafeAreaView style={[styles.errorContainer, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <Ionicons name="alert-circle-outline" size={48} color={theme.colors.error} />
+        <Text style={{ color: theme.colors.textPrimary, marginTop: 12, fontSize: 16 }}>No simulation data available.</Text>
+      </SafeAreaView>
     );
   }
 
@@ -44,16 +40,14 @@ export default function EconomicsResultScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.primary }} edges={['top']}>
+      <ScreenHeader
+        title={t('economics.results') || 'Analysis Results'}
+        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+        variant="primary"
+      />
       <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-              <Text style={{ marginLeft: 8, fontSize: 16, color: '#fff', fontWeight: '600' }}>Home</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('economics.results') || 'Analysis Results'}</Text>
-          </View>
-
+        {/* Hero score card */}
+        <View style={styles.heroSection}>
           <View style={styles.scoreCard}>
             <Text style={styles.scoreLabel}>{t('economics.benefitCostRatio') || 'Benefit-Cost Ratio'}</Text>
             <Text style={styles.scoreValue}>{simulationData.benefitCostRatio}</Text>
@@ -93,9 +87,9 @@ export default function EconomicsResultScreen() {
             />
           </View>
           {simulationData.availableCapitalInr > simulationData.totalProjectCostInr && (
-            <View style={{ marginTop: 12, padding: 12, backgroundColor: theme.isDark ? '#1a2b3a' : '#E3F2FD', borderRadius: 8 }}>
-              <Text style={{ fontSize: 13, color: theme.colors.primary, fontStyle: 'italic' }}>
-                Note: This project layout requires ₹{(simulationData.totalProjectCostInr / 100000).toFixed(2)} Lakhs.
+            <View style={styles.surplusNote}>
+              <Text style={styles.surplusText}>
+                Note: This project requires ₹{(simulationData.totalProjectCostInr / 100000).toFixed(2)} Lakhs.
                 You have ₹{((simulationData.availableCapitalInr - simulationData.totalProjectCostInr) / 100000).toFixed(2)} Lakhs surplus capital available.
               </Text>
             </View>
@@ -208,90 +202,95 @@ function StatRow({ label, value, color, bold, styles }: { label: string; value: 
 const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background
+    backgroundColor: theme.colors.background,
   },
-  header: {
-    padding: 16,
+  heroSection: {
+    padding: theme.spacing.md,
     backgroundColor: theme.colors.primary,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16
-  },
-  headerTitle: {
-    ...theme.typography.h2,
-    color: '#fff'
+    paddingBottom: theme.spacing.xl,
   },
   scoreCard: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center'
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
   },
   scoreLabel: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
     textTransform: 'uppercase',
-    fontWeight: 'bold'
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   scoreValue: {
-    fontSize: 56,
+    fontSize: 52,
     fontWeight: 'bold',
     color: '#fff',
-    marginVertical: 4
+    marginVertical: theme.spacing.xs,
   },
   scoreStatus: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#fff',
-    fontWeight: '500'
+    fontWeight: '500',
   },
   section: {
-    marginTop: 20,
-    paddingHorizontal: 16
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
   },
   sectionTitle: {
     ...theme.typography.h3,
     color: theme.colors.textPrimary,
-    marginBottom: 12
+    marginBottom: theme.spacing.sm,
   },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    ...theme.shadows.sm
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  surplusNote: {
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.isDark ? '#1a2b3a' : '#E3F2FD',
+    borderRadius: theme.borderRadius.sm,
+  },
+  surplusText: {
+    fontSize: 13,
+    color: theme.colors.primary,
+    fontStyle: 'italic',
   },
   divider: {
     height: 1,
     backgroundColor: theme.colors.border,
-    marginVertical: 4
+    marginVertical: theme.spacing.xs,
   },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border
+    borderBottomColor: theme.colors.border,
   },
   statLabel: {
     fontSize: 14,
-    color: theme.colors.textSecondary
+    color: theme.colors.textSecondary,
+    flex: 1,
+    marginRight: theme.spacing.sm,
   },
   statValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   speciesItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 16
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
   },
   borderTop: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border
+    borderTopColor: theme.colors.border,
   },
   speciesIconContainer: {
     width: 40,
@@ -299,131 +298,134 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 20,
     backgroundColor: theme.isDark ? '#1a3a1f' : '#E8F5E9',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
-  speciesInfo: {
-    flex: 1
-  },
+  speciesInfo: { flex: 1 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   speciesName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
     flex: 1,
-    marginRight: 8
+    marginRight: theme.spacing.sm,
   },
   compatibilityBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: theme.borderRadius.sm,
     flexShrink: 0,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   scientificName: {
     fontSize: 13,
     fontStyle: 'italic',
     color: theme.colors.textSecondary,
-    marginBottom: 8
+    marginBottom: theme.spacing.sm,
+    marginTop: 2,
   },
   speciesStats: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 8
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
   },
   statMini: {
     fontSize: 13,
     fontWeight: '500',
-    color: theme.colors.textSecondary
+    color: theme.colors.textSecondary,
   },
   reasonItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: theme.colors.primary
+    backgroundColor: theme.colors.primary,
   },
   reasonText: {
     fontSize: 12,
-    color: theme.colors.textSecondary
+    color: theme.colors.textSecondary,
+    flex: 1,
   },
   riskHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-    paddingBottom: 12,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border
+    borderBottomColor: theme.colors.border,
   },
   riskLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   riskValue: {
     fontSize: 16,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   riskItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 16
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   riskCategory: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   riskText: {
     fontSize: 13,
     color: theme.colors.textSecondary,
-    marginTop: 2
+    marginTop: 2,
   },
   mitigationContainer: {
     backgroundColor: theme.colors.background,
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 4
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    marginTop: theme.spacing.xs,
   },
   mitigationTitle: {
     fontSize: 13,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
-    marginBottom: 8,
-    textTransform: 'uppercase'
+    marginBottom: theme.spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   strategyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   strategyText: {
     fontSize: 13,
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
+    flex: 1,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: 24,
   },
   footer: {
-    padding: 24,
-    alignItems: 'center'
+    padding: theme.spacing.xl,
+    alignItems: 'center',
   },
   footerText: {
     fontSize: 11,
     color: theme.colors.textMuted,
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+  },
 });

@@ -1,7 +1,6 @@
 /**
  * Species Screen – connected to live backend knowledge graph
  */
-// @ts-nocheck
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 import { speciesService } from '../services/apiService';
+import ScreenHeader from '../components/ScreenHeader';
 
 const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPress: () => void; theme: any; styles: any; }) => {
   const { t, i18n } = useTranslation();
@@ -129,21 +129,13 @@ export default function SpeciesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={{ flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-            <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.primary, fontWeight: '600' }}>Home</Text>
-          </TouchableOpacity>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.title}>{t('species.title') || 'Species Intelligence'}</Text>
-            <Text style={styles.subtitle}>{t('species.subtitle') || 'Aquaculture knowledge base'}</Text>
-          </View>
-        </View>
+      <ScreenHeader
+        title={t('species.title') || 'Species Intelligence'}
+        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+        variant="surface"
+      />
+      <View style={styles.searchSection}>
+        <Text style={styles.subtitle}>{t('species.subtitle') || 'Aquaculture knowledge base'}</Text>
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} />
           <TextInput
@@ -187,17 +179,15 @@ export default function SpeciesScreen() {
 
 const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { padding: 16, backgroundColor: theme.colors.surface, paddingBottom: 8 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  title: { fontSize: 22, fontWeight: 'bold', color: theme.colors.primary },
-  subtitle: { fontSize: 14, color: theme.colors.textSecondary, marginTop: 2 },
+  searchSection: { padding: 12, paddingTop: 8, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  subtitle: { fontSize: 13, color: theme.colors.textSecondary, marginBottom: 8 },
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: theme.colors.background, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 8, marginTop: 12, gap: 8,
+    paddingVertical: 8, gap: 8,
     borderWidth: 1, borderColor: theme.colors.border
   },
-  searchInput: { flex: 1, fontSize: 17, color: theme.colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 16, color: theme.colors.textPrimary },
   list: { padding: 16, backgroundColor: theme.colors.background, flexGrow: 1 },
   card: {
     backgroundColor: theme.colors.surface, borderRadius: 14, padding: 16,

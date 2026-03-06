@@ -4,7 +4,7 @@ import 'react-native-get-random-values';
  * React Native with Expo and WatermelonDB
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import './src/i18n';
 import { DatabaseProvider } from '@nozbe/watermelondb/react';
 import database from './src/database';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
+import { AuthProvider, useAuth } from './src/AuthContext';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -32,6 +33,9 @@ import MarketPricesScreen from './src/screens/MarketPricesScreen';
 import EquipmentCatalogScreen from './src/screens/EquipmentCatalogScreen';
 import FeedCatalogScreen from './src/screens/FeedCatalogScreen';
 import PersonalInfoScreen from './src/screens/PersonalInfoScreen';
+import PondsListScreen from './src/screens/PondsListScreen';
+import AddEditPondScreen from './src/screens/AddEditPondScreen';
+import AuthScreen from './src/screens/AuthScreen';
 
 // Types
 export type RootStackParamList = {
@@ -136,80 +140,36 @@ function MainTabs() {
   );
 }
 
-import { AuthProvider, useAuth } from './src/AuthContext';
-import AuthScreen from './src/screens/AuthScreen';
-import { TouchableOpacity } from 'react-native';
-
-function ThemeToggleButton() {
-  const { theme, isDark, toggleTheme } = useTheme();
-  return (
-    <TouchableOpacity
-      style={{
-        position: 'absolute',
-        bottom: 90,
-        right: 20,
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 6,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        zIndex: 9999,
-      }}
-      onPress={toggleTheme}
-      activeOpacity={0.8}
-    >
-      <Ionicons name={isDark ? "sunny" : "moon"} size={24} color={theme.colors.textInverse} />
-    </TouchableOpacity>
-  );
-}
-
-import PondsListScreen from './src/screens/PondsListScreen';
-import AddEditPondScreen from './src/screens/AddEditPondScreen';
-
 function MainApp() {
   const { isAuthenticated, login } = useAuth();
   const { theme, mode } = useTheme();
 
   if (!isAuthenticated) {
-    return (
-      <>
-        <AuthScreen onLoginSuccess={login} />
-        <ThemeToggleButton />
-      </>
-    );
+    return <AuthScreen onLoginSuccess={login} />;
   }
 
   return (
-    <>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: { backgroundColor: theme.colors.surface },
-            headerTintColor: theme.colors.primary,
-            headerTitleStyle: { fontWeight: 'bold' },
-          }}
-        >
-          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-          <Stack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="EconomicsResult" component={EconomicsResultScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="WaterQuality" component={WaterQualityScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="MarketPrices" component={MarketPricesScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="EquipmentCatalog" component={EquipmentCatalogScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="FeedCatalog" component={FeedCatalogScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="PondsList" component={PondsListScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="AddEditPond" component={AddEditPondScreen} options={{ headerShown: false, presentation: 'modal' }} />
-        </Stack.Navigator>
-        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-      </NavigationContainer>
-      <ThemeToggleButton />
-    </>
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.primary,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      >
+        <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+        <Stack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="EconomicsResult" component={EconomicsResultScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="WaterQuality" component={WaterQualityScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="MarketPrices" component={MarketPricesScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="EquipmentCatalog" component={EquipmentCatalogScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="FeedCatalog" component={FeedCatalogScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PondsList" component={PondsListScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="AddEditPond" component={AddEditPondScreen} options={{ headerShown: false, presentation: 'modal' }} />
+      </Stack.Navigator>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+    </NavigationContainer>
   );
 }
 

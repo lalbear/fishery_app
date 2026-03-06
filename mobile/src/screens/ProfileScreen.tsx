@@ -197,7 +197,7 @@ export default function ProfileScreen({ navigation }: any) {
           ))}
         </View>
 
-        <Text style={styles.version}>Fishing God v1.0.0</Text>
+        <Text style={styles.version}>Fishing God v0.9-beta</Text>
       </ScrollView>
     </SafeAreaView>
   );

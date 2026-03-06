@@ -54,14 +54,14 @@ export default function HomeScreen() {
     },
     {
       icon: 'construct-outline' as const,
-      title: 'Equipment Catalog',
+      title: t('home.equipmentCatalog') || 'Equipment Catalog',
       onPress: () => navigation.navigate('EquipmentCatalog' as never),
       color: theme.colors.primary,
       bgColor: theme.colors.primaryLight,
     },
     {
       icon: 'nutrition-outline' as const,
-      title: 'Feed & Nutrition',
+      title: t('home.feedNutrition') || 'Feed & Nutrition',
       onPress: () => navigation.navigate('FeedCatalog' as never),
       color: theme.colors.success,
       bgColor: isDark ? '#14532D' : '#DCFCE7',
