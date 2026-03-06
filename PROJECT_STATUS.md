@@ -278,9 +278,9 @@ There is a `MapScreen.web.tsx` file (3.4KB) which is the web platform version of
 ### Priority 7 — Market Data Reliability
 **Effort: ~2 days**
 - Add health monitoring to the market scraper worker (alert when scraping fails)
+- **Integrate FMPIS (NFDB)**: Build scraper for [fmpisnfdb.in](https://fmpisnfdb.in) to cover 138+ species.
+- **Implement MPEDA Live Pricing**: Add farmgate price support for Shrimp via [mpeda.gov.in](https://mpeda.gov.in).
 - Consider using official government APIs (`agmarknet.gov.in` has an XML API)
-- Implement stale data warning in the MarketPrices screen (`Last updated: X hours ago`)
-- Cache fallback: return last-known-good prices when fresh scrape fails
 
 ### Priority 8 — App Store Preparation
 **Effort: ~3 days**
