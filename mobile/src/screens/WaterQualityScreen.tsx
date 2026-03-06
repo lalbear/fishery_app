@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { waterQualityService } from '../services/apiService';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
+import WaterQualityChart from '../components/WaterQualityChart';
+import { evaluatePondHealth, Advisory } from '../utils/pondAdvisory';
 
 interface Reading {
   id: string;
@@ -60,6 +62,7 @@ export default function WaterQualityScreen() {
   const [history, setHistory] = useState<Reading[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastAdvisory, setLastAdvisory] = useState<Advisory | null>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -95,7 +98,14 @@ export default function WaterQualityScreen() {
 
       const res = await waterQualityService.saveReading(payload);
       if (res.success) {
-        Alert.alert('Saved ✓', 'Water quality reading has been recorded.');
+        // F3: compute advisory from the just-saved reading
+        const advisory = evaluatePondHealth({
+          temperature: payload.temperature,
+          dissolved_oxygen: payload.dissolvedOxygen,
+          ph: payload.ph,
+          ammonia: payload.ammonia,
+        });
+        setLastAdvisory(advisory);
         setTemperature(''); setDissolvedOxygen(''); setPh('');
         setSalinity(''); setAmmonia(''); setNotes('');
         setActiveTab('history');
@@ -194,6 +204,42 @@ export default function WaterQualityScreen() {
             </View>
           ) : (
             <View style={styles.history}>
+              {/* Advisory Banner (F3) */}
+              {lastAdvisory && (
+                <View style={[
+                  styles.advisoryBanner,
+                  {
+                    backgroundColor: lastAdvisory.level === 'critical' ? theme.colors.error + '22'
+                      : lastAdvisory.level === 'warning' ? theme.colors.accent + '22'
+                        : theme.colors.success + '22'
+                  }
+                ]}>
+                  <Text style={[styles.advisoryTitle, {
+                    color: lastAdvisory.level === 'critical' ? theme.colors.error
+                      : lastAdvisory.level === 'warning' ? theme.colors.accent
+                        : theme.colors.success
+                  }]}>{lastAdvisory.title}</Text>
+                  <Text style={styles.advisoryMessage}>{lastAdvisory.message}</Text>
+                  <Text style={styles.advisoryAction}>💡 {lastAdvisory.action}</Text>
+                  <TouchableOpacity onPress={() => setLastAdvisory(null)} style={styles.advisoryDismiss}>
+                    <Text style={{ fontSize: 12, color: theme.colors.textMuted }}>Dismiss</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* F1: Water Quality Chart */}
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>📊 Trend Analysis</Text>
+                <WaterQualityChart
+                  readings={history.map(r => ({
+                    timestamp: new Date(r.recorded_at).getTime(),
+                    temperature: r.temperature,
+                    dissolved_oxygen: r.dissolved_oxygen,
+                    ph: r.ph,
+                    ammonia: r.ammonia,
+                  }))}
+                />
+              </View>
               {history.map((item) => {
                 const status = statusFor(item);
                 return (
@@ -297,4 +343,21 @@ const getStyles = (theme: any) => StyleSheet.create({
   chipLabel: { fontSize: 10, color: theme.colors.textMuted, textTransform: 'uppercase' },
   chipValue: { fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary },
   notesText: { marginTop: 8, fontSize: 13, color: theme.colors.textSecondary, fontStyle: 'italic' },
+  // F1 + F3 styles
+  advisoryBanner: {
+    borderRadius: theme.borderRadius.md, padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  advisoryTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  advisoryMessage: { fontSize: 13, color: theme.colors.textSecondary, marginBottom: 6 },
+  advisoryAction: { fontSize: 13, color: theme.colors.textPrimary, lineHeight: 18 },
+  advisoryDismiss: { alignSelf: 'flex-end', marginTop: 8 },
+  chartCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  chartTitle: { ...theme.typography.h3, marginBottom: theme.spacing.sm },
 });
