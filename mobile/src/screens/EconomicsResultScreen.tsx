@@ -63,18 +63,25 @@ export default function EconomicsResultScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('economics.investmentBreakdown') || 'Investment Breakdown'}</Text>
         <View style={styles.card}>
-          <StatRow styles={styles} label={t('economics.totalInvestment') || 'Total CAPEX'} value={formatCurrency(simulationData.totalCapitalExpenditureInr)} />
+          <StatRow styles={styles} label="Initial CAPEX (Construction)" value={formatCurrency(simulationData.totalCapitalExpenditureInr)} />
           <StatRow
             styles={styles}
-            label={t('economics.subsidyAmount') || 'Government Subsidy (PMMSY)'}
-            value={formatCurrency(simulationData.subsidyAmountInr)}
+            label="Government Subsidy (PMMSY)"
+            value={`- ${formatCurrency(simulationData.subsidyAmountInr)}`}
             color={theme.colors.success}
           />
           <StatRow
             styles={styles}
-            label={t('economics.effectiveInvestment') || 'Your Contribution'}
-            value={formatCurrency(simulationData.subsidizedCapitalExpenditureInr)}
+            label="Working Capital (Feed & Stock)"
+            value={formatCurrency(simulationData.firstCycleWorkingCapitalInr)}
+          />
+          <View style={styles.divider} />
+          <StatRow
+            styles={styles}
+            label="Total Startup Capital Required"
+            value={formatCurrency(simulationData.totalProjectCostInr)}
             bold
+            color={theme.colors.primary}
           />
           <StatRow
             styles={styles}
@@ -82,6 +89,14 @@ export default function EconomicsResultScreen() {
             value={`${simulationData.breakevenTimelineMonths} Months`}
           />
         </View>
+        {simulationData.availableCapitalInr > simulationData.totalProjectCostInr && (
+          <View style={{ marginTop: 12, padding: 12, backgroundColor: theme.isDark ? '#1a2b3a' : '#E3F2FD', borderRadius: 8 }}>
+            <Text style={{ fontSize: 13, color: theme.colors.primary, fontStyle: 'italic' }}>
+              Note: This project layout requires ₹{(simulationData.totalProjectCostInr / 100000).toFixed(2)} Lakhs.
+              You have ₹{((simulationData.availableCapitalInr - simulationData.totalProjectCostInr) / 100000).toFixed(2)} Lakhs surplus capital available.
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -173,7 +188,7 @@ export default function EconomicsResultScreen() {
       <View style={styles.footer}>
         <Text style={styles.footerText}>* Projections are based on historical data and current market rates.</Text>
       </View>
-    </ScrollView>
+    </ScrollView >
   );
 }
 
@@ -243,6 +258,11 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     ...theme.shadows.sm
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 4
   },
   statRow: {
     flexDirection: 'row',

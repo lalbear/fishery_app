@@ -26,7 +26,7 @@ import { logger } from '../utils/logger';
 
 // Equipment cost constants from environment
 const EQUIPMENT_COSTS = {
-  AERATOR_18W: parseInt(process.env.AERATOR_18W_INR || '1600'),
+  AERATOR_2HP: parseInt(process.env.AERATOR_2HP_INR || '28000'), // Fixed from 1600 (toy) to 28000 (standard paddlewheel)
   VORTEX_BLOWER_550W: parseInt(process.env.VORTEX_BLOWER_550W_INR || '13500'),
   BIOFLOC_TARPAULIN_650GSM: parseInt(process.env.BIOFLOC_TARPAULIN_650GSM_INR || '31000'),
   RAS_PUMP_1HP: parseInt(process.env.RAS_PUMP_1HP_INR || '8500'),
@@ -162,6 +162,9 @@ export class EconomicsSimulatorService {
       subsidizedCapitalExpenditureInr: Math.round(effectiveCapex),
       subsidyAmountInr: Math.round(subsidyAmount),
       benefitCostRatio: finalBcr,
+      firstCycleWorkingCapitalInr: Math.round(totalOpexPerCycle),
+      totalProjectCostInr: Math.round(effectiveCapex + totalOpexPerCycle),
+      availableCapitalInr: input.availableCapitalInr,
       riskAnalysisProfile: riskProfile,
       monthlyCashFlow,
       sensitivityAnalysis
@@ -316,7 +319,7 @@ export class EconomicsSimulatorService {
       total += tanksNeeded * EQUIPMENT_COSTS.VORTEX_BLOWER_550W;
     } else if (system === CultivationSystem.TRADITIONAL_POND || system === CultivationSystem.BRACKISH_POND) {
       const aeratorsNeeded = Math.ceil(landSizeHectares / 0.5);
-      total += aeratorsNeeded * EQUIPMENT_COSTS.AERATOR_18W;
+      total += aeratorsNeeded * EQUIPMENT_COSTS.AERATOR_2HP;
     } else if (system === CultivationSystem.RAS) {
       total += (EQUIPMENT_COSTS.RAS_PUMP_1HP * 4) * landSizeHectares;
       total += (EQUIPMENT_COSTS.UV_STERILIZER_40W * 2) * landSizeHectares;

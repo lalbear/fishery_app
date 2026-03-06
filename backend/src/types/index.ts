@@ -247,6 +247,9 @@ export interface EconomicsSimulatorOutput {
   subsidizedCapitalExpenditureInr: number;
   subsidyAmountInr: number;
   benefitCostRatio: number;
+  firstCycleWorkingCapitalInr: number;
+  totalProjectCostInr: number;
+  availableCapitalInr: number;
   riskAnalysisProfile: RiskAnalysisProfile;
   monthlyCashFlow: MonthlyCashFlow[];
   sensitivityAnalysis: SensitivityAnalysis;
