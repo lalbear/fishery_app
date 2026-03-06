@@ -16,6 +16,7 @@ const DATA_SOURCES = {
 };
 
 interface MarketPriceEntry {
+  speciesId?: string;
   speciesName: string;
   marketName: string;
   stateCode: string;
@@ -51,7 +52,8 @@ export class MarketDataIngestionWorker {
     try {
       // 1. Get all unique species from our knowledge base
       const speciesResult = await query(`
-        SELECT DISTINCT data->>'scientific_name' as scientific_name, 
+        SELECT id,
+               data->>'scientific_name' as scientific_name, 
                data->'common_names'->>'en' as common_name,
                data->'economic_parameters'->'market_price_per_kg_inr'->>'min' as min_price_1,
                data->'economic_parameters'->'market_price_per_kg_inr'->>'max' as max_price_1,
@@ -68,6 +70,7 @@ export class MarketDataIngestionWorker {
         if (isNaN(maxPrice)) maxPrice = 150;
 
         return {
+          id: r.id,
           scientific: r.scientific_name,
           common: r.common_name || r.scientific_name,
           basePrice: (minPrice + maxPrice) / 2
@@ -129,6 +132,7 @@ export class MarketDataIngestionWorker {
 
             if (match && !isNaN(price)) {
               this.insertMarketPrice({
+                speciesId: match.id,
                 speciesName: match.common,
                 marketName: market,
                 stateCode: 'IN', // Generic for now
@@ -159,16 +163,19 @@ export class MarketDataIngestionWorker {
   private async insertMarketPrice(entry: MarketPriceEntry): Promise<void> {
     await query(`
       INSERT INTO market_prices 
-      (species_name, market_name, state_code, price_inr_per_kg, grade, date, source, volume_kg)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      ON CONFLICT DO NOTHING
+      (species_id, species_name, market_name, state_code, price_inr_per_kg, grade, date, source, volume_kg)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (species_id, market_name, date) 
+      DO UPDATE SET 
+        price_inr_per_kg = EXCLUDED.price_inr_per_kg,
+        volume_kg = EXCLUDED.volume_kg
     `, [
-      entry.speciesName, entry.marketName, entry.stateCode,
+      entry.speciesId, entry.speciesName, entry.marketName, entry.stateCode,
       entry.priceInrPerKg, entry.grade,
       entry.date.toISOString().split('T')[0],
       entry.source, entry.volumeKg
     ]).catch(err => {
-      // Handle missing table gracefully if migration hasn't run
+      logger.error('Failed to insert/update market price', { error: err.message, species: entry.speciesName });
     });
   }
 }

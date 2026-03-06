@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Image,
   ActivityIndicator, RefreshControl, Alert, TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,6 +60,7 @@ export default function MarketPricesScreen() {
   const [speciesData, setSpeciesData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   // B10 FIX: initialized as null so we don't show a fake "200" before data loads
   const [globalAvg, setGlobalAvg] = useState<number | null>(null);
 
@@ -128,6 +130,28 @@ export default function MarketPricesScreen() {
     return liveAvg;
   }, [speciesData]);
 
+  const mergedData = speciesData.map((s: any) => {
+    const commonName = s.data?.common_names?.en || s.data?.scientific_name;
+    const priceEntry = prices.find((p: PriceRow) =>
+      p.species_name.toLowerCase().includes(commonName.toLowerCase()) ||
+      commonName.toLowerCase().includes(p.species_name.toLowerCase())
+    );
+
+    return {
+      id: s.id,
+      species_name: commonName,
+      price_inr_per_kg: priceEntry?.price_inr_per_kg || null,
+      market_name: priceEntry?.market_name || 'Generic Market',
+      state_code: priceEntry?.state_code || 'IN',
+      date: priceEntry?.date || new Date().toISOString(),
+      grade: priceEntry?.grade,
+      hasPrice: !!priceEntry
+    };
+  }).filter((item: any) =>
+    searchQuery === '' ||
+    item.species_name.toLowerCase().includes(searchQuery.toLowerCase())
+  ).sort((a: any, b: any) => (b.hasPrice ? 1 : 0) - (a.hasPrice ? 1 : 0));
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.surface }]} edges={['top']}>
@@ -146,25 +170,34 @@ export default function MarketPricesScreen() {
       />
       <View style={styles.subHeader}>
         <Text style={styles.subtitle}>{t('markets.subtitle') || 'Live aquaculture commodity prices'}</Text>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={theme.colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('common.search') || "Search species..."}
+            placeholderTextColor={theme.colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
       <FlatList
-        data={prices}
+        data={mergedData}
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         renderItem={({ item }) => {
-          const price = parseFloat(item.price_inr_per_kg);
+          const price = item.price_inr_per_kg ? parseFloat(item.price_inr_per_kg) : null;
           const speciesAvg = getSpeciesAvgPrice(item.species_name, globalAvg ?? 0);
-          const { name: iconName, color: iconColor } = trendIcon(price, speciesAvg, theme);
+          const { name: iconName, color: iconColor } = price ? trendIcon(price, speciesAvg, theme) : { name: 'help-circle-outline', color: theme.colors.textMuted };
           const fishImg = getFishImage(item.species_name);
 
           const sparkData = getSparklineData(prices, item.species_name);
-          // If not enough history, mock a flat-ish line to show the component
-          const finalSparkData = sparkData.length > 1 ? sparkData : [price * 0.98, price * 1.01, price];
-          const delta = priceDelta(price, speciesAvg);
+          const finalSparkData = price ? (sparkData.length > 1 ? sparkData : [price * 0.98, price * 1.01, price]) : [];
+          const delta = price ? priceDelta(price, speciesAvg) : { pct: 0, up: true };
 
           return (
-            <View style={styles.priceCard}>
+            <View style={[styles.priceCard, !price && { opacity: 0.85 }]}>
               {/* Fish Image */}
               <FishImageComponent imageUrl={fishImg} speciesName={item.species_name} theme={theme} styles={styles} />
 
@@ -179,8 +212,10 @@ export default function MarketPricesScreen() {
                   <View>
                     <Text style={styles.priceLabel}>Current Price</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.price}>₹{price.toFixed(0)}/kg</Text>
-                      {delta.pct > 0 && (
+                      <Text style={[styles.price, !price && { color: theme.colors.textMuted, fontSize: 16 }]}>
+                        {price ? `₹${price.toFixed(0)}/kg` : 'No recent trade data'}
+                      </Text>
+                      {price && delta.pct > 0 && (
                         <View style={{ backgroundColor: delta.up ? theme.colors.success + '22' : theme.colors.error + '22', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }}>
                           <Text style={{ fontSize: 10, fontWeight: '700', color: delta.up ? theme.colors.success : theme.colors.error }}>
                             {delta.up ? '↑' : '↓'} {delta.pct.toFixed(1)}%
@@ -190,15 +225,15 @@ export default function MarketPricesScreen() {
                     </View>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <SparkLine data={finalSparkData} color={iconColor} width={60} height={20} />
+                    {price && <SparkLine data={finalSparkData} color={iconColor} width={60} height={20} />}
                     <Text style={styles.avgPriceLabel}>
-                      Avg. {speciesAvg > 0 ? `₹${speciesAvg.toFixed(0)}/kg` : '—'}
+                      Benchmark: {speciesAvg > 0 ? `₹${speciesAvg.toFixed(0)}/kg` : '—'}
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.cardFooter}>
-                  <Text style={styles.marketName}>{item.market_name} • {item.state_code}</Text>
+                  <Text style={styles.marketName}>{price ? `${item.market_name} • ${item.state_code}` : 'Awaiting data'}</Text>
                   {item.grade ? <Text style={styles.grade}>Grade: {item.grade}</Text> : null}
                 </View>
               </View>
@@ -208,7 +243,7 @@ export default function MarketPricesScreen() {
         ListEmptyComponent={
           <View style={{ padding: 40, alignItems: 'center' }}>
             <Ionicons name="alert-circle-outline" size={48} color={theme.colors.border} />
-            <Text style={{ marginTop: 12, color: theme.colors.textMuted }}>No price data available</Text>
+            <Text style={{ marginTop: 12, color: theme.colors.textMuted }}>No species match your search</Text>
           </View>
         }
         contentContainerStyle={styles.list}
@@ -241,8 +276,23 @@ function FishImageComponent({ imageUrl, speciesName, theme, styles }: { imageUrl
 
 const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  subHeader: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  subtitle: { fontSize: 13, color: theme.colors.textSecondary },
+  subHeader: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  subtitle: { fontSize: 13, color: theme.colors.textSecondary, marginBottom: 12 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.isDark ? '#2c2c2c' : '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 36,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: theme.colors.textPrimary,
+    marginLeft: 8,
+    padding: 0,
+  },
   list: { padding: 12 },
   priceCard: {
     backgroundColor: theme.colors.surface,
