@@ -85,15 +85,16 @@ export class EconomicsSimulatorService {
       input.landSizeHectares
     );
 
-    // Step 7: Calculate OPEX (Includes Feed - Bug 5 fix)
+    // Step 7: Calculate base OPEX excluding feed
     const { monthlyOpex, totalOpexPerCycle, totalFeedCost } = this.calculateOpexWithFeed(
       economicModel,
       input.landSizeHectares,
       (economicModel as any).culture_period_months?.max || 12
     );
+    const opexMinusFeed = totalOpexPerCycle - totalFeedCost;
 
-    // Step 8: Calculate revenue projections
-    const { projectedRevenue, expectedYield } = this.calculateRevenue(
+    // Step 8: Calculate potential yield (max potential for the system)
+    const { expectedYield } = this.calculateRevenue(
       eligibleSpecies,
       economicModel,
       input.landSizeHectares
@@ -101,26 +102,25 @@ export class EconomicsSimulatorService {
 
     const cultureMonths = (economicModel as any).culture_period_months?.max || 12;
 
-    // Step 10: Generate species recommendations with scores
+    // Step 10: Generate species recommendations (Calculates individual metrics - Bug FIX)
     const speciesRecommendations = this.generateSpeciesRecommendations(
       eligibleSpecies,
       input,
       economicModel,
-      expectedYield
+      expectedYield,
+      effectiveCapex,
+      opexMinusFeed
     );
 
-    // Step 11: Base main summary metrics on the best recommendation (Bug FIX)
+    // Step 11: Base main summary metrics on THE BEST recommendation (Bug FIX)
     const bestRec = speciesRecommendations[0];
-    const finalRevenue = bestRec ? bestRec.expectedRevenueInr : projectedRevenue;
-
-    // Calculate final metrics based on the best species performance
-    const finalNetProfit = finalRevenue - totalOpexPerCycle - effectiveCapex;
-    const finalTotalInvestment = effectiveCapex + totalOpexPerCycle;
-    const finalBcr = finalTotalInvestment > 0 ? (finalRevenue / finalTotalInvestment) : 0;
+    const finalRevenue = bestRec ? bestRec.expectedRevenueInr : 0;
+    const finalProfit = bestRec ? (bestRec.netProfitInr || 0) : (finalRevenue - totalOpexPerCycle - effectiveCapex);
+    const finalBcr = bestRec ? (bestRec.benefitCostRatio || 0) : 0;
 
     const finalBreakEvenMonths = this.calculateBreakEven(
       effectiveCapex,
-      monthlyOpex,
+      monthlyOpex, // Base monthly opex
       finalRevenue,
       cultureMonths
     );
@@ -156,12 +156,12 @@ export class EconomicsSimulatorService {
       recommendedSpecies: speciesRecommendations,
       recommendedSystem,
       projectedGrossRevenueInr: Math.round(finalRevenue),
-      projectedNetProfitInr: Math.round(finalNetProfit),
+      projectedNetProfitInr: Math.round(finalProfit),
       breakevenTimelineMonths: Math.round(finalBreakEvenMonths),
       totalCapitalExpenditureInr: Math.round(totalCapex),
       subsidizedCapitalExpenditureInr: Math.round(effectiveCapex),
       subsidyAmountInr: Math.round(subsidyAmount),
-      benefitCostRatio: Math.round(finalBcr * 100) / 100,
+      benefitCostRatio: finalBcr,
       riskAnalysisProfile: riskProfile,
       monthlyCashFlow,
       sensitivityAnalysis
@@ -405,7 +405,9 @@ export class EconomicsSimulatorService {
     species: SpeciesData[],
     input: EconomicsSimulatorInput,
     model: EconomicData,
-    expectedYield: number
+    expectedYield: number,
+    effectiveCapex: number,
+    opexMinusFeed: number
   ): SpeciesRecommendation[] {
     return species.map(s => {
       const avgFcr = (s.economic_parameters.feed_conversion_ratio?.min +
@@ -413,52 +415,58 @@ export class EconomicsSimulatorService {
       const avgPrice = (s.economic_parameters.market_price_per_kg_inr?.min +
         s.economic_parameters.market_price_per_kg_inr?.max) / 2 || 120;
 
-      // Start with a more dynamic base score
-      let score = 60;
+      const speciesYield = expectedYield * ((s.economic_parameters.survival_rate_percent?.max || 80) / 100);
+      const estRevenue = speciesYield * avgPrice;
 
-      // 1. Capital Alignment (Max ±15)
-      // High maintenance species need more capital
+      // Calculate specific OPEX for this species (Feed cost varies by species FCR)
+      const feedCost = speciesYield * avgFcr * 45; // 45 is baseline feed price
+      const totalOpexMatch = opexMinusFeed + feedCost;
+      const netProfit = estRevenue - totalOpexMatch - effectiveCapex;
+      const totalInvest = effectiveCapex + totalOpexMatch;
+      const bcr = totalInvest > 0 ? (estRevenue / totalInvest) : 0;
+
+      // Start with a lower base score
+      let score = 55;
+
+      // 1. Capital Alignment
       const capitalPerHa = input.availableCapitalInr / input.landSizeHectares;
-      if (capitalPerHa < 100000 && (avgFcr < 1.3 || s.scientific_name.includes('vannamei'))) {
-        score -= 15; // Penalize high-input species for low-capital farmers
+      if (capitalPerHa < 120000 && (avgFcr < 1.3 || s.scientific_name.includes('vannamei'))) {
+        score -= 20;
       } else if (capitalPerHa > 500000) {
         score += 10;
       }
 
-      // 2. Risk Tolerance Alignment (Max ±15)
+      // 2. Risk Tolerance Alignment
       const isHighValue = avgPrice > 300;
       if (input.riskTolerance === RiskTolerance.LOW && (isHighValue || avgFcr < 1.2)) {
-        score -= 10; // Low tolerance farmers shouldn't do high-risk shrimp as easily
+        score -= 20;
       } else if (input.riskTolerance === RiskTolerance.HIGH && isHighValue) {
         score += 15;
       }
 
-      // 3. Efficiency (FCR) Score (Max ±10)
-      if (avgFcr < 1.4) score += 10;
-      else if (avgFcr > 2.0) score -= 10;
+      // 3. Efficiency (FCR) Score
+      if (avgFcr < 1.4) score += 15;
+      else if (avgFcr > 2.2) score -= 15;
 
-      // 4. Profit Potential (Max ±15)
-      // Dynamic yield based on survival
-      const speciesYield = expectedYield * ((s.economic_parameters.survival_rate_percent?.max || 80) / 100);
-      const estRevenue = speciesYield * avgPrice;
-      const profitMargin = estRevenue / (input.availableCapitalInr || 1);
-
-      if (profitMargin > 2.5) score += 15;
-      else if (profitMargin > 1.5) score += 5;
-      else score -= 10;
+      // 4. Profitability
+      if (bcr > 2.5) score += 20;
+      else if (bcr > 1.8) score += 10;
+      else if (bcr < 1.0) score -= 25;
 
       return {
         speciesId: s.scientific_name,
         commonName: s.common_names?.en || 'Unknown',
         scientificName: s.scientific_name,
-        compatibilityScore: Math.min(100, Math.max(20, Math.round(score))),
+        compatibilityScore: Math.min(100, Math.max(10, Math.round(score))),
         expectedYieldKg: Math.round(speciesYield),
         expectedRevenueInr: Math.round(estRevenue),
+        netProfitInr: Math.round(netProfit),
+        benefitCostRatio: Math.round(bcr * 100) / 100,
         fcr: avgFcr,
         compatibilityReasons: [
-          `FCR: ${avgFcr.toFixed(2)} (${avgFcr < 1.5 ? 'Very Efficient' : 'Average Efficiency'})`,
-          `Est. Survival: ${s.economic_parameters.survival_rate_percent?.max || 80}%`,
-          `Profit Potential: ${profitMargin > 2 ? 'Excellent' : profitMargin > 1.2 ? 'Good' : 'Moderate'}`
+          `FCR: ${avgFcr.toFixed(2)} (${avgFcr < 1.5 ? 'Very Efficient' : 'Standard'})`,
+          `BCR: ${bcr.toFixed(2)}:1`,
+          `Est. Survival: ${s.economic_parameters.survival_rate_percent?.max || 80}%`
         ]
       };
     }).sort((a, b) => b.compatibilityScore - a.compatibilityScore);

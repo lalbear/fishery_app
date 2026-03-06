@@ -87,33 +87,50 @@ export default function EconomicsResultScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('economics.recommendedSpecies') || 'Species Viability'}</Text>
         <View style={styles.card}>
-          {simulationData.recommendedSpecies.map((species: any, idx: number) => (
-            <View key={idx} style={[styles.speciesItem, idx > 0 && styles.borderTop]}>
-              <View style={styles.speciesIconContainer}>
-                <Ionicons name="fish" size={24} color={theme.colors.primary} />
-              </View>
-              <View style={styles.speciesInfo}>
-                <View style={styles.row}>
-                  <Text style={styles.speciesName}>{species.commonName}</Text>
-                  <Text style={styles.compatibilityBadge}>{species.compatibilityScore}% Score</Text>
+          {simulationData.recommendedSpecies.map((species: any, idx: number) => {
+            const score = species.compatibilityScore;
+            let badgeColor = theme.colors.success;
+            let badgeBg = theme.isDark ? '#1a3a1f' : '#E8F5E9';
+
+            if (score < 40) {
+              badgeColor = theme.colors.error;
+              badgeBg = theme.isDark ? '#3a1a1a' : '#FFEBEB';
+            } else if (score < 70) {
+              badgeColor = '#EAB308';
+              badgeBg = theme.isDark ? '#3e3210' : '#FEF9C3';
+            }
+
+            return (
+              <View key={idx} style={[styles.speciesItem, idx > 0 && styles.borderTop]}>
+                <View style={styles.speciesIconContainer}>
+                  <Ionicons name="fish" size={24} color={theme.colors.primary} />
                 </View>
-                <Text style={styles.scientificName}>{species.scientificName}</Text>
-                <View style={styles.speciesStats}>
-                  <Text style={styles.statMini}>Yield: {species.expectedYieldKg.toLocaleString('en-IN')} kg</Text>
-                  <Text style={styles.statMini}>Rev: {formatCurrency(species.expectedRevenueInr)}</Text>
-                </View>
-                <View style={styles.speciesStats}>
-                  <Text style={styles.statMini}>FCR: {species.fcr ? species.fcr.toFixed(2) : (species.compatibilityReasons.find(r => r.includes('FCR')) || '').split(': ')[1] || '1.50'}</Text>
-                </View>
-                {species.compatibilityReasons.map((reason: string, rIdx: number) => (
-                  <View key={rIdx} style={styles.reasonItem}>
-                    <View style={styles.dot} />
-                    <Text style={styles.reasonText}>{reason}</Text>
+                <View style={styles.speciesInfo}>
+                  <View style={styles.row}>
+                    <Text style={styles.speciesName}>{species.commonName}</Text>
+                    <View style={[styles.compatibilityBadge, { backgroundColor: badgeBg }]}>
+                      <Text style={{ color: badgeColor, fontSize: 12, fontWeight: 'bold' }}>{score}% Score</Text>
+                    </View>
                   </View>
-                ))}
+                  <Text style={styles.scientificName}>{species.scientificName}</Text>
+                  <View style={styles.speciesStats}>
+                    <Text style={styles.statMini}>Yield: {species.expectedYieldKg.toLocaleString('en-IN')} kg</Text>
+                    <Text style={styles.statMini}>BCR: {species.benefitCostRatio ? species.benefitCostRatio.toFixed(2) : 'N/A'}:1</Text>
+                  </View>
+                  <View style={styles.speciesStats}>
+                    <Text style={styles.statMini}>FCR: {species.fcr ? species.fcr.toFixed(2) : '1.50'}</Text>
+                    <Text style={[styles.statMini, { color: theme.colors.success }]}>Profit: {formatCurrency(species.netProfitInr || 0)}</Text>
+                  </View>
+                  {species.compatibilityReasons.map((reason: string, rIdx: number) => (
+                    <View key={rIdx} style={styles.reasonItem}>
+                      <View style={styles.dot} />
+                      <Text style={styles.reasonText}>{reason}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </View>
 

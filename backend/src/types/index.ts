@@ -259,6 +259,9 @@ export interface SpeciesRecommendation {
   compatibilityScore: number;
   expectedYieldKg: number;
   expectedRevenueInr: number;
+  fcr?: number;
+  netProfitInr?: number;
+  benefitCostRatio?: number;
   compatibilityReasons: string[];
 }
 
