@@ -37,8 +37,8 @@ const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPres
           {d.image_url ? (
             <Image
               source={{ uri: d.image_url }}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
+              style={{ width: '100%', height: '100%', backgroundColor: theme.isDark ? '#1a1a1a' : '#f0f0f0' }}
+              resizeMode="contain"
             />
           ) : (
             <Ionicons name="fish" size={28} color={theme.colors.textInverse} />
@@ -188,7 +188,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   iconWrap: {
-    width: 80, height: 80, borderRadius: 12,
+    width: 110, height: 75, borderRadius: 12,
     backgroundColor: theme.colors.success,
     justifyContent: 'center', alignItems: 'center',
     overflow: 'hidden',
