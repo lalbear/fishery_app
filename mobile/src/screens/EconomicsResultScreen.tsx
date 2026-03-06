@@ -99,8 +99,11 @@ export default function EconomicsResultScreen() {
                 </View>
                 <Text style={styles.scientificName}>{species.scientificName}</Text>
                 <View style={styles.speciesStats}>
-                  <Text style={styles.statMini}>Yield: {species.expectedYieldKg} kg</Text>
+                  <Text style={styles.statMini}>Yield: {species.expectedYieldKg.toLocaleString('en-IN')} kg</Text>
                   <Text style={styles.statMini}>Rev: {formatCurrency(species.expectedRevenueInr)}</Text>
+                </View>
+                <View style={styles.speciesStats}>
+                  <Text style={styles.statMini}>FCR: {species.fcr ? species.fcr.toFixed(2) : (species.compatibilityReasons.find(r => r.includes('FCR')) || '').split(': ')[1] || '1.50'}</Text>
                 </View>
                 {species.compatibilityReasons.map((reason: string, rIdx: number) => (
                   <View key={rIdx} style={styles.reasonItem}>

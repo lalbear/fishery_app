@@ -99,20 +99,7 @@ export class EconomicsSimulatorService {
       input.landSizeHectares
     );
 
-    // Step 9: Calculate financial metrics (Subtract CAPEX - Bug 1 fix)
-    const projectedNetProfit = projectedRevenue - totalOpexPerCycle - effectiveCapex;
-
-    // BCR should use total costs including opex and capex
-    const totalInvestment = effectiveCapex + totalOpexPerCycle;
-    const benefitCostRatio = projectedRevenue / totalInvestment;
-
     const cultureMonths = (economicModel as any).culture_period_months?.max || 12;
-    const breakEvenMonths = this.calculateBreakEven(
-      effectiveCapex,
-      monthlyOpex,
-      projectedRevenue,
-      cultureMonths
-    );
 
     // Step 10: Generate species recommendations with scores
     const speciesRecommendations = this.generateSpeciesRecommendations(
@@ -122,7 +109,23 @@ export class EconomicsSimulatorService {
       expectedYield
     );
 
-    // Step 11: Build risk analysis profile
+    // Step 11: Base main summary metrics on the best recommendation (Bug FIX)
+    const bestRec = speciesRecommendations[0];
+    const finalRevenue = bestRec ? bestRec.expectedRevenueInr : projectedRevenue;
+
+    // Calculate final metrics based on the best species performance
+    const finalNetProfit = finalRevenue - totalOpexPerCycle - effectiveCapex;
+    const finalTotalInvestment = effectiveCapex + totalOpexPerCycle;
+    const finalBcr = finalTotalInvestment > 0 ? (finalRevenue / finalTotalInvestment) : 0;
+
+    const finalBreakEvenMonths = this.calculateBreakEven(
+      effectiveCapex,
+      monthlyOpex,
+      finalRevenue,
+      cultureMonths
+    );
+
+    // Step 12: Build risk analysis profile
     const riskProfile = this.buildRiskAnalysis(
       input,
       waterType,
@@ -130,35 +133,35 @@ export class EconomicsSimulatorService {
       speciesRecommendations
     );
 
-    // Step 12: Generate monthly cash flow
+    // Step 13: Generate monthly cash flow
     const monthlyCashFlow = this.generateCashFlow(
       effectiveCapex,
       monthlyOpex,
-      projectedRevenue,
-      breakEvenMonths,
+      finalRevenue,
+      finalBreakEvenMonths,
       cultureMonths
     );
 
-    // Step 13: Perform sensitivity analysis
+    // Step 14: Perform sensitivity analysis
     const sensitivityAnalysis = this.performSensitivityAnalysis(
       effectiveCapex,
       totalOpexPerCycle,
-      projectedRevenue,
+      finalRevenue,
       monthlyCashFlow,
-      breakEvenMonths
+      finalBreakEvenMonths
     );
 
     return {
       recommendationId,
       recommendedSpecies: speciesRecommendations,
       recommendedSystem,
-      projectedGrossRevenueInr: Math.round(projectedRevenue),
-      projectedNetProfitInr: Math.round(projectedNetProfit),
-      breakevenTimelineMonths: Math.round(breakEvenMonths),
+      projectedGrossRevenueInr: Math.round(finalRevenue),
+      projectedNetProfitInr: Math.round(finalNetProfit),
+      breakevenTimelineMonths: Math.round(finalBreakEvenMonths),
       totalCapitalExpenditureInr: Math.round(totalCapex),
       subsidizedCapitalExpenditureInr: Math.round(effectiveCapex),
       subsidyAmountInr: Math.round(subsidyAmount),
-      benefitCostRatio: Math.round(benefitCostRatio * 100) / 100,
+      benefitCostRatio: Math.round(finalBcr * 100) / 100,
       riskAnalysisProfile: riskProfile,
       monthlyCashFlow,
       sensitivityAnalysis
