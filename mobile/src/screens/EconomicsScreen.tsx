@@ -1,32 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View as RNView,
-  Text as RNText,
+  View,
+  Text,
   StyleSheet,
-  ScrollView as RNScrollView,
-  TouchableOpacity as RNTouchableOpacity,
-  TextInput as RNTextInput,
-  Modal as RNModal,
-  FlatList as RNFlatList,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  FlatList,
   Alert,
-  ActivityIndicator as RNActivityIndicator,
+  ActivityIndicator,
 } from 'react-native';
-
-const View = RNView as any;
-const Text = RNText as any;
-const ScrollView = RNScrollView as any;
-const TouchableOpacity = RNTouchableOpacity as any;
-const TextInput = RNTextInput as any;
-const Modal = RNModal as any;
-const FlatList = RNFlatList as any;
-const ActivityIndicator = RNActivityIndicator as any;
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import { geoService, economicsService } from '../services/apiService';
+import ScreenHeader from '../components/ScreenHeader';
 
 const WATER_SOURCES = [
   { label: 'Borewell', value: 'BOREWELL' },
@@ -79,12 +70,13 @@ export default function EconomicsScreen() {
         const response = await geoService.getZones();
         if (response.success && response.data.length > 0) {
           setZones(response.data);
-          if (!stateCode) {
-            const firstZone = response.data[0];
-            setStateCode(firstZone.state_code);
-            if (firstZone.district_codes?.length > 0) {
-              setDistrictCode(firstZone.district_codes[0]);
-            }
+          // B9 FIX: Only set stateCode and districtCode on initial load (when both are still empty).
+          // Previously, a second useEffect on stateCode would immediately clear the district
+          // because it ran on the same render cycle that set the stateCode.
+          const firstZone = response.data[0];
+          setStateCode(firstZone.state_code);
+          if (firstZone.district_codes?.length > 0) {
+            setDistrictCode(firstZone.district_codes[0]);
           }
         }
       } catch (error) {
@@ -93,17 +85,17 @@ export default function EconomicsScreen() {
     })();
   }, []);
 
-  // Sync district when state changes
-  useEffect(() => {
-    if (stateCode) {
-      setDistrictCode(''); // Clear district as requested
-    }
-  }, [stateCode]);
-
+  // Clear district when user actively changes state (but not on initial load,
+  // because the initial load already sets both stateCode and districtCode together).
+  const handleStateSelect = (val: string) => {
+    setStateCode(val);
+    setDistrictCode(''); // Clear district only when user manually picks a new state
+    setIsStateOpen(false);
+  };
 
   const runSimulation = async () => {
     if (!landSize || !capital || !stateCode || !districtCode) {
-      Alert.alert("Missing Information", "Please fill in all required fields.");
+      Alert.alert('Missing Information', 'Please fill in all required fields.');
       return;
     }
 
@@ -119,7 +111,7 @@ export default function EconomicsScreen() {
         riskTolerance,
         farmerCategory,
         stateCode,
-        districtCode
+        districtCode,
       };
 
       if (preferredSpecies) {
@@ -131,10 +123,10 @@ export default function EconomicsScreen() {
       if (result.success) {
         navigation.navigate('EconomicsResult', { simulationData: result.data });
       } else {
-        Alert.alert("Simulation Error", result.message || "Failed to calculate ROI.");
+        Alert.alert('Simulation Error', result.message || 'Failed to calculate ROI.');
       }
     } catch (error) {
-      Alert.alert("Connection Failed", "Could not reach simulation server.");
+      Alert.alert('Connection Failed', 'Could not reach simulation server.');
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -147,17 +139,13 @@ export default function EconomicsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
+      <ScreenHeader
+        title={t('economics.title') || 'ROI Calculator'}
+        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+        variant="surface"
+      />
       <ScrollView contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-            <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.primary, fontWeight: '600' }}>Home</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('economics.title') || 'Calculate ROI'}</Text>
+        <View style={styles.headerInfo}>
           <Text style={styles.subtitle}>{t('economics.subtitle') || 'Estimate your returns'}</Text>
         </View>
 
@@ -180,7 +168,7 @@ export default function EconomicsScreen() {
             <View style={styles.inputHalf}>
               <Text style={styles.label}>State</Text>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setIsStateOpen(true)}>
-                <Text style={styles.pickerText}>{selectedStateName}</Text>
+                <Text style={styles.pickerText} numberOfLines={1}>{selectedStateName}</Text>
                 <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -276,13 +264,14 @@ export default function EconomicsScreen() {
             )}
           </TouchableOpacity>
         </View>
+        <View style={{ height: theme.spacing.xxl }} />
       </ScrollView>
 
       {/* Select Modals */}
       <SelectionModal
         visible={isStateOpen}
         items={statesList}
-        onSelect={(val: string) => { setStateCode(val); setIsStateOpen(false); }}
+        onSelect={handleStateSelect}
         onClose={() => setIsStateOpen(false)}
         title="Select State"
         theme={theme}
@@ -329,7 +318,7 @@ function SelectionModal({ visible, items, onSelect, onClose, title, theme, style
           ) : (
             <FlatList
               data={items}
-              keyExtractor={(item: any) => item.value}
+              keyExtractor={(item: any) => item.value || item.label}
               contentContainerStyle={{ paddingBottom: 20 }}
               renderItem={({ item }: { item: any }) => (
                 <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item.value)}>
@@ -338,7 +327,6 @@ function SelectionModal({ visible, items, onSelect, onClose, title, theme, style
               )}
             />
           )}
-
         </View>
       </View>
     </Modal>
@@ -348,22 +336,17 @@ function SelectionModal({ visible, items, onSelect, onClose, title, theme, style
 const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
     padding: theme.spacing.lg,
   },
-  header: {
-    marginBottom: theme.spacing.lg
-  },
-  title: {
-    ...theme.typography.h1,
-    color: theme.colors.primary
+  headerInfo: {
+    marginBottom: theme.spacing.md,
   },
   subtitle: {
-    ...theme.typography.bodyLarge,
-    marginTop: theme.spacing.xs,
-    color: theme.colors.textSecondary
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
   },
   card: {
     backgroundColor: theme.colors.surface,
@@ -374,16 +357,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   sectionTitle: {
     ...theme.typography.h3,
     marginBottom: theme.spacing.lg,
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   inputGroup: {
-    marginBottom: theme.spacing.md
+    marginBottom: theme.spacing.md,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: theme.spacing.md
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   inputHalf: {
     flex: 1,
@@ -392,7 +375,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     ...theme.typography.body,
     fontWeight: '600',
     marginBottom: theme.spacing.sm,
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
+    fontSize: 15,
   },
   input: {
     backgroundColor: theme.colors.background,
@@ -401,28 +385,28 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 8,
+    padding: theme.spacing.sm + 4,
+    borderRadius: theme.borderRadius.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.background
+    backgroundColor: theme.colors.background,
   },
   pickerText: {
-    fontSize: 18,
+    fontSize: 15,
     color: theme.colors.textPrimary,
-    flex: 1
+    flex: 1,
   },
   optionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg
+    marginBottom: theme.spacing.lg,
   },
   optionButton: {
     paddingHorizontal: theme.spacing.md,
@@ -430,19 +414,19 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: theme.colors.border
+    borderColor: theme.colors.border,
   },
   optionButtonActive: {
     backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary
+    borderColor: theme.colors.primary,
   },
   optionText: {
-    ...theme.typography.body,
+    fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   optionTextActive: {
-    color: theme.colors.textInverse
+    color: theme.colors.textInverse,
   },
   submitButton: {
     backgroundColor: theme.colors.secondary,
@@ -457,40 +441,40 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   submitButtonText: {
     ...theme.typography.buttonText,
-    color: theme.colors.textInverse
+    color: theme.colors.textInverse,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
-    paddingBottom: 30
+    paddingBottom: 30,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border
+    borderBottomColor: theme.colors.border,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
   },
   modalItem: {
-    padding: 20,
+    padding: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border
+    borderBottomColor: theme.colors.border,
   },
   modalItemText: {
-    fontSize: 18,
-    color: theme.colors.textPrimary
-  }
+    fontSize: 17,
+    color: theme.colors.textPrimary,
+  },
 });

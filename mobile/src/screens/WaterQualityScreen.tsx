@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { waterQualityService } from '../services/apiService';
 import { useTheme } from '../ThemeContext';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface Reading {
   id: string;
@@ -113,19 +114,12 @@ export default function WaterQualityScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={{ flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
-            <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.textPrimary, fontWeight: '600' }}>Home</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('waterQuality.title') || 'Water Quality'}</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <ScreenHeader
+        title={t('waterQuality.title') || 'Water Quality'}
+        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
+        variant="surface"
+      />
+      <View style={styles.tabWrapper}>
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'log' && styles.tabActive]}
@@ -271,23 +265,14 @@ function ParamChip({ label, value, styles }: { label: string; value: string; sty
 
 const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { backgroundColor: theme.colors.surface, paddingBottom: 0 },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  title: { fontSize: 22, fontWeight: 'bold', color: theme.colors.textPrimary },
-  tabContainer: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: theme.isDark ? '#333' : '#f0f0f0', borderRadius: 8, padding: 4 },
+  tabWrapper: { backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  tabContainer: { flexDirection: 'row', marginHorizontal: 16, marginVertical: 10, backgroundColor: theme.isDark ? '#333' : '#f0f0f0', borderRadius: 8, padding: 4 },
   tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
   tabActive: { backgroundColor: theme.colors.surface },
   tabText: { color: theme.colors.textSecondary, fontWeight: '500' },
   tabTextActive: { color: theme.colors.primary, fontWeight: '700' },
   content: { flex: 1, padding: 16 },
-  form: { gap: 4 },
+  form: { gap: theme.spacing.xs },
   inputGroup: { marginBottom: 12 },
   label: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 6 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border },

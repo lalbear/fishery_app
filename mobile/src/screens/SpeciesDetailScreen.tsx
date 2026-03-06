@@ -3,13 +3,13 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function SpeciesDetailScreen() {
   const { t, i18n } = useTranslation();
@@ -37,19 +37,11 @@ export default function SpeciesDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeContainer} edges={['top']}>
-      {/* Back navigation header */}
-      <View style={styles.navBar}>
-        <TouchableOpacity
-          onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          style={[styles.navBackBtn, { flexDirection: 'row', alignItems: 'center' }]}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
-          <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.textPrimary, fontWeight: '600' }}>Home</Text>
-        </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>{commonName}</Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <ScreenHeader
+        title={commonName}
+        onBack={() => (navigation as any).goBack()}
+        variant="surface"
+      />
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           {d.image_url ? (
@@ -58,10 +50,10 @@ export default function SpeciesDetailScreen() {
               style={{
                 width: '100%',
                 height: 220,
-                borderRadius: 16,
-                marginBottom: 16,
+                borderRadius: theme.borderRadius.lg,
+                marginBottom: theme.spacing.md,
                 backgroundColor: theme.isDark ? '#1a1a1a' : '#f0f0f0',
-                transform: enName === 'Rohu' ? [{ scaleY: -1 }] : []
+                // B1 FIX: removed the erroneous scaleY: -1 transform that was flipping the Rohu image
               }}
               resizeMode="contain"
             />
@@ -204,6 +196,9 @@ export default function SpeciesDetailScreen() {
             </View>
           </View>
         )}
+
+        {/* Bottom padding */}
+        <View style={{ height: theme.spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -221,41 +216,37 @@ function ParamRow({ icon, label, value, theme, styles }: { icon: any; label: str
 
 const getStyles = (theme: any) => StyleSheet.create({
   safeContainer: { flex: 1, backgroundColor: theme.colors.surface },
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  navBackBtn: { padding: 4 },
-  navTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: theme.colors.textPrimary, textAlign: 'center' },
   container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { alignItems: 'center', padding: 32, backgroundColor: theme.colors.surface },
+  header: { alignItems: 'center', padding: theme.spacing.xl, backgroundColor: theme.colors.surface },
   iconWrap: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: theme.colors.success,
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
-  title: { fontSize: 28, fontWeight: 'bold', color: theme.colors.primary },
-  scientificName: { fontSize: 16, fontStyle: 'italic', color: theme.colors.textSecondary, marginTop: 4 },
+  title: { ...theme.typography.h2, color: theme.colors.primary, textAlign: 'center' },
+  scientificName: { ...theme.typography.body, fontStyle: 'italic', color: theme.colors.textSecondary, marginTop: theme.spacing.xs },
   badge: {
-    marginTop: 12, fontSize: 13,
+    marginTop: theme.spacing.sm, fontSize: 13,
     backgroundColor: theme.isDark ? '#1a3a1f' : '#E8F5E9', color: theme.colors.success,
-    paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, fontWeight: '600',
-    textTransform: 'uppercase',
+    paddingHorizontal: 12, paddingVertical: 4, borderRadius: theme.borderRadius.sm,
+    fontWeight: '600', textTransform: 'uppercase', overflow: 'hidden',
   },
-  section: { marginTop: 16, padding: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 12 },
-  paramCard: { backgroundColor: theme.colors.surface, borderRadius: 12, padding: 16 },
-  paramRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  paramLabel: { flex: 1, fontSize: 14, color: theme.colors.textSecondary, marginLeft: 12 },
+  section: { marginTop: theme.spacing.md, paddingHorizontal: theme.spacing.md },
+  sectionTitle: { ...theme.typography.h3, color: theme.colors.textPrimary, marginBottom: theme.spacing.sm },
+  paramCard: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.md, padding: theme.spacing.md },
+  paramRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: theme.spacing.sm + 2,
+    borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+  },
+  paramLabel: { flex: 1, ...theme.typography.caption, color: theme.colors.textSecondary, marginLeft: theme.spacing.sm, fontSize: 14 },
   paramValue: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-  systemsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  systemBadge: { backgroundColor: theme.colors.surface, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border },
+  systemsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  systemBadge: {
+    backgroundColor: theme.colors.surface, paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm, borderRadius: theme.borderRadius.sm,
+    borderWidth: 1, borderColor: theme.colors.border,
+  },
   systemBadgeText: { fontSize: 13, color: theme.colors.textPrimary, fontWeight: '500' },
 });
