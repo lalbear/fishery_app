@@ -11,10 +11,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { loadProfile, UserProfile } from './PersonalInfoScreen';
 import { syncService } from '../services/syncService';
 import { useAuth } from '../AuthContext';
+import { useTheme } from '../ThemeContext';
 
 export default function ProfileScreen({ navigation }: any) {
   const { t, i18n } = useTranslation();
   const { logout } = useAuth();
+  const { theme, isDark, toggleTheme } = useTheme();
+  const styles = getStyles(theme);
+
   const [profile, setProfile] = useState<UserProfile>({ userId: '', name: '', phone: '', farmerCategory: 'GENERAL', stateCode: '' });
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
@@ -64,7 +68,7 @@ export default function ProfileScreen({ navigation }: any) {
       icon: 'fish-outline',
       title: t('profile.myPonds'),
       subtitle: 'Manage your ponds',
-      onPress: () => Alert.alert('Coming Soon', 'My Ponds management will be available in the next update.'),
+      onPress: () => navigation.navigate('PondsList'),
     },
     {
       icon: 'language-outline',
@@ -88,6 +92,13 @@ export default function ProfileScreen({ navigation }: any) {
       title: t('profile.offlineMode'),
       subtitle: 'View cached data when offline',
       onPress: () => Alert.alert('Coming Soon', 'Offline mode settings will be available in the next update.'),
+    },
+    {
+      icon: isDark ? 'moon-outline' : 'sunny-outline',
+      title: 'Dark Mode',
+      subtitle: 'Toggle app appearance',
+      value: isDark ? 'ON' : 'OFF',
+      onPress: toggleTheme,
     },
     {
       icon: 'sync-outline',
@@ -133,7 +144,7 @@ export default function ProfileScreen({ navigation }: any) {
       {/* Sync Status Banner (visible while syncing) */}
       {isSyncing && (
         <View style={styles.syncBanner}>
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={theme.colors.surface} />
           <Text style={styles.syncBannerText}>Syncing data with server...</Text>
         </View>
       )}
@@ -149,9 +160,9 @@ export default function ProfileScreen({ navigation }: any) {
           >
             <View style={[styles.iconWrap, (item as any).danger && styles.iconWrapDanger]}>
               {item.isSyncing ? (
-                <ActivityIndicator size="small" color="#2E7D32" />
+                <ActivityIndicator size="small" color={theme.colors.primary} />
               ) : (
-                <Ionicons name={item.icon as any} size={20} color={(item as any).danger ? '#F44336' : '#2E7D32'} />
+                <Ionicons name={item.icon as any} size={20} color={(item as any).danger ? theme.colors.error : theme.colors.primary} />
               )}
             </View>
             <View style={styles.menuTextBlock}>
@@ -159,7 +170,7 @@ export default function ProfileScreen({ navigation }: any) {
               {item.subtitle ? <Text style={styles.menuSub}>{item.subtitle}</Text> : null}
             </View>
             {(item as any).value && <Text style={styles.menuValue}>{(item as any).value}</Text>}
-            <Ionicons name="chevron-forward" size={18} color="#ccc" />
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.border} />
           </TouchableOpacity>
         ))}
       </View>
@@ -169,33 +180,33 @@ export default function ProfileScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
 
-  header: { alignItems: 'center', paddingTop: 36, paddingBottom: 28, paddingHorizontal: 16, backgroundColor: '#2E7D32' },
+  header: { alignItems: 'center', paddingTop: 36, paddingBottom: 28, paddingHorizontal: 16, backgroundColor: theme.colors.primary },
   avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  initials: { fontSize: 28, fontWeight: '700', color: '#fff' },
-  name: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  initials: { fontSize: 28, fontWeight: '700', color: theme.colors.textInverse },
+  name: { fontSize: 20, fontWeight: '700', color: theme.colors.textInverse },
   phone: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 3 },
   badge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 16, marginTop: 8 },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  badgeText: { color: theme.colors.textInverse, fontSize: 12, fontWeight: '600' },
   stateLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
 
   syncBanner: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#388E3C',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.success,
     paddingHorizontal: 16, paddingVertical: 10, gap: 10,
   },
-  syncBannerText: { color: '#fff', fontSize: 13, fontWeight: '500' },
+  syncBannerText: { color: theme.colors.textInverse, fontSize: 13, fontWeight: '500' },
 
-  menu: { marginTop: 16, backgroundColor: '#fff', borderRadius: 12, marginHorizontal: 12, overflow: 'hidden', elevation: 1 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
-  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  iconWrapDanger: { backgroundColor: '#FFEBEE' },
+  menu: { marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 12, marginHorizontal: 12, overflow: 'hidden', elevation: 1 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.background },
+  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  iconWrapDanger: { backgroundColor: theme.colors.error + '20' }, // adding transparency hex
   menuTextBlock: { flex: 1 },
-  menuText: { fontSize: 15, color: '#333', fontWeight: '500' },
-  menuSub: { fontSize: 12, color: '#999', marginTop: 1 },
-  menuValue: { fontSize: 13, color: '#888', fontWeight: '500', marginRight: 8 },
-  dangerText: { color: '#F44336' },
+  menuText: { fontSize: 15, color: theme.colors.textPrimary, fontWeight: '500' },
+  menuSub: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 1 },
+  menuValue: { fontSize: 13, color: theme.colors.textMuted, fontWeight: '500', marginRight: 8 },
+  dangerText: { color: theme.colors.error },
 
-  version: { textAlign: 'center', color: '#bbb', fontSize: 12, marginTop: 24, marginBottom: 32 },
+  version: { textAlign: 'center', color: theme.colors.textMuted, fontSize: 12, marginTop: 24, marginBottom: 32 },
 });

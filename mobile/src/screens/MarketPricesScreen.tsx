@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { marketService } from '../services/apiService';
+import { useTheme } from '../ThemeContext';
 
 interface PriceRow {
   id: string;
@@ -22,14 +23,17 @@ interface PriceRow {
   source?: string;
 }
 
-function trendIcon(price: number, avgPrice: number) {
-  if (price > avgPrice * 1.05) return { name: 'trending-up-outline', color: '#4CAF50' };
-  if (price < avgPrice * 0.95) return { name: 'trending-down-outline', color: '#F44336' };
-  return { name: 'remove-outline', color: '#999' };
+function trendIcon(price: number, avgPrice: number, theme: any) {
+  if (price > avgPrice * 1.05) return { name: 'trending-up-outline', color: theme.colors.success };
+  if (price < avgPrice * 0.95) return { name: 'trending-down-outline', color: theme.colors.error };
+  return { name: 'remove-outline', color: theme.colors.textMuted };
 }
 
 export default function MarketPricesScreen() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const styles = getStyles(theme);
+
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,8 +64,8 @@ export default function MarketPricesScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={{ marginTop: 12, color: '#666' }}>Loading market prices…</Text>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={{ marginTop: 12, color: theme.colors.textSecondary }}>Loading market prices…</Text>
       </View>
     );
   }
@@ -76,14 +80,14 @@ export default function MarketPricesScreen() {
       <FlatList
         data={prices}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2E7D32']} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         renderItem={({ item }) => {
           const price = parseFloat(item.price_inr_per_kg);
-          const { name: iconName, color: iconColor } = trendIcon(price, avgPrice);
+          const { name: iconName, color: iconColor } = trendIcon(price, avgPrice, theme);
           return (
             <View style={styles.priceCard}>
               <View style={styles.cardHeader}>
-                <Ionicons name="fish-outline" size={24} color="#4CAF50" />
+                <Ionicons name="fish-outline" size={24} color={theme.colors.success} />
                 <Text style={styles.speciesName}>{item.species_name}</Text>
                 <Ionicons name={iconName as any} size={20} color={iconColor} />
               </View>
@@ -97,8 +101,8 @@ export default function MarketPricesScreen() {
         }}
         ListEmptyComponent={
           <View style={{ padding: 40, alignItems: 'center' }}>
-            <Ionicons name="alert-circle-outline" size={48} color="#ccc" />
-            <Text style={{ marginTop: 12, color: '#999' }}>No price data available</Text>
+            <Ionicons name="alert-circle-outline" size={48} color={theme.colors.border} />
+            <Text style={{ marginTop: 12, color: theme.colors.textMuted }}>No price data available</Text>
           </View>
         }
         contentContainerStyle={styles.list}
@@ -107,17 +111,17 @@ export default function MarketPricesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1B5E20' },
-  subtitle: { fontSize: 14, color: '#666', marginTop: 4 },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  header: { padding: 16, backgroundColor: theme.colors.surface },
+  title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textPrimary },
+  subtitle: { fontSize: 14, color: theme.colors.textSecondary, marginTop: 4 },
   list: { padding: 16 },
-  priceCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2 },
+  priceCard: { backgroundColor: theme.colors.surface, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  speciesName: { flex: 1, fontSize: 16, fontWeight: '600', color: '#333' },
+  speciesName: { flex: 1, fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
   cardBody: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  marketName: { fontSize: 14, color: '#666' },
-  price: { fontSize: 16, fontWeight: 'bold', color: '#2E7D32' },
-  grade: { fontSize: 12, color: '#aaa', marginTop: 4 },
+  marketName: { fontSize: 14, color: theme.colors.textSecondary },
+  price: { fontSize: 16, fontWeight: 'bold', color: theme.colors.primary },
+  grade: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
 });

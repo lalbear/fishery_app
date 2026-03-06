@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '../services/authService';
+import { useTheme } from '../ThemeContext';
 
 interface Props {
     onLoginSuccess: () => void;
 }
 
 export default function AuthScreen({ onLoginSuccess }: Props) {
+    const { theme } = useTheme();
+    const styles = getStyles(theme);
+
     const [isLogin, setIsLogin] = useState(true);
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
@@ -54,7 +58,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.header}>
-                <Ionicons name="fish" size={60} color="#2E7D32" />
+                <Ionicons name="fish" size={60} color={theme.colors.primary} />
                 <Text style={styles.title}>Fishing God</Text>
                 <Text style={styles.subtitle}>{isLogin ? 'Welcome Back!' : 'Create an Account'}</Text>
             </View>
@@ -63,24 +67,24 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                 {!isLogin && (
                     <>
                         <View style={styles.inputWrap}>
-                            <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-                            <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor="#888" value={name} onChangeText={setName} />
+                            <Ionicons name="person-outline" size={20} color={theme.colors.textMuted} style={styles.icon} />
+                            <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor={theme.colors.textMuted} value={name} onChangeText={setName} />
                         </View>
                         <View style={styles.inputWrap}>
-                            <Ionicons name="map-outline" size={20} color="#666" style={styles.icon} />
-                            <TextInput style={styles.input} placeholder="State (e.g. Andhra Pradesh)" placeholderTextColor="#888" value={stateCode} onChangeText={setStateCode} />
+                            <Ionicons name="map-outline" size={20} color={theme.colors.textMuted} style={styles.icon} />
+                            <TextInput style={styles.input} placeholder="State (e.g. Andhra Pradesh)" placeholderTextColor={theme.colors.textMuted} value={stateCode} onChangeText={setStateCode} />
                         </View>
                     </>
                 )}
 
                 <View style={styles.inputWrap}>
-                    <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
-                    <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#888" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={10} />
+                    <Ionicons name="call-outline" size={20} color={theme.colors.textMuted} style={styles.icon} />
+                    <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor={theme.colors.textMuted} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={10} />
                 </View>
 
                 <View style={styles.inputWrap}>
-                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
-                    <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#888" value={password} onChangeText={setPassword} secureTextEntry />
+                    <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.icon} />
+                    <TextInput style={styles.input} placeholder="Password" placeholderTextColor={theme.colors.textMuted} value={password} onChangeText={setPassword} secureTextEntry />
                 </View>
 
                 <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
@@ -97,17 +101,17 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f0f4f0', justifyContent: 'center', padding: 20 },
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', padding: 20 },
     header: { alignItems: 'center', marginBottom: 40 },
-    title: { fontSize: 28, fontWeight: 'bold', color: '#2E7D32', marginTop: 10 },
-    subtitle: { fontSize: 16, color: '#555', marginTop: 5 },
-    form: { backgroundColor: '#fff', borderRadius: 12, padding: 20, elevation: 3 },
-    inputWrap: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#ddd', marginBottom: 20, paddingBottom: 5 },
+    title: { fontSize: 28, fontWeight: 'bold', color: theme.colors.primary, marginTop: 10 },
+    subtitle: { fontSize: 16, color: theme.colors.textSecondary, marginTop: 5 },
+    form: { backgroundColor: theme.colors.surface, borderRadius: 12, padding: 20, elevation: 3 },
+    inputWrap: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border, marginBottom: 20, paddingBottom: 5 },
     icon: { marginRight: 10 },
-    input: { flex: 1, fontSize: 16, color: '#333' },
-    btn: { backgroundColor: '#2E7D32', borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 10 },
-    btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+    input: { flex: 1, fontSize: 16, color: theme.colors.textPrimary },
+    btn: { backgroundColor: theme.colors.primary, borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 10 },
+    btnText: { color: theme.colors.surface, fontSize: 16, fontWeight: 'bold' },
     switchBtn: { marginTop: 20, alignItems: 'center' },
-    switchText: { color: '#2E7D32', fontSize: 14, fontWeight: '500' }
+    switchText: { color: theme.colors.primary, fontSize: 14, fontWeight: '500' }
 });

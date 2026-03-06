@@ -19,9 +19,11 @@ const TouchableOpacity = RNTouchableOpacity as any;
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { theme } from '../theme';
+import { useTheme } from '../ThemeContext';
 
 export default function EconomicsResultScreen() {
+  const { theme } = useTheme();
+  const styles = getStyles(theme);
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
@@ -30,7 +32,7 @@ export default function EconomicsResultScreen() {
   if (!simulationData) {
     return (
       <View style={styles.errorContainer}>
-        <Text>No simulation data available.</Text>
+        <Text style={{ color: theme.colors.textPrimary }}>No simulation data available.</Text>
       </View>
     );
   }
@@ -61,18 +63,21 @@ export default function EconomicsResultScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('economics.investmentBreakdown') || 'Investment Breakdown'}</Text>
         <View style={styles.card}>
-          <StatRow label={t('economics.totalInvestment') || 'Total CAPEX'} value={formatCurrency(simulationData.totalCapitalExpenditureInr)} />
+          <StatRow styles={styles} label={t('economics.totalInvestment') || 'Total CAPEX'} value={formatCurrency(simulationData.totalCapitalExpenditureInr)} />
           <StatRow
+            styles={styles}
             label={t('economics.subsidyAmount') || 'Government Subsidy (PMMSY)'}
             value={formatCurrency(simulationData.subsidyAmountInr)}
             color={theme.colors.success}
           />
           <StatRow
+            styles={styles}
             label={t('economics.effectiveInvestment') || 'Your Contribution'}
             value={formatCurrency(simulationData.subsidizedCapitalExpenditureInr)}
             bold
           />
           <StatRow
+            styles={styles}
             label={t('economics.breakeven') || 'Breakeven Timeline'}
             value={`${simulationData.breakevenTimelineMonths} Months`}
           />
@@ -152,7 +157,7 @@ export default function EconomicsResultScreen() {
   );
 }
 
-function StatRow({ label, value, color, bold }: { label: string; value: string; color?: string; bold?: boolean }) {
+function StatRow({ label, value, color, bold, styles }: { label: string; value: string; color?: string; bold?: boolean; styles: any; }) {
   return (
     <View style={styles.statRow}>
       <Text style={styles.statLabel}>{label}</Text>
@@ -161,7 +166,7 @@ function StatRow({ label, value, color, bold }: { label: string; value: string; 
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background
@@ -210,11 +215,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.h3,
-    color: '#333',
+    color: theme.colors.textPrimary,
     marginBottom: 12
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 16,
     ...theme.shadows.sm
@@ -224,16 +229,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0'
+    borderBottomColor: theme.colors.border
   },
   statLabel: {
     fontSize: 14,
-    color: '#666'
+    color: theme.colors.textSecondary
   },
   statValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333'
+    color: theme.colors.textPrimary
   },
   speciesItem: {
     flexDirection: 'row',
@@ -243,13 +248,13 @@ const styles = StyleSheet.create({
   },
   borderTop: {
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0'
+    borderTopColor: theme.colors.border
   },
   speciesIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.isDark ? '#1a3a1f' : '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -264,13 +269,13 @@ const styles = StyleSheet.create({
   speciesName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333'
+    color: theme.colors.textPrimary
   },
   compatibilityBadge: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: theme.colors.primary,
-    backgroundColor: '#E8F5E9',
+    color: theme.colors.success,
+    backgroundColor: theme.isDark ? '#1a3a1f' : '#E8F5E9',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4
@@ -278,7 +283,7 @@ const styles = StyleSheet.create({
   scientificName: {
     fontSize: 13,
     fontStyle: 'italic',
-    color: '#888',
+    color: theme.colors.textSecondary,
     marginBottom: 8
   },
   speciesStats: {
@@ -289,7 +294,7 @@ const styles = StyleSheet.create({
   statMini: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#555'
+    color: theme.colors.textSecondary
   },
   reasonItem: {
     flexDirection: 'row',
@@ -305,7 +310,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 12,
-    color: '#666'
+    color: theme.colors.textSecondary
   },
   riskHeader: {
     flexDirection: 'row',
@@ -314,12 +319,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0'
+    borderBottomColor: theme.colors.border
   },
   riskLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#444'
+    color: theme.colors.textPrimary
   },
   riskValue: {
     fontSize: 16,
@@ -334,15 +339,15 @@ const styles = StyleSheet.create({
   riskCategory: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333'
+    color: theme.colors.textPrimary
   },
   riskText: {
     fontSize: 13,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 2
   },
   mitigationContainer: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.colors.background,
     padding: 12,
     borderRadius: 8,
     marginTop: 4
@@ -350,7 +355,7 @@ const styles = StyleSheet.create({
   mitigationTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
     textTransform: 'uppercase'
   },
@@ -362,7 +367,7 @@ const styles = StyleSheet.create({
   },
   strategyText: {
     fontSize: 13,
-    color: '#444'
+    color: theme.colors.textPrimary
   },
   errorContainer: {
     flex: 1,
@@ -375,7 +380,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 11,
-    color: '#999',
+    color: theme.colors.textMuted,
     textAlign: 'center'
   }
 });

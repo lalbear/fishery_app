@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
@@ -8,10 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { useTheme } from '../ThemeContext';
 import { economicsService } from '../services/apiService';
 
 export default function FeedCatalogScreen() {
+    const { theme } = useTheme();
+    const styles = getStyles(theme);
     const { t } = useTranslation();
     const navigation = useNavigation();
     const [feeds, setFeeds] = useState<any[]>([]);
@@ -99,7 +100,7 @@ export default function FeedCatalogScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={
                     <View style={styles.empty}>
-                        <Ionicons name="nutrition-outline" size={48} color="#ccc" />
+                        <Ionicons name="nutrition-outline" size={48} color={theme.colors.textMuted} />
                         <Text style={styles.emptyText}>No feed products found.</Text>
                     </View>
                 }
@@ -108,21 +109,21 @@ export default function FeedCatalogScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8f9fa' },
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee'
+        borderBottomColor: theme.colors.border
     },
     backBtn: { marginRight: 16 },
     title: { fontSize: 20, fontWeight: 'bold', color: theme.colors.textPrimary },
     list: { padding: 16 },
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.surface,
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
@@ -135,16 +136,16 @@ const styles = StyleSheet.create({
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     badge: { backgroundColor: theme.colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     badgeText: { fontSize: 10, fontWeight: 'bold', color: theme.colors.primary, textTransform: 'uppercase' },
-    brandText: { fontSize: 12, color: '#666', fontWeight: '500' },
+    brandText: { fontSize: 12, color: theme.colors.textSecondary, fontWeight: '500' },
     nameText: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 4 },
     priceText: { fontSize: 20, fontWeight: '800', color: theme.colors.secondary, marginBottom: 12 },
-    divider: { height: 1, backgroundColor: '#f1f3f5', marginBottom: 12 },
+    divider: { height: 1, backgroundColor: theme.colors.border, marginBottom: 12 },
     specsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
     specItem: { alignItems: 'center', flex: 1 },
-    specLabel: { fontSize: 11, color: '#999', marginBottom: 4 },
-    specValue: { fontSize: 14, fontWeight: '700', color: '#444' },
-    suitableText: { fontSize: 12, color: '#777', fontStyle: 'italic', marginTop: 4 },
+    specLabel: { fontSize: 11, color: theme.colors.textSecondary, marginBottom: 4 },
+    specValue: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary },
+    suitableText: { fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic', marginTop: 4 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     empty: { padding: 40, alignItems: 'center' },
-    emptyText: { marginTop: 12, color: '#999', textAlign: 'center' }
+    emptyText: { marginTop: 12, color: theme.colors.textMuted, textAlign: 'center' }
 });

@@ -15,9 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../theme';
+import { useTheme } from '../ThemeContext';
 
 export default function HomeScreen() {
+  const { theme, isDark } = useTheme();
+  const styles = getStyles(theme);
   const { t } = useTranslation();
   const navigation = useNavigation();
 
@@ -40,15 +42,15 @@ export default function HomeScreen() {
       icon: 'water-outline' as const,
       title: t('home.logWaterQuality'),
       onPress: () => navigation.navigate('WaterQuality' as never),
-      color: '#0284C7', // Slate blue for water
-      bgColor: '#E0F2FE',
+      color: isDark ? '#38BDF8' : '#0284C7',
+      bgColor: isDark ? '#0C4A6E' : '#E0F2FE',
     },
     {
       icon: 'trending-up-outline' as const,
       title: t('home.viewMarkets'),
       onPress: () => navigation.navigate('MarketPrices' as never),
-      color: theme.colors.accent,
-      bgColor: '#FEF3C7',
+      color: isDark ? '#FBBF24' : theme.colors.accent,
+      bgColor: isDark ? '#78350F' : '#FEF3C7',
     },
     {
       icon: 'construct-outline' as const,
@@ -62,7 +64,7 @@ export default function HomeScreen() {
       title: 'Feed & Nutrition',
       onPress: () => navigation.navigate('FeedCatalog' as never),
       color: theme.colors.success,
-      bgColor: '#DCFCE7',
+      bgColor: isDark ? '#14532D' : '#DCFCE7',
     },
   ];
 
@@ -102,7 +104,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

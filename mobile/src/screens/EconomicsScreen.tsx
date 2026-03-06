@@ -25,7 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { theme } from '../theme';
+import { useTheme } from '../ThemeContext';
 import { geoService, economicsService } from '../services/apiService';
 
 const WATER_SOURCES = [
@@ -37,6 +37,8 @@ const WATER_SOURCES = [
 ];
 
 export default function EconomicsScreen() {
+  const { theme } = useTheme();
+  const styles = getStyles(theme);
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
 
@@ -171,7 +173,7 @@ export default function EconomicsScreen() {
               <Text style={styles.label}>State</Text>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setIsStateOpen(true)}>
                 <Text style={styles.pickerText}>{selectedStateName}</Text>
-                <Ionicons name="chevron-down" size={16} color="#666" />
+                <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -179,7 +181,7 @@ export default function EconomicsScreen() {
               <Text style={styles.label}>District</Text>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setIsDistrictOpen(true)}>
                 <Text style={styles.pickerText} numberOfLines={1}>{districtCode || 'Select'}</Text>
-                <Ionicons name="chevron-down" size={16} color="#666" />
+                <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -246,7 +248,7 @@ export default function EconomicsScreen() {
               <Text style={styles.pickerText}>
                 {SPECIES_OPTIONS.find(s => s.value === preferredSpecies)?.label || 'Auto Recommend'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#666" />
+              <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -257,10 +259,10 @@ export default function EconomicsScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.surface} />
             ) : (
               <>
-                <Ionicons name="calculator-outline" size={24} color="#fff" />
+                <Ionicons name="calculator-outline" size={24} color={theme.colors.surface} />
                 <Text style={styles.submitButtonText}>{t('economics.runSimulation') || 'Calculate Now'}</Text>
               </>
             )}
@@ -275,6 +277,8 @@ export default function EconomicsScreen() {
         onSelect={(val: string) => { setStateCode(val); setIsStateOpen(false); }}
         onClose={() => setIsStateOpen(false)}
         title="Select State"
+        theme={theme}
+        styles={styles}
       />
       <SelectionModal
         visible={isDistrictOpen}
@@ -282,6 +286,8 @@ export default function EconomicsScreen() {
         onSelect={(val: string) => { setDistrictCode(val); setIsDistrictOpen(false); }}
         onClose={() => setIsDistrictOpen(false)}
         title="Select District"
+        theme={theme}
+        styles={styles}
       />
       <SelectionModal
         visible={isSpeciesOpen}
@@ -289,12 +295,14 @@ export default function EconomicsScreen() {
         onSelect={(val: string) => { setPreferredSpecies(val); setIsSpeciesOpen(false); }}
         onClose={() => setIsSpeciesOpen(false)}
         title="Select Target Species"
+        theme={theme}
+        styles={styles}
       />
     </SafeAreaView>
   );
 }
 
-function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
+function SelectionModal({ visible, items, onSelect, onClose, title, theme, styles }: any) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
@@ -302,13 +310,13 @@ function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
           {items.length === 0 ? (
             <View style={{ padding: 40, alignItems: 'center' }}>
               <ActivityIndicator color={theme.colors.primary} />
-              <Text style={{ marginTop: 10, color: '#666' }}>Loading data...</Text>
+              <Text style={{ marginTop: 10, color: theme.colors.textSecondary }}>Loading data...</Text>
             </View>
           ) : (
             <FlatList
@@ -329,7 +337,7 @@ function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background
@@ -346,7 +354,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.bodyLarge,
-    marginTop: theme.spacing.xs
+    marginTop: theme.spacing.xs,
+    color: theme.colors.textSecondary
   },
   card: {
     backgroundColor: theme.colors.surface,
@@ -356,7 +365,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.h3,
-    marginBottom: theme.spacing.lg
+    marginBottom: theme.spacing.lg,
+    color: theme.colors.textPrimary
   },
   inputGroup: {
     marginBottom: theme.spacing.md
@@ -373,7 +383,8 @@ const styles = StyleSheet.create({
   label: {
     ...theme.typography.body,
     fontWeight: '600',
-    marginBottom: theme.spacing.sm
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary
   },
   input: {
     backgroundColor: theme.colors.background,
@@ -419,7 +430,8 @@ const styles = StyleSheet.create({
   },
   optionText: {
     ...theme.typography.body,
-    fontWeight: '500'
+    fontWeight: '500',
+    color: theme.colors.textPrimary
   },
   optionTextActive: {
     color: theme.colors.textInverse
@@ -445,7 +457,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -457,19 +469,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee'
+    borderBottomColor: theme.colors.border
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary
   },
   modalItem: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f9f9f9'
+    borderBottomColor: theme.colors.border
   },
   modalItemText: {
     fontSize: 16,
-    color: '#333'
+    color: theme.colors.textPrimary
   }
 });

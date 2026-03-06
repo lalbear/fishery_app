@@ -17,7 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import './src/i18n';
 import { DatabaseProvider } from '@nozbe/watermelondb/react';
 import database from './src/database';
-import { theme } from './src/theme';
+import { ThemeProvider, useTheme } from './src/ThemeContext';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -43,6 +43,8 @@ export type RootStackParamList = {
   EquipmentCatalog: undefined;
   FeedCatalog: undefined;
   PersonalInfo: undefined;
+  PondsList: undefined;
+  AddEditPond: { pondId?: string };
 };
 
 export type MainTabParamList = {
@@ -58,6 +60,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 function MainTabs() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
 
   return (
     <Tab.Navigator
@@ -135,33 +138,78 @@ function MainTabs() {
 
 import { AuthProvider, useAuth } from './src/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
+import { TouchableOpacity } from 'react-native';
+
+function ThemeToggleButton() {
+  const { theme, isDark, toggleTheme } = useTheme();
+  return (
+    <TouchableOpacity
+      style={{
+        position: 'absolute',
+        bottom: 90,
+        right: 20,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: theme.colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        zIndex: 9999,
+      }}
+      onPress={toggleTheme}
+      activeOpacity={0.8}
+    >
+      <Ionicons name={isDark ? "sunny" : "moon"} size={24} color={theme.colors.textInverse} />
+    </TouchableOpacity>
+  );
+}
+
+import PondsListScreen from './src/screens/PondsListScreen';
+import AddEditPondScreen from './src/screens/AddEditPondScreen';
 
 function MainApp() {
   const { isAuthenticated, login } = useAuth();
+  const { theme, mode } = useTheme();
 
   if (!isAuthenticated) {
-    return <AuthScreen onLoginSuccess={login} />;
+    return (
+      <>
+        <AuthScreen onLoginSuccess={login} />
+        <ThemeToggleButton />
+      </>
+    );
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: theme.colors.surface },
-          headerTintColor: theme.colors.primary,
-          headerTitleStyle: { fontWeight: 'bold' },
-        }}
-      >
-        <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-        <Stack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ title: 'Species Details' }} />
-        <Stack.Screen name="EconomicsResult" component={EconomicsResultScreen} options={{ title: 'Simulation Results' }} />
-        <Stack.Screen name="WaterQuality" component={WaterQualityScreen} options={{ title: 'Water Quality Log' }} />
-        <Stack.Screen name="MarketPrices" component={MarketPricesScreen} options={{ title: 'Market Prices' }} />
-        <Stack.Screen name="EquipmentCatalog" component={EquipmentCatalogScreen} options={{ title: 'Equipment Catalog' }} />
-        <Stack.Screen name="FeedCatalog" component={FeedCatalogScreen} options={{ title: 'Feed & Nutrition' }} />
-        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ title: 'Personal Information' }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: theme.colors.surface },
+            headerTintColor: theme.colors.primary,
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        >
+          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+          <Stack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ title: 'Species Details' }} />
+          <Stack.Screen name="EconomicsResult" component={EconomicsResultScreen} options={{ title: 'Simulation Results' }} />
+          <Stack.Screen name="WaterQuality" component={WaterQualityScreen} options={{ title: 'Water Quality Log' }} />
+          <Stack.Screen name="MarketPrices" component={MarketPricesScreen} options={{ title: 'Market Prices' }} />
+          <Stack.Screen name="EquipmentCatalog" component={EquipmentCatalogScreen} options={{ title: 'Equipment Catalog' }} />
+          <Stack.Screen name="FeedCatalog" component={FeedCatalogScreen} options={{ title: 'Feed & Nutrition' }} />
+          <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ title: 'Personal Information' }} />
+          <Stack.Screen name="PondsList" component={PondsListScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AddEditPond" component={AddEditPondScreen} options={{ headerShown: false, presentation: 'modal' }} />
+        </Stack.Navigator>
+        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      </NavigationContainer>
+      <ThemeToggleButton />
+    </>
   );
 }
 
@@ -169,10 +217,11 @@ function App() {
   return (
     <DatabaseProvider database={database}>
       <AuthProvider>
-        <SafeAreaProvider>
-          <MainApp />
-          <StatusBar style="auto" />
-        </SafeAreaProvider>
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <MainApp />
+          </SafeAreaProvider>
+        </ThemeProvider>
       </AuthProvider>
     </DatabaseProvider>
   );

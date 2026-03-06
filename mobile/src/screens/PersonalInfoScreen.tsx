@@ -12,6 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../ThemeContext';
 
 const PROFILE_KEY = '@fishing_god_profile';
 
@@ -88,6 +89,9 @@ interface Props {
 
 export default function PersonalInfoScreen({ navigation }: Props) {
     const { t } = useTranslation();
+    const { theme } = useTheme();
+    const styles = getStyles(theme);
+
     const [userId, setUserId] = useState('');
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
@@ -136,7 +140,7 @@ export default function PersonalInfoScreen({ navigation }: Props) {
     if (loading) {
         return (
             <View style={styles.center}>
-                <ActivityIndicator size="large" color="#2E7D32" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
         );
     }
@@ -148,7 +152,7 @@ export default function PersonalInfoScreen({ navigation }: Props) {
             {/* Header */}
             <View style={styles.hero}>
                 <View style={styles.avatar}>
-                    <Ionicons name="person" size={40} color="#fff" />
+                    <Ionicons name="person" size={40} color={theme.colors.textInverse} />
                 </View>
                 <Text style={styles.heroTitle}>{name || 'Your Name'}</Text>
                 <Text style={styles.heroSub}>{phone || '+91 —'}</Text>
@@ -162,11 +166,11 @@ export default function PersonalInfoScreen({ navigation }: Props) {
                 <View style={styles.fieldGroup}>
                     <Text style={styles.label}>Full Name *</Text>
                     <View style={[styles.inputRow, touchedName && !name.trim() && styles.inputError]}>
-                        <Ionicons name="person-outline" size={18} color="#888" style={styles.inputIcon} />
+                        <Ionicons name="person-outline" size={18} color={theme.colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
                             placeholder="e.g. Ramesh Kumar"
-                            placeholderTextColor="#bbb"
+                            placeholderTextColor={theme.colors.textMuted}
                             value={name}
                             onChangeText={v => { setName(v); markDirty(); setTouchedName(true); }}
                             returnKeyType="next"
@@ -181,11 +185,11 @@ export default function PersonalInfoScreen({ navigation }: Props) {
                 <View style={styles.fieldGroup}>
                     <Text style={styles.label}>Phone Number</Text>
                     <View style={styles.inputRow}>
-                        <Ionicons name="call-outline" size={18} color="#888" style={styles.inputIcon} />
+                        <Ionicons name="call-outline" size={18} color={theme.colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
                             placeholder="e.g. 9876543210"
-                            placeholderTextColor="#bbb"
+                            placeholderTextColor={theme.colors.textMuted}
                             value={phone}
                             onChangeText={v => { setPhone(v); markDirty(); }}
                             keyboardType="phone-pad"
@@ -242,46 +246,46 @@ export default function PersonalInfoScreen({ navigation }: Props) {
                 activeOpacity={0.85}
             >
                 {saving
-                    ? <ActivityIndicator color="#fff" />
-                    : <><Ionicons name="checkmark-circle-outline" size={20} color="#fff" /><Text style={styles.saveBtnText}>Save Changes</Text></>
+                    ? <ActivityIndicator color={theme.colors.surface} />
+                    : <><Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.surface} /><Text style={styles.saveBtnText}>Save Changes</Text></>
                 }
             </TouchableOpacity>
         </ScrollView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    hero: { backgroundColor: '#2E7D32', alignItems: 'center', paddingVertical: 28, paddingHorizontal: 16 },
+    hero: { backgroundColor: theme.colors.primary, alignItems: 'center', paddingVertical: 28, paddingHorizontal: 16 },
     avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-    heroTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+    heroTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.textInverse },
     heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
-    card: { backgroundColor: '#fff', margin: 16, borderRadius: 12, padding: 16, elevation: 2 },
-    sectionTitle: { fontSize: 13, fontWeight: '700', color: '#2E7D32', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 },
+    card: { backgroundColor: theme.colors.surface, margin: 16, borderRadius: 12, padding: 16, elevation: 2 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: theme.colors.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 },
 
     fieldGroup: { marginBottom: 20 },
-    label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 8 },
+    label: { fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary, marginBottom: 8 },
 
-    inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, backgroundColor: '#fafafa', paddingHorizontal: 4 },
-    inputError: { borderColor: '#e53935' },
+    inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, backgroundColor: theme.colors.background, paddingHorizontal: 4 },
+    inputError: { borderColor: theme.colors.error },
     inputIcon: { marginHorizontal: 8 },
-    input: { flex: 1, paddingVertical: 12, fontSize: 15, color: '#333' },
-    errorText: { color: '#e53935', fontSize: 12, marginTop: 4 },
+    input: { flex: 1, paddingVertical: 12, fontSize: 15, color: theme.colors.textPrimary },
+    errorText: { color: theme.colors.error, fontSize: 12, marginTop: 4 },
 
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#f9f9f9' },
-    chipActive: { backgroundColor: '#2E7D32', borderColor: '#2E7D32' },
-    chipText: { fontSize: 13, color: '#555', fontWeight: '500' },
-    chipTextActive: { color: '#fff', fontWeight: '700' },
+    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background },
+    chipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    chipText: { fontSize: 13, color: theme.colors.textSecondary, fontWeight: '500' },
+    chipTextActive: { color: theme.colors.surface, fontWeight: '700' },
 
     stateScroll: { marginBottom: 8 },
-    stateChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#f9f9f9', marginRight: 8 },
-    selectedState: { fontSize: 13, color: '#2E7D32', fontWeight: '600', marginTop: 4 },
+    stateChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background, marginRight: 8 },
+    selectedState: { fontSize: 13, color: theme.colors.primary, fontWeight: '600', marginTop: 4 },
 
-    saveBtn: { marginHorizontal: 16, marginTop: 8, backgroundColor: '#2E7D32', borderRadius: 10, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 2 },
-    saveBtnDisabled: { backgroundColor: '#a5c8a7' },
-    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    saveBtn: { marginHorizontal: 16, marginTop: 8, backgroundColor: theme.colors.primary, borderRadius: 10, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 2 },
+    saveBtnDisabled: { backgroundColor: theme.colors.border },
+    saveBtnText: { color: theme.colors.surface, fontSize: 16, fontWeight: '700' },
 });

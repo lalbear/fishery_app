@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { theme } from '../theme';
+import { useTheme } from '../ThemeContext';
 import { geoService } from '../services/apiService';
 
 const WATER_SOURCES = [
@@ -104,6 +104,8 @@ async function reverseGeocode(lat: number, lng: number): Promise<NominatimResult
 }
 
 export default function MapScreen() {
+  const { theme, isDark } = useTheme();
+  const styles = getStyles(theme, isDark);
   const { t } = useTranslation();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState<string | null>(null);
@@ -195,11 +197,11 @@ export default function MapScreen() {
   // Keep track of the last geocoded coordinates to prevent spamming the geocoder
   const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
 
-  const autoFillLocation = async (loc: Location.LocationObject) => {
+  const autoFillLocation = async (loc: Location.LocationObject, force: boolean = false) => {
     try {
       // Prevent rapid requests for very near locations (< ~50 meters)
       // 0.0005 degrees is approx 55 meters
-      if (lastGeocodedCoords.current) {
+      if (!force && lastGeocodedCoords.current) {
         const dLat = Math.abs(lastGeocodedCoords.current.lat - loc.coords.latitude);
         const dLng = Math.abs(lastGeocodedCoords.current.lng - loc.coords.longitude);
         if (dLat < 0.0005 && dLng < 0.0005) {
@@ -254,6 +256,26 @@ export default function MapScreen() {
       }
     }
   }, [stateCode, zones]);
+
+  const handleDetectLocation = async () => {
+    try {
+      setIsGettingLocation(true);
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
+        setIsGettingLocation(false);
+        return;
+      }
+      let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setLocation(loc);
+      await autoFillLocation(loc, true);
+    } catch (err) {
+      console.error("Location acquisition failed:", err);
+      Alert.alert('Error', 'Could not detect your location.');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
 
   const analyzeLocation = async () => {
     if (!location) return;
@@ -358,9 +380,15 @@ export default function MapScreen() {
         <View style={styles.formCard}>
           <View style={styles.formHeaderRow}>
             <Text style={styles.formTitle}>Environment Details</Text>
-            <TouchableOpacity onPress={() => Alert.alert("Why this is needed?", "Fisheries policies, subsidies, and climate data are mapped by administrative zones. Your selection helps us provide accurate species and system recommendations for your region.")}>
-              <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+              <TouchableOpacity onPress={handleDetectLocation} style={styles.detectBtn}>
+                <Ionicons name="locate" size={16} color={theme.colors.primary} />
+                <Text style={styles.detectBtnText}>Auto-Locate</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => Alert.alert("Why this is needed?", "Fisheries policies, subsidies, and climate data are mapped by administrative zones. Your selection helps us provide accurate species and system recommendations for your region.")}>
+                <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.row}>
@@ -485,6 +513,8 @@ export default function MapScreen() {
         onSelect={(val: string) => { setStateCode(val); setIsStateOpen(false); }}
         onClose={() => setIsStateOpen(false)}
         title="Select State"
+        styles={styles}
+        theme={theme}
       />
       <SelectionModal
         visible={isDistrictOpen}
@@ -492,6 +522,8 @@ export default function MapScreen() {
         onSelect={(val: string) => { setDistrictCode(val); setIsDistrictOpen(false); }}
         onClose={() => setIsDistrictOpen(false)}
         title="Select District"
+        styles={styles}
+        theme={theme}
       />
       <SelectionModal
         visible={isWaterOpen}
@@ -499,12 +531,14 @@ export default function MapScreen() {
         onSelect={(val: string) => { setWaterSource(val); setIsWaterOpen(false); }}
         onClose={() => setIsWaterOpen(false)}
         title="Water Source"
+        styles={styles}
+        theme={theme}
       />
     </SafeAreaView>
   );
 }
 
-function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
+function SelectionModal({ visible, items, onSelect, onClose, title, styles, theme }: any) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
@@ -512,7 +546,7 @@ function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
           <FlatList
@@ -530,7 +564,7 @@ function SelectionModal({ visible, items, onSelect, onClose, title }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background
@@ -573,6 +607,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: theme.spacing.md,
     ...theme.typography.body,
+    color: theme.colors.textPrimary
   },
   formCard: {
     backgroundColor: theme.colors.surface,
@@ -584,13 +619,27 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     ...theme.typography.h3,
-    color: '#333'
+    color: theme.colors.textPrimary
   },
   formHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: theme.spacing.md,
+  },
+  detectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  detectBtnText: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: '600'
   },
   row: {
     flexDirection: 'row',
@@ -608,7 +657,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
     textTransform: 'uppercase'
   },
@@ -619,20 +668,21 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fafafa'
+    borderColor: theme.colors.border,
+    backgroundColor: isDark ? '#1e1e1e' : '#fafafa'
   },
   pickerText: {
     fontSize: 16,
-    color: '#333'
+    color: theme.colors.textPrimary
   },
   input: {
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fafafa',
-    fontSize: 16
+    borderColor: theme.colors.border,
+    backgroundColor: isDark ? '#1e1e1e' : '#fafafa',
+    fontSize: 16,
+    color: theme.colors.textPrimary
   },
   checkButton: {
     backgroundColor: theme.colors.primary,
@@ -670,6 +720,7 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     flex: 1,
     fontWeight: '500',
+    color: theme.colors.textPrimary
   },
   scoreContainer: {
     alignItems: 'center',
@@ -678,6 +729,7 @@ const styles = StyleSheet.create({
   resultLabel: {
     ...theme.typography.bodyLarge,
     fontWeight: '600',
+    color: theme.colors.textPrimary
   },
   score: {
     fontSize: 56,
@@ -694,12 +746,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0'
+    borderTopColor: theme.colors.border
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
     textTransform: 'uppercase'
   },
@@ -712,7 +764,7 @@ const styles = StyleSheet.create({
   systemName: {
     flex: 1,
     fontSize: 15,
-    color: '#444'
+    color: theme.colors.textPrimary
   },
   systemScore: {
     fontWeight: 'bold',
@@ -725,19 +777,19 @@ const styles = StyleSheet.create({
     marginTop: 8
   },
   tag: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: isDark ? '#4A1C1C' : '#FEE2E2',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6
   },
   tagText: {
     fontSize: 12,
-    color: '#B91C1C',
+    color: isDark ? '#FCA5A5' : '#B91C1C',
     fontWeight: '500'
   },
   smallText: {
     fontSize: 12,
-    color: '#666'
+    color: theme.colors.textSecondary
   },
   warningItem: {
     flexDirection: 'row',
@@ -747,7 +799,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 13,
-    color: '#92400E',
+    color: theme.colors.accent,
     flex: 1
   },
   modalOverlay: {
@@ -756,7 +808,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -768,19 +820,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee'
+    borderBottomColor: theme.colors.border
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary
   },
   modalItem: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f9f9f9'
+    borderBottomColor: theme.colors.border
   },
   modalItemText: {
     fontSize: 16,
-    color: '#333'
+    color: theme.colors.textPrimary
   }
 });
