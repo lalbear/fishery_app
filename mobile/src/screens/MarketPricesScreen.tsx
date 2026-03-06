@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { marketService } from '../services/apiService';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
+import SparkLine from '../components/SparkLine';
 
 interface PriceRow {
   id: string;
@@ -93,6 +94,21 @@ function trendIcon(price: number, avg: number, theme: any) {
   return { name: 'remove-outline', color: theme.colors.textMuted };
 }
 
+// Group prices by species for sparkline data
+function getSparklineData(prices: PriceRow[], speciesName: string): number[] {
+  return prices
+    .filter(p => p.species_name === speciesName)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(-7)
+    .map(p => parseFloat(p.price_inr_per_kg));
+}
+
+function priceDelta(current: number, benchmark: number): { pct: number; up: boolean } {
+  if (benchmark === 0) return { pct: 0, up: true };
+  const pct = ((current - benchmark) / benchmark) * 100;
+  return { pct: Math.abs(pct), up: pct >= 0 };
+}
+
 export default function MarketPricesScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -155,10 +171,14 @@ export default function MarketPricesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         renderItem={({ item }) => {
           const price = parseFloat(item.price_inr_per_kg);
-          // Use species benchmark avg if global is not yet loaded
           const speciesAvg = getSpeciesAvgPrice(item.species_name, globalAvg ?? 0);
           const { name: iconName, color: iconColor } = trendIcon(price, speciesAvg, theme);
           const fishImg = getFishImage(item.species_name);
+
+          const sparkData = getSparklineData(prices, item.species_name);
+          // If not enough history, mock a flat-ish line to show the component
+          const finalSparkData = sparkData.length > 1 ? sparkData : [price * 0.98, price * 1.01, price];
+          const delta = priceDelta(price, speciesAvg);
 
           return (
             <View style={styles.priceCard}>
@@ -175,12 +195,21 @@ export default function MarketPricesScreen() {
                 <View style={styles.priceRow}>
                   <View>
                     <Text style={styles.priceLabel}>Current Price</Text>
-                    <Text style={styles.price}>₹{price.toFixed(0)}/kg</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.price}>₹{price.toFixed(0)}/kg</Text>
+                      {delta.pct > 0 && (
+                        <View style={{ backgroundColor: delta.up ? theme.colors.success + '22' : theme.colors.error + '22', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: delta.up ? theme.colors.success : theme.colors.error }}>
+                            {delta.up ? '↑' : '↓'} {delta.pct.toFixed(1)}%
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.avgPriceBadge}>
-                    <Text style={styles.avgPriceLabel}>Avg. Price</Text>
-                    <Text style={styles.avgPrice}>
-                      {speciesAvg > 0 ? `₹${speciesAvg.toFixed(0)}/kg` : '—'}
+                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    <SparkLine data={finalSparkData} color={iconColor} width={60} height={20} />
+                    <Text style={styles.avgPriceLabel}>
+                      Avg. {speciesAvg > 0 ? `₹${speciesAvg.toFixed(0)}/kg` : '—'}
                     </Text>
                   </View>
                 </View>

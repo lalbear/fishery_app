@@ -1,9 +1,11 @@
 /**
  * Home Screen - Main Dashboard
  * Icon-driven interface for rural farmers
+ * F2: Live Weather + Pond Impact Card
+ * F5: Harvest Countdown Widget
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,12 +18,40 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
+import WeatherCard from '../components/WeatherCard';
+import HarvestCountdownCard from '../components/HarvestCountdownCard';
+import { database } from '../database';
 
 export default function HomeScreen() {
   const { theme, isDark } = useTheme();
   const styles = getStyles(theme);
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const [activePonds, setActivePonds] = useState<any[]>([]);
+
+  // F5: Load active ponds from WatermelonDB for harvest countdown
+  useEffect(() => {
+    (async () => {
+      try {
+        const pondsCollection = database.get<any>('ponds');
+        const allPonds = await pondsCollection.query().fetch();
+        setActivePonds(
+          allPonds
+            .filter((p: any) => p.status === 'active' && p.stockingDate)
+            .map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              species_id: p.speciesId,
+              stocking_date: p.stockingDate,
+              status: p.status,
+              area_hectares: p.areaHectares ?? 1,
+            }))
+        );
+      } catch (e) {
+        // WatermelonDB may not be initialized yet in dev — fail silently
+      }
+    })();
+  }, []);
 
   const quickActions = [
     {
@@ -70,7 +100,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* App Header */}
         <View style={styles.header}>
           <View style={styles.iconContainer}>
             <Ionicons name="fish" size={48} color={theme.colors.primary} />
@@ -79,6 +110,21 @@ export default function HomeScreen() {
           <Text style={styles.subtitle}>{t('home.subtitle') || 'Manage your ponds'}</Text>
         </View>
 
+        {/* F2: Weather Card */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🌤️ Today's Weather</Text>
+          <WeatherCard locationName="Your District" />
+        </View>
+
+        {/* F5: Harvest Countdown */}
+        {activePonds.length > 0 && (
+          <HarvestCountdownCard
+            ponds={activePonds}
+            onPressPond={(pond) => navigation.navigate('PondsList' as never)}
+          />
+        )}
+
+        {/* Quick Actions Grid */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('home.quickActions') || 'Quick Actions'}</Text>
           <View style={styles.actionGrid}>
@@ -99,6 +145,8 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        <View style={{ height: theme.spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -117,7 +165,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingVertical: theme.spacing.xl,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
     ...theme.shadows.sm,
   },
   iconContainer: {
@@ -138,7 +186,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     textAlign: 'center',
   },
   section: {
-    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
   },
   sectionTitle: {
     ...theme.typography.h3,
