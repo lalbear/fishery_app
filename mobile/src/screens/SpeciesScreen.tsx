@@ -37,7 +37,7 @@ const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPres
           {d.image_url ? (
             <Image
               source={{ uri: d.image_url }}
-              style={{ width: '100%', height: '100%', borderRadius: 23 }}
+              style={{ width: '100%', height: '100%' }}
               resizeMode="cover"
             />
           ) : (
@@ -186,11 +186,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: theme.colors.surface, borderRadius: 14, padding: 16,
     marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   iconWrap: {
-    width: 46, height: 46, borderRadius: 23,
+    width: 80, height: 80, borderRadius: 12,
     backgroundColor: theme.colors.success,
     justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
   },
   speciesName: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
   scientificName: { fontSize: 13, fontStyle: 'italic', color: theme.colors.textSecondary, marginTop: 2 },

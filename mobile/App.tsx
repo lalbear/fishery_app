@@ -215,15 +215,17 @@ function MainApp() {
 
 function App() {
   return (
-    <DatabaseProvider database={database}>
-      <AuthProvider>
-        <ThemeProvider>
-          <SafeAreaProvider>
-            <MainApp />
-          </SafeAreaProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </DatabaseProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <DatabaseProvider database={database}>
+        <AuthProvider>
+          <ThemeProvider>
+            <SafeAreaProvider>
+              <MainApp />
+            </SafeAreaProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </DatabaseProvider>
+    </GestureHandlerRootView>
   );
 }
 
