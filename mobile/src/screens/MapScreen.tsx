@@ -128,7 +128,7 @@ export default function MapScreen() {
   const [isDistrictOpen, setIsDistrictOpen] = useState(false);
   const [isWaterOpen, setIsWaterOpen] = useState(false);
 
-  // Load Zones first
+  // Load zones in parallel with location so the UI does not block on network fetches.
   useEffect(() => {
     (async () => {
       try {
@@ -153,7 +153,7 @@ export default function MapScreen() {
     }
   }, [zones]); // run if zones load and no stateCode yet
 
-  // Load Location
+  // Load location immediately and prefer the last known fix for faster startup.
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription | null = null;
 
@@ -166,15 +166,23 @@ export default function MapScreen() {
           return;
         }
 
-        // Get initial location with balanced accuracy for speed
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setLocation(loc);
-        await autoFillLocation(loc); // Trigger geocoding + form autofill
-        setIsGettingLocation(false);
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (lastKnown) {
+          setLocation(lastKnown);
+          setIsGettingLocation(false);
+          autoFillLocation(lastKnown).catch(() => undefined);
+        }
 
-        // Start real-time watching for high accuracy
+        const freshLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setLocation(freshLocation);
+        setIsGettingLocation(false);
+        autoFillLocation(freshLocation, true).catch(() => undefined);
+
+        // Start real-time watching after the first render so the screen opens faster.
         locationSubscription = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.High, distanceInterval: 100, timeInterval: 10000 },
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 100, timeInterval: 15000 },
           (newLoc) => {
             setLocation(newLoc);
           }
@@ -185,16 +193,14 @@ export default function MapScreen() {
       }
     };
 
-    if (zones.length > 0) {
-      initLocation(); // Only perform location stuff once zones are loaded so we can auto-fill
-    }
+    initLocation();
 
     return () => {
       if (locationSubscription) {
         locationSubscription.remove();
       }
     };
-  }, [zones.length]); // run after zones array populates
+  }, []);
 
   // Keep track of the last geocoded coordinates to prevent spamming the geocoder
   const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
@@ -268,7 +274,10 @@ export default function MapScreen() {
         setIsGettingLocation(false);
         return;
       }
-      let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      const loc = lastKnown || await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       setLocation(loc);
       await autoFillLocation(loc, true);
     } catch (err) {

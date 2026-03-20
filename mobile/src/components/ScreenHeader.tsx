@@ -34,10 +34,10 @@ export default function ScreenHeader({
   const { theme } = useTheme();
 
   const isPrimary = variant === 'primary';
-  const bgColor = isPrimary ? theme.colors.primary : theme.colors.surface;
+  const bgColor = isPrimary ? theme.colors.surface : theme.colors.surface;
   const iconColor = isPrimary ? theme.colors.textInverse : theme.colors.textPrimary;
   const textColor = isPrimary ? theme.colors.textInverse : theme.colors.textPrimary;
-  const borderColor = isPrimary ? 'transparent' : theme.colors.border;
+  const borderColor = theme.colors.border;
 
   return (
     <View
@@ -46,7 +46,7 @@ export default function ScreenHeader({
         {
           backgroundColor: bgColor,
           borderBottomColor: borderColor,
-          borderBottomWidth: isPrimary ? 0 : 1,
+          borderBottomWidth: 1,
         },
       ]}
     >
@@ -79,8 +79,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 52,
+    paddingVertical: 14,
+    minHeight: 60,
   },
   backBtn: {
     flexDirection: 'row',
@@ -90,12 +90,12 @@ const styles = StyleSheet.create({
   },
   backLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   title: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     textAlign: 'center',
     marginHorizontal: 4,
   },

@@ -1,7 +1,3 @@
-/**
- * Water Quality Screen — fully integrated with backend persistence
- */
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
@@ -14,7 +10,6 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { waterQualityService } from '../services/apiService';
 import { useTheme } from '../ThemeContext';
-import ScreenHeader from '../components/ScreenHeader';
 import WaterQualityChart from '../components/WaterQualityChart';
 import { evaluatePondHealth, Advisory } from '../utils/pondAdvisory';
 
@@ -48,8 +43,6 @@ export default function WaterQualityScreen() {
   const navigation = useNavigation<any>();
 
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
-
-  // Form fields
   const [temperature, setTemperature] = useState('');
   const [dissolvedOxygen, setDissolvedOxygen] = useState('');
   const [ph, setPh] = useState('');
@@ -57,8 +50,6 @@ export default function WaterQualityScreen() {
   const [ammonia, setAmmonia] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  // History
   const [history, setHistory] = useState<Reading[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,7 +89,6 @@ export default function WaterQualityScreen() {
 
       const res = await waterQualityService.saveReading(payload);
       if (res.success) {
-        // F3: compute advisory from the just-saved reading
         const advisory = evaluatePondHealth({
           temperature: payload.temperature,
           dissolved_oxygen: payload.dissolvedOxygen,
@@ -106,8 +96,12 @@ export default function WaterQualityScreen() {
           ammonia: payload.ammonia,
         });
         setLastAdvisory(advisory);
-        setTemperature(''); setDissolvedOxygen(''); setPh('');
-        setSalinity(''); setAmmonia(''); setNotes('');
+        setTemperature('');
+        setDissolvedOxygen('');
+        setPh('');
+        setSalinity('');
+        setAmmonia('');
+        setNotes('');
         setActiveTab('history');
       } else {
         Alert.alert('Failed', 'Could not save reading. Please try again.');
@@ -120,116 +114,80 @@ export default function WaterQualityScreen() {
     }
   };
 
-  const onRefresh = () => { setRefreshing(true); loadHistory(); };
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
-      <ScreenHeader
-        title={t('waterQuality.title') || 'Water Quality'}
-        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-        variant="surface"
-      />
-      <View style={styles.tabWrapper}>
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'log' && styles.tabActive]}
-            onPress={() => setActiveTab('log')}
-          >
-            <Text style={[styles.tabText, activeTab === 'log' && styles.tabTextActive]}>
-              {t('waterQuality.addReading') || 'Add Reading'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'history' && styles.tabActive]}
-            onPress={() => setActiveTab('history')}
-          >
-            <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
-              {t('waterQuality.history') || 'History'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })}>
+          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('waterQuality.title') || 'Water Quality'}</Text>
+        <TouchableOpacity>
+          <Ionicons name="notifications" size={20} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
+      <View style={styles.tabRow}>
+        {['log', 'history'].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+            onPress={() => setActiveTab(tab as any)}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              {tab === 'log' ? 'Add Reading' : 'History'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {lastAdvisory && (
+        <View style={styles.alertBanner}>
+          <Ionicons name="warning" size={16} color={theme.colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.alertTitle}>{lastAdvisory.title}</Text>
+            <Text style={styles.alertText}>{lastAdvisory.message}</Text>
+          </View>
+        </View>
+      )}
+
       {activeTab === 'log' ? (
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={{ paddingBottom: 320 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.form}>
-            <InputRow theme={theme} styles={styles} label={t('waterQuality.temperature') || 'Temperature (°C)'} icon="thermometer-outline"
-              placeholder="28.5" value={temperature} onChangeText={setTemperature} />
-            <InputRow theme={theme} styles={styles} label={t('waterQuality.dissolvedOxygen') || 'Dissolved Oxygen (mg/L)'} icon="water-outline"
-              placeholder="6.0" value={dissolvedOxygen} onChangeText={setDissolvedOxygen} />
-            <InputRow theme={theme} styles={styles} label={t('waterQuality.ph') || 'pH'} icon="flask-outline"
-              placeholder="7.5" value={ph} onChangeText={setPh} />
-            <InputRow theme={theme} styles={styles} label={t('waterQuality.salinity') || 'Salinity (ppt)'} icon="sunny-outline"
-              placeholder="0.5" value={salinity} onChangeText={setSalinity} />
-            <InputRow theme={theme} styles={styles} label="Ammonia (mg/L)" icon="alert-circle-outline"
-              placeholder="0.05" value={ammonia} onChangeText={setAmmonia} />
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Notes (optional)</Text>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.sectionTitle}>New Measurement</Text>
+          <View style={styles.formGrid}>
+            <Field label="Temperature (°C)" value={temperature} onChangeText={setTemperature} theme={theme} styles={styles} />
+            <Field label="Dissolved Oxygen (mg/L)" value={dissolvedOxygen} onChangeText={setDissolvedOxygen} theme={theme} styles={styles} />
+            <Field label="pH Level" value={ph} onChangeText={setPh} theme={theme} styles={styles} />
+            <Field label="Salinity (ppt)" value={salinity} onChangeText={setSalinity} theme={theme} styles={styles} />
+            <Field label="Ammonia (NH3-N mg/L)" value={ammonia} onChangeText={setAmmonia} theme={theme} styles={styles} full />
+            <View style={styles.fullField}>
+              <Text style={styles.fieldLabel}>Notes</Text>
               <TextInput
-                style={[styles.input, { height: 72, textAlignVertical: 'top' }]}
-                placeholder="Any observations…"
-                placeholderTextColor={theme.colors.textMuted}
+                style={styles.notesInput}
                 value={notes}
                 onChangeText={setNotes}
                 multiline
+                placeholder="e.g. Water looks slightly cloudy today..."
+                placeholderTextColor={theme.colors.textMuted}
               />
             </View>
-            <TouchableOpacity style={styles.saveButton} onPress={saveReading} disabled={isSaving} activeOpacity={0.8}>
-              {isSaving
-                ? <ActivityIndicator color={theme.colors.surface} />
-                : <><Ionicons name="save-outline" size={20} color={theme.colors.surface} /><Text style={styles.saveButtonText}>{t('common.save') || 'Save Reading'}</Text></>
-              }
-            </TouchableOpacity>
           </View>
+          <TouchableOpacity style={styles.saveButton} onPress={saveReading} disabled={isSaving}>
+            {isSaving ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.saveButtonText}>Save Reading</Text>}
+          </TouchableOpacity>
         </ScrollView>
       ) : (
         <ScrollView
-          style={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadHistory(); }} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
         >
           {isLoadingHistory && !refreshing ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
+            <View style={styles.center}>
               <ActivityIndicator color={theme.colors.primary} />
-              <Text style={{ marginTop: 10, color: theme.colors.textSecondary }}>Loading history…</Text>
-            </View>
-          ) : history.length === 0 ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-              <Ionicons name="water-outline" size={48} color={theme.colors.border} />
-              <Text style={{ marginTop: 12, color: theme.colors.textMuted }}>No readings yet. Add your first reading!</Text>
             </View>
           ) : (
-            <View style={styles.history}>
-              {/* Advisory Banner (F3) */}
-              {lastAdvisory && (
-                <View style={[
-                  styles.advisoryBanner,
-                  {
-                    backgroundColor: lastAdvisory.level === 'critical' ? theme.colors.error + '22'
-                      : lastAdvisory.level === 'warning' ? theme.colors.accent + '22'
-                        : theme.colors.success + '22'
-                  }
-                ]}>
-                  <Text style={[styles.advisoryTitle, {
-                    color: lastAdvisory.level === 'critical' ? theme.colors.error
-                      : lastAdvisory.level === 'warning' ? theme.colors.accent
-                        : theme.colors.success
-                  }]}>{lastAdvisory.title}</Text>
-                  <Text style={styles.advisoryMessage}>{lastAdvisory.message}</Text>
-                  <Text style={styles.advisoryAction}>💡 {lastAdvisory.action}</Text>
-                  <TouchableOpacity onPress={() => setLastAdvisory(null)} style={styles.advisoryDismiss}>
-                    <Text style={{ fontSize: 12, color: theme.colors.textMuted }}>Dismiss</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* F1: Water Quality Chart */}
+            <>
+              <Text style={styles.sectionTitle}>Trend Analysis</Text>
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>📊 Trend Analysis</Text>
                 <WaterQualityChart
                   readings={history.map(r => ({
                     timestamp: new Date(r.recorded_at).getTime(),
@@ -240,38 +198,25 @@ export default function WaterQualityScreen() {
                   }))}
                 />
               </View>
+
+              <Text style={styles.sectionTitle}>Recent Readings</Text>
               {history.map((item) => {
                 const status = statusFor(item);
                 return (
-                  <View key={item.id} style={styles.historyItem}>
-                    <View style={styles.historyHeader}>
+                  <View key={item.id} style={styles.historyCard}>
+                    <View style={styles.historyTop}>
                       <Text style={styles.historyDate}>{formatDate(item.recorded_at)}</Text>
-                      <View style={[styles.statusBadge,
-                      status === 'normal' ? styles.statusNormal
-                        : status === 'warning' ? styles.statusWarning
-                          : styles.statusAlert
-                      ]}>
-                        <Text style={[styles.statusText,
-                        status === 'normal' ? styles.statusTextNormal
-                          : status === 'warning' ? styles.statusTextWarning
-                            : styles.statusTextAlert
-                        ]}>
-                          {status === 'normal' ? '✓ Normal' : status === 'warning' ? '⚠ Warning' : '🚨 Alert'}
-                        </Text>
-                      </View>
+                      <Text style={[styles.statusBadge, status === 'alert' ? styles.statusAlert : status === 'warning' ? styles.statusWarning : styles.statusNormal]}>
+                        {status.toUpperCase()}
+                      </Text>
                     </View>
-                    <View style={styles.historyParams}>
-                      {item.temperature != null && <ParamChip styles={styles} label="Temp" value={`${item.temperature}°C`} />}
-                      {item.dissolved_oxygen != null && <ParamChip styles={styles} label="DO" value={`${item.dissolved_oxygen} mg/L`} />}
-                      {item.ph != null && <ParamChip styles={styles} label="pH" value={String(item.ph)} />}
-                      {item.salinity != null && <ParamChip styles={styles} label="Sal" value={`${item.salinity} ppt`} />}
-                      {item.ammonia != null && <ParamChip styles={styles} label="NH₃" value={`${item.ammonia} mg/L`} />}
-                    </View>
-                    {item.notes ? <Text style={styles.notesText}>📝 {item.notes}</Text> : null}
+                    <Text style={styles.historyMetrics}>
+                      Temp {item.temperature ?? '-'}°C   pH {item.ph ?? '-'}   DO {item.dissolved_oxygen ?? '-'}
+                    </Text>
                   </View>
                 );
               })}
-            </View>
+            </>
           )}
         </ScrollView>
       )}
@@ -279,85 +224,187 @@ export default function WaterQualityScreen() {
   );
 }
 
-function InputRow({ label, icon, placeholder, value, onChangeText, theme, styles }: {
-  label: string; icon: any; placeholder: string; value: string; onChangeText: (t: string) => void; theme: any; styles: any;
-}) {
+function Field({ label, value, onChangeText, theme, styles, full }: any) {
   return (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputContainer}>
-        <Ionicons name={icon} size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
-        <TextInput
-          style={styles.input}
-          placeholder={placeholder}
-          placeholderTextColor={theme.colors.textMuted}
-          keyboardType="decimal-pad"
-          value={value}
-          onChangeText={onChangeText}
-        />
-      </View>
-    </View>
-  );
-}
-
-function ParamChip({ label, value, styles }: { label: string; value: string; styles: any; }) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipLabel}>{label}</Text>
-      <Text style={styles.chipValue}>{value}</Text>
+    <View style={[styles.fieldWrap, full && styles.fullField]}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        style={styles.fieldInput}
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType="decimal-pad"
+        placeholderTextColor={theme.colors.textMuted}
+      />
     </View>
   );
 }
 
 const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  tabWrapper: { backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  tabContainer: { flexDirection: 'row', marginHorizontal: 16, marginVertical: 10, backgroundColor: theme.isDark ? '#333' : '#f0f0f0', borderRadius: 8, padding: 4 },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
-  tabActive: { backgroundColor: theme.colors.surface },
-  tabText: { color: theme.colors.textSecondary, fontWeight: '500' },
-  tabTextActive: { color: theme.colors.primary, fontWeight: '700' },
-  content: { flex: 1, padding: 16 },
-  form: { gap: theme.spacing.xs },
-  inputGroup: { marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 6 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border },
-  inputIcon: { padding: 12 },
-  input: { flex: 1, paddingVertical: 12, paddingRight: 12, fontSize: 16, color: theme.colors.textPrimary },
-  saveButton: { backgroundColor: theme.colors.primary, borderRadius: 8, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
-  saveButtonText: { color: theme.colors.textInverse, fontSize: 16, fontWeight: '600' },
-  history: { gap: 12 },
-  historyItem: { backgroundColor: theme.colors.surface, borderRadius: 12, padding: 16, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2 },
-  historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  historyDate: { fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
-  statusNormal: { backgroundColor: theme.isDark ? '#1a3a1f' : '#E8F5E9' },
-  statusWarning: { backgroundColor: theme.isDark ? '#4a2f11' : '#FFF3E0' },
-  statusAlert: { backgroundColor: theme.isDark ? '#4a1111' : '#FFEBEE' },
-  statusText: { fontSize: 12, fontWeight: '500' },
-  statusTextNormal: { color: theme.isDark ? '#4CAF50' : '#2E7D32' },
-  statusTextWarning: { color: theme.isDark ? '#FFA726' : '#E65100' },
-  statusTextAlert: { color: theme.isDark ? '#EF5350' : '#C62828' },
-  historyParams: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: theme.isDark ? '#2a2a2a' : '#f5f5f5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  chipLabel: { fontSize: 10, color: theme.colors.textMuted, textTransform: 'uppercase' },
-  chipValue: { fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary },
-  notesText: { marginTop: 8, fontSize: 13, color: theme.colors.textSecondary, fontStyle: 'italic' },
-  // F1 + F3 styles
-  advisoryBanner: {
-    borderRadius: theme.borderRadius.md, padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  advisoryTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  advisoryMessage: { fontSize: 13, color: theme.colors.textSecondary, marginBottom: 6 },
-  advisoryAction: { fontSize: 13, color: theme.colors.textPrimary, lineHeight: 18 },
-  advisoryDismiss: { alignSelf: 'flex-end', marginTop: 8 },
+  headerTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabButtonActive: {
+    borderBottomColor: theme.colors.primary,
+  },
+  tabText: {
+    color: theme.colors.textMuted,
+    fontWeight: '700',
+  },
+  tabTextActive: {
+    color: theme.colors.textPrimary,
+  },
+  alertBanner: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+  },
+  alertTitle: {
+    color: theme.colors.textPrimary,
+    fontWeight: '800',
+  },
+  alertText: {
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 120,
+  },
+  sectionTitle: {
+    ...theme.typography.h3,
+    marginBottom: 12,
+  },
+  formGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  fieldWrap: {
+    width: '48%',
+    marginBottom: 2,
+  },
+  fullField: {
+    width: '100%',
+  },
+  fieldLabel: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  fieldInput: {
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    color: theme.colors.textPrimary,
+  },
+  notesInput: {
+    minHeight: 96,
+    borderRadius: 14,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: theme.colors.textPrimary,
+    textAlignVertical: 'top',
+  },
+  saveButton: {
+    marginTop: 18,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: theme.colors.textInverse,
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 36,
+  },
   chartCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    marginBottom: 18,
   },
-  chartTitle: { ...theme.typography.h3, marginBottom: theme.spacing.sm },
+  historyCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 14,
+    marginBottom: 12,
+  },
+  historyTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  historyDate: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  statusNormal: {
+    color: theme.colors.success,
+  },
+  statusWarning: {
+    color: theme.colors.accent,
+  },
+  statusAlert: {
+    color: theme.colors.error,
+  },
+  historyMetrics: {
+    marginTop: 10,
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+  },
 });

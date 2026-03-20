@@ -1,18 +1,5 @@
-/**
- * Home Screen - Main Dashboard
- * Icon-driven interface for rural farmers
- * F2: Live Weather + Pond Impact Card
- * F5: Harvest Countdown Widget
- */
-
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,21 +10,22 @@ import HarvestCountdownCard from '../components/HarvestCountdownCard';
 import { database } from '../database';
 
 export default function HomeScreen() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const styles = getStyles(theme);
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [activePonds, setActivePonds] = useState<any[]>([]);
+  const [pondCount, setPondCount] = useState(0);
 
-  // F5: Load active ponds from WatermelonDB for harvest countdown
   useEffect(() => {
-    (async () => {
+    const loadPonds = async () => {
       try {
         const pondsCollection = database.get<any>('ponds');
         const allPonds = await pondsCollection.query().fetch();
+        setPondCount(allPonds.length);
         setActivePonds(
           allPonds
-            .filter((p: any) => p.status === 'active' && p.stockingDate)
+            .filter((p: any) => (p.status || '').toLowerCase() === 'active' && p.stockingDate)
             .map((p: any) => ({
               id: p.id,
               name: p.name,
@@ -47,106 +35,100 @@ export default function HomeScreen() {
               area_hectares: p.areaHectares ?? 1,
             }))
         );
-      } catch (e) {
-        // WatermelonDB may not be initialized yet in dev — fail silently
+      } catch {
+        // Ignore local-db bootstrap issues during initial app load.
       }
-    })();
+    };
+
+    loadPonds();
   }, []);
 
+  const handleNotificationsPress = () => {
+    if (activePonds.length > 0) {
+      Alert.alert(
+        'Farm Alerts',
+        `You currently have ${activePonds.length} active pond${activePonds.length === 1 ? '' : 's'} to monitor.`,
+        [
+          { text: 'Water Quality', onPress: () => navigation.navigate('WaterQuality') },
+          { text: 'My Ponds', onPress: () => navigation.navigate('PondsList') },
+          { text: 'Close', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Notifications',
+      'No active pond alerts yet. Add a pond or log water quality readings to start getting actionable updates.',
+      [
+        { text: 'Add Pond', onPress: () => navigation.navigate('AddEditPond') },
+        { text: 'Close', style: 'cancel' },
+      ]
+    );
+  };
+
   const quickActions = [
-    {
-      icon: 'fish-outline' as const,
-      title: t('home.checkSpecies'),
-      onPress: () => navigation.navigate('Species' as never),
-      color: theme.colors.primary,
-      bgColor: theme.colors.primaryLight,
-    },
-    {
-      icon: 'calculator-outline' as const,
-      title: t('home.calculateROI'),
-      onPress: () => navigation.navigate('Economics' as never),
-      color: theme.colors.secondary,
-      bgColor: theme.colors.secondaryLight,
-    },
-    {
-      icon: 'water-outline' as const,
-      title: t('home.logWaterQuality'),
-      onPress: () => navigation.navigate('WaterQuality' as never),
-      color: isDark ? '#38BDF8' : '#0284C7',
-      bgColor: isDark ? '#0C4A6E' : '#E0F2FE',
-    },
-    {
-      icon: 'trending-up-outline' as const,
-      title: t('home.viewMarkets'),
-      onPress: () => navigation.navigate('MarketPrices' as never),
-      color: isDark ? '#FBBF24' : theme.colors.accent,
-      bgColor: isDark ? '#78350F' : '#FEF3C7',
-    },
-    {
-      icon: 'construct-outline' as const,
-      title: t('home.equipmentCatalog') || 'Equipment Catalog',
-      onPress: () => navigation.navigate('EquipmentCatalog' as never),
-      color: theme.colors.primary,
-      bgColor: theme.colors.primaryLight,
-    },
-    {
-      icon: 'nutrition-outline' as const,
-      title: t('home.feedNutrition') || 'Feed & Nutrition',
-      onPress: () => navigation.navigate('FeedCatalog' as never),
-      color: theme.colors.success,
-      bgColor: isDark ? '#14532D' : '#DCFCE7',
-    },
+    { icon: 'fish-outline' as const, label: t('home.checkSpecies') || 'Species', screen: 'Species' },
+    { icon: 'calculator-outline' as const, label: t('home.calculateROI') || 'ROI', screen: 'Economics' },
+    { icon: 'water-outline' as const, label: t('home.logWaterQuality') || 'Water Quality', screen: 'WaterQuality' },
+    { icon: 'trending-up-outline' as const, label: t('home.viewMarkets') || 'Market Prices', screen: 'MarketPrices' },
+    { icon: 'construct-outline' as const, label: t('home.equipmentCatalog') || 'Equipment', screen: 'EquipmentCatalog' },
+    { icon: 'restaurant-outline' as const, label: t('home.feedNutrition') || 'Feed', screen: 'FeedCatalog' },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* App Header */}
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="fish" size={48} color={theme.colors.primary} />
+        <View style={styles.topRow}>
+          <View style={styles.brandWrap}>
+            <View style={styles.brandIcon}>
+              <Ionicons name="fish" size={20} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.brandText}>Fishing God</Text>
           </View>
-          <Text style={styles.title}>{t('home.welcome') || 'Fishing God'}</Text>
-          <Text style={styles.subtitle}>{t('home.subtitle') || 'Manage your ponds'}</Text>
+          <TouchableOpacity style={styles.iconButton} onPress={handleNotificationsPress}>
+            <Ionicons name="notifications" size={18} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
         </View>
 
-        {/* F2: Weather Card */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🌤️ Today's Weather</Text>
+        <View style={styles.hero}>
+          <View style={styles.avatar}>
+            <Ionicons name="person" size={28} color={theme.colors.textInverse} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroTitle}>Welcome back, Chief!</Text>
+            <Text style={styles.heroSub}>
+              {pondCount > 0
+                ? `${pondCount} pond${pondCount === 1 ? '' : 's'} in your farm${activePonds.length > 0 ? ` • ${activePonds.length} active` : ''}`
+                : 'Add your first pond to start tracking your farm'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.weatherShell}>
           <WeatherCard locationName="Your District" />
         </View>
 
-        {/* F5: Harvest Countdown */}
-        {activePonds.length > 0 && (
-          <HarvestCountdownCard
-            ponds={activePonds}
-            onPressPond={(pond) => navigation.navigate('PondsList' as never)}
-          />
-        )}
-
-        {/* Quick Actions Grid */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('home.quickActions') || 'Quick Actions'}</Text>
+          <Text style={styles.sectionTitle}>Quick Management</Text>
           <View style={styles.actionGrid}>
-            {quickActions.map((action, index) => (
+            {quickActions.map((action) => (
               <TouchableOpacity
-                key={index}
+                key={action.label}
                 style={styles.actionCard}
-                onPress={action.onPress}
-                activeOpacity={0.7}
+                onPress={() => navigation.navigate(action.screen)}
+                activeOpacity={0.85}
               >
-                <View style={[styles.iconWrapper, { backgroundColor: action.bgColor }]}>
-                  <Ionicons name={action.icon} size={28} color={action.color} />
-                </View>
-                <Text style={styles.actionText}>
-                  {action.title}
-                </Text>
+                <Ionicons name={action.icon} size={20} color={theme.colors.primary} />
+                <Text style={styles.actionText}>{action.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <View style={{ height: theme.spacing.xxl }} />
+        {activePonds.length > 0 && (
+          <HarvestCountdownCard ponds={activePonds} onPressPond={() => navigation.navigate('PondsList')} />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -158,66 +140,93 @@ const getStyles = (theme: any) => StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
+    padding: 16,
+    paddingBottom: 120,
   },
-  header: {
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.lg,
-    ...theme.shadows.sm,
+    marginBottom: 20,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primaryLight,
+  brandWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  brandIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.md,
   },
-  title: {
-    ...theme.typography.h1,
-    marginBottom: theme.spacing.xs,
+  brandText: {
+    color: theme.colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '800',
   },
-  subtitle: {
-    ...theme.typography.bodyLarge,
-    textAlign: 'center',
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    ...theme.typography.h2,
+  },
+  heroSub: {
+    ...theme.typography.body,
+    color: theme.colors.primary,
+    marginTop: 4,
+  },
+  weatherShell: {
+    marginBottom: 20,
   },
   section: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 20,
   },
   sectionTitle: {
     ...theme.typography.h3,
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xs,
+    marginBottom: 12,
   },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
+    gap: 12,
   },
   actionCard: {
-    width: '47%',
-    backgroundColor: theme.colors.surface,
+    width: '31%',
+    minHeight: 84,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    ...theme.shadows.sm,
-  },
-  iconWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.sm,
+    gap: 8,
   },
   actionText: {
-    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '700',
     textAlign: 'center',
-    fontWeight: '500',
   },
 });

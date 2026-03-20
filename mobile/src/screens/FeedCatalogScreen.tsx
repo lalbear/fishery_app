@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, RefreshControl, ScrollView, Linking
+    ActivityIndicator, RefreshControl, Linking
 } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,8 +12,7 @@ import { economicsService } from '../services/apiService';
 export default function FeedCatalogScreen() {
     const { theme } = useTheme();
     const styles = getStyles(theme);
-    const { t } = useTranslation();
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const [feeds, setFeeds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -22,9 +20,7 @@ export default function FeedCatalogScreen() {
     const loadData = async () => {
         try {
             const res = await economicsService.getFeed();
-            if (res.success) {
-                setFeeds(res.data);
-            }
+            if (res.success) setFeeds(res.data);
         } catch (err) {
             console.error('Failed to load feed catalog', err);
         } finally {
@@ -33,88 +29,61 @@ export default function FeedCatalogScreen() {
         }
     };
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const onRefresh = () => {
-        setRefreshing(true);
-        loadData();
-    };
-
-    const renderItem = ({ item }: { item: any }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.feed_type}</Text>
-                </View>
-                <Text style={styles.brandText}>{item.brand}</Text>
-            </View>
-
-            <Text style={styles.nameText}>{item.name}</Text>
-            <Text style={styles.priceText}>₹{parseFloat(item.cost_per_kg_inr).toFixed(2)} / kg</Text>
-
-            <View style={styles.divider} />
-
-            <View style={styles.specsGrid}>
-                <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Protein</Text>
-                    <Text style={styles.specValue}>{item.protein_percent}%</Text>
-                </View>
-                <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Fat</Text>
-                    <Text style={styles.specValue}>{item.fat_percent}%</Text>
-                </View>
-                <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Size</Text>
-                    <Text style={styles.specValue}>{item.packaging_size_kg}kg</Text>
-                </View>
-            </View>
-
-            <Text style={styles.suitableText}>Suitable for: {item.suitable_for}</Text>
-
-            <TouchableOpacity
-                style={[styles.shopButton, !item.shop_url && { backgroundColor: '#e28743' }]}
-                onPress={() => Linking.openURL(item.shop_url || `https://dir.indiamart.com/search.mp?ss=${encodeURIComponent(`${item.brand} ${item.name}`)}`)}
-            >
-                <Ionicons name="cart-outline" size={18} color={theme.colors.textInverse} />
-                <Text style={styles.shopButtonText}>{item.shop_url ? 'Shop Now' : 'Search Suppliers'}</Text>
-            </TouchableOpacity>
-        </View>
-    );
+    useEffect(() => { loadData(); }, []);
 
     if (loading) {
-        return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-            </View>
-        );
+        return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })} style={[styles.backBtn, { flexDirection: 'row', alignItems: 'center' }]}>
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
-                    <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.textPrimary, fontWeight: '600' }}>Home</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })}>
+                    <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Feed & Nutrition</Text>
+                <Text style={styles.headerTitle}>Feed & Nutrition</Text>
+                <View style={{ width: 22 }} />
             </View>
 
             <FlatList
                 data={feeds}
-                renderItem={renderItem}
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.list}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <Ionicons name="nutrition-outline" size={48} color={theme.colors.textMuted} />
-                        <Text style={styles.emptyText}>No feed products found.</Text>
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
+                renderItem={({ item }) => (
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <View style={styles.badge}><Text style={styles.badgeText}>{item.feed_type}</Text></View>
+                            <Text style={styles.brandText}>{item.brand}</Text>
+                        </View>
+                        <Text style={styles.nameText}>{item.name}</Text>
+                        <Text style={styles.priceText}>Rs {parseFloat(item.cost_per_kg_inr).toFixed(2)} / kg</Text>
+                        <View style={styles.metrics}>
+                            <Metric label="Protein" value={`${item.protein_percent}%`} styles={styles} />
+                            <Metric label="Fat" value={`${item.fat_percent}%`} styles={styles} />
+                            <Metric label="Size" value={`${item.packaging_size_kg}kg`} styles={styles} />
+                        </View>
+                        <Text style={styles.suitableText}>Suitable for: {item.suitable_for}</Text>
+                        <TouchableOpacity
+                            style={styles.cta}
+                            onPress={() => Linking.openURL(item.shop_url || `https://dir.indiamart.com/search.mp?ss=${encodeURIComponent(`${item.brand} ${item.name}`)}`)}
+                        >
+                            <Ionicons name="cart-outline" size={18} color={theme.colors.textInverse} />
+                            <Text style={styles.ctaText}>{item.shop_url ? 'Shop Now' : 'Search Suppliers'}</Text>
+                        </TouchableOpacity>
                     </View>
-                }
+                )}
             />
         </SafeAreaView>
+    );
+}
+
+function Metric({ label, value, styles }: any) {
+    return (
+        <View style={styles.metric}>
+            <Text style={styles.metricLabel}>{label}</Text>
+            <Text style={styles.metricValue}>{value}</Text>
+        </View>
     );
 }
 
@@ -123,53 +92,46 @@ const getStyles = (theme: any) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: theme.colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
     },
-    backBtn: { marginRight: 16 },
-    title: { fontSize: 20, fontWeight: 'bold', color: theme.colors.textPrimary },
-    list: { padding: 16 },
+    headerTitle: { color: theme.colors.textPrimary, fontSize: 22, fontWeight: '800' },
+    list: { padding: 16, paddingBottom: 110 },
     card: {
         backgroundColor: theme.colors.surface,
-        borderRadius: 16,
+        borderRadius: theme.borderRadius.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
         padding: 16,
-        marginBottom: 16,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4
+        marginBottom: 14,
     },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    badge: { backgroundColor: theme.colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    badgeText: { fontSize: 10, fontWeight: 'bold', color: theme.colors.primary, textTransform: 'uppercase' },
-    brandText: { fontSize: 12, color: theme.colors.textSecondary, fontWeight: '500' },
-    nameText: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 4 },
-    priceText: { fontSize: 20, fontWeight: '800', color: theme.colors.secondary, marginBottom: 12 },
-    divider: { height: 1, backgroundColor: theme.colors.border, marginBottom: 12 },
-    specsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-    specItem: { alignItems: 'center', flex: 1 },
-    specLabel: { fontSize: 11, color: theme.colors.textSecondary, marginBottom: 4 },
-    specValue: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary },
-    suitableText: { fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic', marginTop: 4 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    empty: { padding: 40, alignItems: 'center' },
-    emptyText: { marginTop: 12, color: theme.colors.textMuted, textAlign: 'center' },
-    shopButton: {
-        flexDirection: 'row',
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    badge: {
+        backgroundColor: theme.colors.surfaceAlt,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+    },
+    badgeText: { color: theme.colors.primary, fontSize: 11, fontWeight: '800' },
+    brandText: { color: theme.colors.textMuted, fontWeight: '600' },
+    nameText: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '800', marginTop: 12 },
+    priceText: { color: theme.colors.secondary, fontSize: 24, fontWeight: '900', marginTop: 6 },
+    metrics: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+    metric: { flex: 1, alignItems: 'center' },
+    metricLabel: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '700' },
+    metricValue: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800', marginTop: 6 },
+    suitableText: { color: theme.colors.textSecondary, marginTop: 16, fontStyle: 'italic' },
+    cta: {
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: theme.colors.primary,
+        marginTop: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 10,
-        borderRadius: 8,
-        marginTop: 16,
-        gap: 6
+        flexDirection: 'row',
+        gap: 8,
     },
-    shopButtonText: {
-        color: theme.colors.textInverse,
-        fontWeight: 'bold',
-        fontSize: 14
-    }
+    ctaText: { color: theme.colors.textInverse, fontWeight: '800' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
 });

@@ -1,10 +1,5 @@
-/**
- * Profile Screen
- * Shows user's saved info (name, phone, category) and navigates to sub-screens.
- */
-
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Switch } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +8,7 @@ import { loadProfile, UserProfile } from './PersonalInfoScreen';
 import { syncService } from '../services/syncService';
 import { useAuth } from '../AuthContext';
 import { useTheme } from '../ThemeContext';
+import { database } from '../database';
 
 export default function ProfileScreen({ navigation }: any) {
   const { t, i18n } = useTranslation();
@@ -23,10 +19,29 @@ export default function ProfileScreen({ navigation }: any) {
   const [profile, setProfile] = useState<UserProfile>({ userId: '', name: '', phone: '', farmerCategory: 'GENERAL', stateCode: '' });
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [offlineMode, setOfflineMode] = useState(true);
+  const [pondCount, setPondCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile().then(setProfile);
+      let isMounted = true;
+
+      const loadData = async () => {
+        const loadedProfile = await loadProfile();
+        const ponds = await database.get<any>('ponds').query().fetch();
+        if (!isMounted) return;
+        setProfile(loadedProfile);
+        setPondCount(ponds.length);
+      };
+
+      loadData().catch(() => {
+        if (!isMounted) return;
+        setPondCount(0);
+      });
+
+      return () => {
+        isMounted = false;
+      };
     }, [])
   );
 
@@ -43,186 +58,269 @@ export default function ProfileScreen({ navigation }: any) {
       if (res.success) {
         const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         setLastSynced(now);
-        Alert.alert('✓ Sync Complete', `Your data (market prices, species data) is now up to date.`);
+        Alert.alert('Sync Complete', 'Your data is now up to date.');
       } else {
         Alert.alert('Sync Failed', res.error || 'Please check your internet connection.');
       }
-    } catch (err) {
+    } catch {
       Alert.alert('Sync Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const categoryLabels: Record<string, string> = {
-    GENERAL: 'General', WOMEN: 'Women', SC: 'SC', ST: 'ST',
-  };
-
   const menuItems = [
-    {
-      icon: 'person-outline',
-      title: t('profile.personalInfo'),
-      subtitle: 'Name, phone, location',
-      onPress: () => navigation.navigate('PersonalInfo'),
-    },
-    {
-      icon: 'fish-outline',
-      title: t('profile.myPonds'),
-      subtitle: 'Manage your ponds',
-      onPress: () => navigation.navigate('PondsList'),
-    },
-    {
-      icon: 'language-outline',
-      title: t('profile.language'),
-      subtitle: 'App language',
-      value: i18n.language === 'hi' ? 'HINDI' : 'ENGLISH',
-      onPress: () => {
-        Alert.alert(
-          'Select Language',
-          'Choose your preferred language / अपनी पसंदीदा भाषा चुनें',
-          [
-            { text: 'English', onPress: () => i18n.changeLanguage('en') },
-            { text: 'हिंदी (Hindi)', onPress: () => i18n.changeLanguage('hi') },
-            { text: 'Cancel', style: 'cancel' }
-          ]
-        );
-      },
-    },
-    {
-      icon: 'cloud-offline-outline',
-      title: t('profile.offlineMode'),
-      subtitle: 'View cached data when offline',
-      onPress: () => Alert.alert('Coming Soon', 'Offline mode settings will be available in the next update.'),
-    },
-    {
-      icon: isDark ? 'moon-outline' : 'sunny-outline',
-      title: 'Dark Mode',
-      subtitle: 'Toggle app appearance',
-      value: isDark ? 'ON' : 'OFF',
-      onPress: toggleTheme,
-    },
-    {
-      icon: 'sync-outline',
-      title: t('profile.syncData'),
-      subtitle: lastSynced ? `Last synced at ${lastSynced}` : 'Sync market prices & species data',
-      onPress: handleSync,
-      isSyncing,
-    },
-    {
-      icon: 'log-out-outline',
-      title: t('profile.logout'),
-      subtitle: 'Sign out of the app',
-      onPress: () => Alert.alert('Logout', 'Are you sure you want to log out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => logout() },
-      ]),
-      danger: true,
-    },
+    { icon: 'person-outline', title: t('profile.personalInfo') || 'Personal Info', action: () => navigation.navigate('PersonalInfo') },
+    { icon: 'water-outline', title: t('profile.myPonds') || 'My Ponds', action: () => navigation.navigate('PondsList') },
   ];
 
-  const displayName = profile.name || 'Farmer';
-  const displayPhone = profile.phone ? `+91 ${profile.phone}` : 'Tap to add phone';
-  const displayCategory = categoryLabels[profile.farmerCategory] || profile.farmerCategory;
+  const displayName = profile.name || 'Fishing God';
   const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.primary }} edges={['top']}>
-      {/* Nav Header */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 16, paddingVertical: 12,
-        backgroundColor: theme.colors.primary
-      }}>
-        <TouchableOpacity
-          onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          style={{ flexDirection: 'row', alignItems: 'center' }}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.textInverse} />
-          <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.textInverse, fontWeight: '600' }}>Home</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })}>
+          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={{
-          marginLeft: 12, fontSize: 18, fontWeight: '700',
-          color: theme.colors.textInverse
-        }}>{t('profile.title') || 'Your Profile'}</Text>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity>
+          <Ionicons name="settings" size={22} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.container}>
-        {/* Header / Hero */}
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.initials}>{initials || '?'}</Text>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.hero}>
+          <View style={styles.heroAvatar}>
+            <Text style={styles.heroInitials}>{initials || 'FG'}</Text>
+            <View style={styles.badge}>
+              <Ionicons name="checkmark-circle" size={18} color={theme.colors.textInverse} />
+            </View>
           </View>
           <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.phone}>{displayPhone}</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{displayCategory}</Text>
-          </View>
-          {profile.stateCode ? (
-            <Text style={styles.stateLabel}>{profile.stateCode}</Text>
-          ) : null}
+          <Text style={styles.memberText}>
+            {pondCount > 0 ? `${pondCount} pond${pondCount === 1 ? '' : 's'} added` : 'No ponds added yet'}
+          </Text>
         </View>
 
-        {/* Sync Status Banner (visible while syncing) */}
-        {isSyncing && (
-          <View style={styles.syncBanner}>
-            <ActivityIndicator size="small" color={theme.colors.surface} />
-            <Text style={styles.syncBannerText}>Syncing data with server...</Text>
+        <Text style={styles.sectionLabel}>ACCOUNT MANAGEMENT</Text>
+        {menuItems.map((item) => (
+          <MenuRow key={item.title} icon={item.icon} title={item.title} onPress={item.action} theme={theme} />
+        ))}
+
+        <Text style={styles.sectionLabel}>PREFERENCES</Text>
+        <MenuRow
+          icon="language-outline"
+          title={t('profile.language') || 'Language'}
+          value={i18n.language === 'hi' ? 'Hindi' : 'English'}
+          onPress={() => {
+            Alert.alert('Select Language', 'Choose your preferred language.', [
+              { text: 'English', onPress: () => i18n.changeLanguage('en') },
+              { text: 'Hindi', onPress: () => i18n.changeLanguage('hi') },
+              { text: 'Cancel', style: 'cancel' },
+            ]);
+          }}
+          theme={theme}
+        />
+
+        <SwitchRow
+          icon="cloud-offline-outline"
+          title={t('profile.offlineMode') || 'Offline Mode'}
+          value={offlineMode}
+          onValueChange={setOfflineMode}
+          theme={theme}
+        />
+
+        <SwitchRow
+          icon={isDark ? 'moon-outline' : 'sunny-outline'}
+          title="Dark Mode"
+          value={isDark}
+          onValueChange={toggleTheme}
+          theme={theme}
+        />
+
+        <MenuRow
+          icon="sync-outline"
+          title={t('profile.syncData') || 'Sync Data'}
+          value={lastSynced ? lastSynced : undefined}
+          trailing={isSyncing ? <ActivityIndicator color={theme.colors.primary} /> : <Ionicons name="sync-outline" size={18} color={theme.colors.primary} />}
+          onPress={handleSync}
+          theme={theme}
+        />
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => Alert.alert('Logout', 'Are you sure you want to log out?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Logout', style: 'destructive', onPress: () => logout() },
+          ])}
+        >
+          <View style={styles.logoutIcon}>
+            <Ionicons name="log-out-outline" size={18} color={theme.colors.error} />
           </View>
-        )}
-
-        {/* Menu */}
-        <View style={styles.menu}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              onPress={item.isSyncing ? undefined : item.onPress}
-              activeOpacity={item.isSyncing ? 1 : 0.7}
-            >
-              <View style={[styles.iconWrap, (item as any).danger && styles.iconWrapDanger]}>
-                {item.isSyncing ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : (
-                  <Ionicons name={item.icon as any} size={20} color={(item as any).danger ? theme.colors.error : theme.colors.primary} />
-                )}
-              </View>
-              <View style={styles.menuTextBlock}>
-                <Text style={[styles.menuText, (item as any).danger && styles.dangerText]}>{item.title}</Text>
-                {item.subtitle ? <Text style={styles.menuSub}>{item.subtitle}</Text> : null}
-              </View>
-              {(item as any).value && <Text style={styles.menuValue}>{(item as any).value}</Text>}
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.border} />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.version}>Fishing God v0.9-beta</Text>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function MenuRow({ icon, title, value, trailing, onPress, theme }: any) {
+  const styles = getStyles(theme);
+  return (
+    <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.8}>
+      <View style={styles.leadingIcon}>
+        <Ionicons name={icon} size={18} color={theme.colors.primary} />
+      </View>
+      <Text style={styles.menuTitle}>{title}</Text>
+      {value ? <Text style={styles.menuValue}>{value}</Text> : null}
+      {trailing || <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />}
+    </TouchableOpacity>
+  );
+}
+
+function SwitchRow({ icon, title, value, onValueChange, theme }: any) {
+  const styles = getStyles(theme);
+  return (
+    <View style={styles.menuRow}>
+      <View style={styles.leadingIcon}>
+        <Ionicons name={icon} size={18} color={theme.colors.primary} />
+      </View>
+      <Text style={styles.menuTitle}>{title}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+        thumbColor={theme.colors.textInverse}
+      />
+    </View>
+  );
+}
+
 const getStyles = (theme: any) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  header: { alignItems: 'center', paddingTop: 10, paddingBottom: 28, paddingHorizontal: 16, backgroundColor: theme.colors.primary },
-  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  initials: { fontSize: 30, fontWeight: '700', color: theme.colors.textInverse },
-  name: { fontSize: 22, fontWeight: '700', color: theme.colors.textInverse },
-  phone: { fontSize: 15, color: 'rgba(255,255,255,0.8)', marginTop: 3 },
-  badge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 16, marginTop: 8 },
-  badgeText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: '600' },
-  stateLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 4 },
-  syncBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.success, paddingHorizontal: 16, paddingVertical: 10, gap: 10 },
-  syncBannerText: { color: theme.colors.textInverse, fontSize: 15, fontWeight: '500' },
-  menu: { marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 12, marginHorizontal: 12, overflow: 'hidden', elevation: 1 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.background },
-  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  iconWrapDanger: { backgroundColor: theme.colors.error + '20' },
-  menuTextBlock: { flex: 1 },
-  menuText: { fontSize: 17, color: theme.colors.textPrimary, fontWeight: '500' },
-  menuSub: { fontSize: 14, color: theme.colors.textSecondary, marginTop: 1 },
-  menuValue: { fontSize: 15, color: theme.colors.textMuted, fontWeight: '500', marginRight: 8 },
-  dangerText: { color: theme.colors.error },
-  version: { textAlign: 'center', color: theme.colors.textMuted, fontSize: 14, marginTop: 24, marginBottom: 32 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  headerTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 120,
+  },
+  hero: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  heroAvatar: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 3,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  heroInitials: {
+    color: theme.colors.textPrimary,
+    fontSize: 34,
+    fontWeight: '800',
+  },
+  badge: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  name: {
+    marginTop: 14,
+    color: theme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  memberText: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  sectionLabel: {
+    marginTop: 20,
+    marginBottom: 10,
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  menuRow: {
+    minHeight: 68,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 12,
+  },
+  leadingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: theme.colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuTitle: {
+    flex: 1,
+    color: theme.colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  menuValue: {
+    color: theme.colors.textMuted,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    minHeight: 72,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.isDark ? '#3D2217' : '#F7E5DE',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 8,
+  },
+  logoutIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: theme.isDark ? '#5A2B1B' : '#F3D2C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutText: {
+    color: theme.colors.error,
+    fontSize: 18,
+    fontWeight: '800',
+  },
 });

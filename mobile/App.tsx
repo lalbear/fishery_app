@@ -6,6 +6,7 @@ import 'react-native-get-random-values';
 
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -97,18 +98,27 @@ function MainTabs() {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-          marginBottom: 4,
+          fontSize: 11,
+          fontWeight: '700',
+          marginBottom: 2,
+          textTransform: 'uppercase',
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          elevation: 8,
-          height: 60,
-          paddingVertical: 8,
+          elevation: 0,
+          height: 72,
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
+        tabBarItemStyle: {
+          borderRadius: 16,
+          marginHorizontal: 4,
         },
         headerShown: false,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderTopWidth: 1, borderTopColor: theme.colors.border }} />
+        ),
       })}
     >
       <Tab.Screen

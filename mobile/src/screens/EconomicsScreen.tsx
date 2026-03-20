@@ -17,15 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import { geoService, economicsService } from '../services/apiService';
-import ScreenHeader from '../components/ScreenHeader';
-
-const WATER_SOURCES = [
-  { label: 'Borewell', value: 'BOREWELL' },
-  { label: 'Open Well', value: 'OPEN_WELL' },
-  { label: 'Canal', value: 'CANAL' },
-  { label: 'River', value: 'RIVER' },
-  { label: 'Tank', value: 'TANK' },
-];
 
 export default function EconomicsScreen() {
   const { theme } = useTheme();
@@ -33,7 +24,6 @@ export default function EconomicsScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
 
-  // Form state
   const [landSize, setLandSize] = useState('');
   const [salinity, setSalinity] = useState('500');
   const [capital, setCapital] = useState('');
@@ -42,16 +32,9 @@ export default function EconomicsScreen() {
   const [stateCode, setStateCode] = useState('');
   const [districtCode, setDistrictCode] = useState('');
   const [preferredSpecies, setPreferredSpecies] = useState<string>('');
-
-  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
-  const [isStateOpen, setIsStateOpen] = useState(false);
-  const [isDistrictOpen, setIsDistrictOpen] = useState(false);
-  const [isSpeciesOpen, setIsSpeciesOpen] = useState(false);
-
-  const riskOptions: Array<'LOW' | 'MEDIUM' | 'HIGH'> = ['LOW', 'MEDIUM', 'HIGH'];
-  const categoryOptions: Array<'GENERAL' | 'WOMEN' | 'SC' | 'ST'> = ['GENERAL', 'WOMEN', 'SC', 'ST'];
+  const [activeModal, setActiveModal] = useState<'state' | 'district' | 'species' | null>(null);
 
   const SPECIES_OPTIONS = [
     { label: 'Auto Recommend', value: '' },
@@ -59,9 +42,7 @@ export default function EconomicsScreen() {
     { label: 'Black Tiger Shrimp', value: 'Penaeus monodon' },
     { label: 'Pangasius', value: 'Pangasianodon hypophthalmus' },
     { label: 'Tilapia', value: 'Oreochromis niloticus' },
-    { label: 'Labeo rohita (Rohu)', value: 'Labeo rohita' },
-    { label: 'Catla catla (Catla)', value: 'Catla catla' },
-    { label: 'Cirrhinus mrigala (Mrigal)', value: 'Cirrhinus mrigala' },
+    { label: 'Rohu', value: 'Labeo rohita' },
   ];
 
   useEffect(() => {
@@ -70,9 +51,6 @@ export default function EconomicsScreen() {
         const response = await geoService.getZones();
         if (response.success && response.data.length > 0) {
           setZones(response.data);
-          // B9 FIX: Only set stateCode and districtCode on initial load (when both are still empty).
-          // Previously, a second useEffect on stateCode would immediately clear the district
-          // because it ran on the same render cycle that set the stateCode.
           const firstZone = response.data[0];
           setStateCode(firstZone.state_code);
           if (firstZone.district_codes?.length > 0) {
@@ -85,14 +63,6 @@ export default function EconomicsScreen() {
     })();
   }, []);
 
-  // Clear district when user actively changes state (but not on initial load,
-  // because the initial load already sets both stateCode and districtCode together).
-  const handleStateSelect = (val: string) => {
-    setStateCode(val);
-    setDistrictCode(''); // Clear district only when user manually picks a new state
-    setIsStateOpen(false);
-  };
-
   const runSimulation = async () => {
     if (!landSize || !capital || !stateCode || !districtCode) {
       Alert.alert('Missing Information', 'Please fill in all required fields.');
@@ -101,9 +71,7 @@ export default function EconomicsScreen() {
 
     setIsLoading(true);
     try {
-      // 1.0 Acre = 0.4047 Hectares (approx)
       const landHectares = parseFloat(landSize) * 0.4047;
-
       const payload: any = {
         landSizeHectares: landHectares,
         waterSourceSalinityUsCm: parseFloat(salinity),
@@ -114,12 +82,9 @@ export default function EconomicsScreen() {
         districtCode,
       };
 
-      if (preferredSpecies) {
-        payload.preferredSpecies = [preferredSpecies];
-      }
+      if (preferredSpecies) payload.preferredSpecies = [preferredSpecies];
 
       const result = await economicsService.simulate(payload);
-
       if (result.success) {
         navigation.navigate('EconomicsResult', { simulationData: result.data });
       } else {
@@ -135,198 +100,183 @@ export default function EconomicsScreen() {
 
   const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
   const relevantDistricts = zones.find(z => z.state_code === stateCode)?.district_codes || [];
-  const selectedStateName = statesList.find(s => s.value === stateCode)?.label || 'Select State';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
-      <ScreenHeader
-        title={t('economics.title') || 'ROI Calculator'}
-        onBack={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-        variant="surface"
-      />
-      <ScrollView contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.subtitle}>{t('economics.subtitle') || 'Estimate your returns'}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })}>
+          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Economics Input</Text>
+        <TouchableOpacity>
+          <Ionicons name="help-circle-outline" size={22} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.stepText}>STEP 1 OF 3</Text>
+        <View style={styles.heroRow}>
+          <Text style={styles.heroTitle}>Farm Profile</Text>
+          <Text style={styles.heroProgress}>33% Complete</Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={styles.progressFill} />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t('economics.inputParameters') || 'Input Parameters'}</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('economics.landSize') || 'Land Size (Acres)'}</Text>
-            <TextInput
-              style={styles.input}
-              value={landSize}
-              onChangeText={setLandSize}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 1.0"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-          </View>
-
+        <View style={styles.sectionCard}>
+          <SectionTitle icon="location-outline" title="Location & Scale" theme={theme} styles={styles} />
           <View style={styles.row}>
-            <View style={styles.inputHalf}>
-              <Text style={styles.label}>State</Text>
-              <TouchableOpacity style={styles.pickerButton} onPress={() => setIsStateOpen(true)}>
-                <Text style={styles.pickerText} numberOfLines={1}>{selectedStateName}</Text>
-                <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputHalf}>
-              <Text style={styles.label}>District</Text>
-              <TouchableOpacity style={styles.pickerButton} onPress={() => setIsDistrictOpen(true)}>
-                <Text style={styles.pickerText} numberOfLines={1}>{districtCode || 'Select'}</Text>
-                <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
+            <PickerField label="State" value={statesList.find(s => s.value === stateCode)?.label || 'Select'} onPress={() => setActiveModal('state')} theme={theme} styles={styles} />
+            <PickerField label="District" value={districtCode || 'Select'} onPress={() => setActiveModal('district')} theme={theme} styles={styles} />
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('economics.salinity') || 'Water Salinity (μS/cm)'}</Text>
-            <TextInput
-              style={styles.input}
-              value={salinity}
-              onChangeText={setSalinity}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 500"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('economics.capital') || 'Investment Capital (₹)'}</Text>
-            <TextInput
-              style={styles.input}
-              value={capital}
-              onChangeText={setCapital}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 100000"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-          </View>
-
-          <Text style={styles.label}>{t('economics.riskTolerance') || 'Risk Tolerance'}</Text>
-          <View style={styles.optionsRow}>
-            {riskOptions.map((risk) => (
-              <TouchableOpacity
-                key={risk}
-                style={[styles.optionButton, riskTolerance === risk && styles.optionButtonActive]}
-                onPress={() => setRiskTolerance(risk)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.optionText, riskTolerance === risk && styles.optionTextActive]}>
-                  {t(`economics.${risk.toLowerCase()}Risk`) || risk}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.label}>{t('economics.farmerCategory') || 'Farmer Category'}</Text>
-          <View style={styles.optionsRow}>
-            {categoryOptions.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.optionButton, farmerCategory === cat && styles.optionButtonActive]}
-                onPress={() => setFarmerCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.optionText, farmerCategory === cat && styles.optionTextActive]}>
-                  {t(`economics.categories.${cat}`) || cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Target Species (Optional)</Text>
-            <TouchableOpacity style={styles.pickerButton} onPress={() => setIsSpeciesOpen(true)}>
-              <Text style={styles.pickerText}>
-                {SPECIES_OPTIONS.find(s => s.value === preferredSpecies)?.label || 'Auto Recommend'}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitButton, isLoading && { opacity: 0.7 }]}
-            onPress={runSimulation}
-            activeOpacity={0.8}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={theme.colors.surface} />
-            ) : (
-              <>
-                <Ionicons name="calculator-outline" size={24} color={theme.colors.surface} />
-                <Text style={styles.submitButtonText}>{t('economics.runSimulation') || 'Calculate Now'}</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <InputField label="Land Size (Acres)" value={landSize} onChangeText={setLandSize} suffix="Ac" theme={theme} styles={styles} />
         </View>
-        <View style={{ height: theme.spacing.xxl }} />
+
+        <View style={styles.sectionCard}>
+          <SectionTitle icon="water-outline" title="Operational Data" theme={theme} styles={styles} />
+          <InputField label="Water Salinity (uS/cm)" value={salinity} onChangeText={setSalinity} suffix="uS" theme={theme} styles={styles} />
+
+          <Text style={styles.fieldLabel}>Farmer Category</Text>
+          <View style={styles.segmentRow}>
+            {['GENERAL', 'WOMEN', 'SC', 'ST'].map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={[styles.segment, farmerCategory === item && styles.segmentActive]}
+                onPress={() => setFarmerCategory(item as any)}
+              >
+                <Text style={[styles.segmentText, farmerCategory === item && styles.segmentTextActive]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <SectionTitle icon="cash-outline" title="Financial Settings" theme={theme} styles={styles} />
+          <InputField label="Initial Capital (INR)" value={capital} onChangeText={setCapital} prefix="Rs" theme={theme} styles={styles} />
+
+          <Text style={styles.fieldLabel}>Risk Tolerance</Text>
+          <View style={styles.sliderLabels}>
+            {['LOW', 'MEDIUM', 'HIGH'].map((risk) => (
+              <TouchableOpacity key={risk} onPress={() => setRiskTolerance(risk as any)} style={styles.riskOption}>
+                <View style={[styles.riskDot, riskTolerance === risk && styles.riskDotActive]} />
+                <Text style={[styles.riskText, riskTolerance === risk && styles.riskTextActive]}>{risk}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <PickerField
+            label="Preferred Species"
+            value={SPECIES_OPTIONS.find(item => item.value === preferredSpecies)?.label || 'Auto Recommend'}
+            onPress={() => setActiveModal('species')}
+            theme={theme}
+            styles={styles}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.ctaButton} onPress={runSimulation} disabled={isLoading}>
+          {isLoading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.ctaText}>Calculate ROI</Text>}
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Select Modals */}
       <SelectionModal
-        visible={isStateOpen}
-        items={statesList}
-        onSelect={handleStateSelect}
-        onClose={() => setIsStateOpen(false)}
+        visible={activeModal === 'state'}
         title="Select State"
+        data={statesList}
+        onClose={() => setActiveModal(null)}
+        onSelect={(item: any) => {
+          setStateCode(item.value);
+          setDistrictCode('');
+          setActiveModal(null);
+        }}
         theme={theme}
-        styles={styles}
       />
+
       <SelectionModal
-        visible={isDistrictOpen}
-        items={relevantDistricts.map((d: string) => ({ label: d, value: d }))}
-        onSelect={(val: string) => { setDistrictCode(val); setIsDistrictOpen(false); }}
-        onClose={() => setIsDistrictOpen(false)}
+        visible={activeModal === 'district'}
         title="Select District"
+        data={relevantDistricts.map((item: string) => ({ label: item, value: item }))}
+        onClose={() => setActiveModal(null)}
+        onSelect={(item: any) => {
+          setDistrictCode(item.value);
+          setActiveModal(null);
+        }}
         theme={theme}
-        styles={styles}
       />
+
       <SelectionModal
-        visible={isSpeciesOpen}
-        items={SPECIES_OPTIONS}
-        onSelect={(val: string) => { setPreferredSpecies(val); setIsSpeciesOpen(false); }}
-        onClose={() => setIsSpeciesOpen(false)}
-        title="Select Target Species"
+        visible={activeModal === 'species'}
+        title="Select Species"
+        data={SPECIES_OPTIONS}
+        onClose={() => setActiveModal(null)}
+        onSelect={(item: any) => {
+          setPreferredSpecies(item.value);
+          setActiveModal(null);
+        }}
         theme={theme}
-        styles={styles}
       />
     </SafeAreaView>
   );
 }
 
-function SelectionModal({ visible, items, onSelect, onClose, title, theme, styles }: any) {
+function SectionTitle({ icon, title, theme, styles }: any) {
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <View style={styles.sectionTitleRow}>
+      <Ionicons name={icon} size={18} color={theme.colors.primary} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+}
+
+function PickerField({ label, value, onPress, theme, styles }: any) {
+  return (
+    <View style={styles.halfField}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TouchableOpacity style={styles.fieldBox} onPress={onPress}>
+        <Text style={styles.fieldValue}>{value}</Text>
+        <Ionicons name="chevron-down" size={18} color={theme.colors.textMuted} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function InputField({ label, value, onChangeText, prefix, suffix, theme, styles }: any) {
+  return (
+    <View style={styles.fullField}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={styles.fieldBox}>
+        {prefix ? <Text style={styles.unitText}>{prefix}</Text> : null}
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType="decimal-pad"
+          placeholderTextColor={theme.colors.textMuted}
+        />
+        {suffix ? <Text style={styles.unitText}>{suffix}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+function SelectionModal({ visible, title, data, onClose, onSelect, theme }: any) {
+  const styles = getStyles(theme);
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          {items.length === 0 ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-              <ActivityIndicator color={theme.colors.primary} />
-              <Text style={{ marginTop: 10, color: theme.colors.textSecondary }}>Loading data...</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={items}
-              keyExtractor={(item: any) => item.value || item.label}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              renderItem={({ item }: { item: any }) => (
-                <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item.value)}>
-                  <Text style={styles.modalItemText}>{item.label}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          )}
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>{title}</Text>
+          <FlatList
+            data={data}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
+                <Text style={styles.modalItemText}>{item.label}</Text>
+              </TouchableOpacity>
+            )}
+          />
+          <TouchableOpacity style={styles.modalClose} onPress={onClose}>
+            <Text style={styles.modalCloseText}>Close</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -334,147 +284,222 @@ function SelectionModal({ visible, items, onSelect, onClose, title, theme, style
 }
 
 const getStyles = (theme: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  scrollContent: {
-    padding: theme.spacing.lg,
+  headerTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '800',
   },
-  headerInfo: {
-    marginBottom: theme.spacing.md,
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 120,
   },
-  subtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textSecondary,
+  stepText: {
+    color: theme.colors.primary,
+    fontWeight: '800',
+    fontSize: 12,
+    marginTop: 8,
   },
-  card: {
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  heroTitle: {
+    ...theme.typography.h1,
+    fontSize: 36,
+  },
+  heroProgress: {
+    color: theme.colors.textPrimary,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.border,
+    marginTop: 12,
+    marginBottom: 18,
+  },
+  progressFill: {
+    width: '33%',
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 3,
+  },
+  sectionCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
   },
   sectionTitle: {
-    ...theme.typography.h3,
-    marginBottom: theme.spacing.lg,
     color: theme.colors.textPrimary,
-  },
-  inputGroup: {
-    marginBottom: theme.spacing.md,
+    fontSize: 24,
+    fontWeight: '800',
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: 12,
   },
-  inputHalf: {
+  halfField: {
     flex: 1,
+    marginBottom: 14,
   },
-  label: {
-    ...theme.typography.body,
-    fontWeight: '600',
-    marginBottom: theme.spacing.sm,
-    color: theme.colors.textPrimary,
-    fontSize: 15,
+  fullField: {
+    marginBottom: 14,
   },
-  input: {
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    fontSize: 16,
+  fieldLabel: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  fieldBox: {
+    minHeight: 52,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    color: theme.colors.textPrimary,
-  },
-  pickerButton: {
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.sm + 4,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
+    gap: 8,
   },
-  pickerText: {
-    fontSize: 15,
-    color: theme.colors.textPrimary,
+  fieldValue: {
     flex: 1,
+    color: theme.colors.textPrimary,
+    fontSize: 16,
   },
-  optionsRow: {
+  input: {
+    flex: 1,
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+  },
+  unitText: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+  },
+  segmentRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+    gap: 10,
   },
-  optionButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
+  segment: {
+    minWidth: 78,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  optionButtonActive: {
+  segmentActive: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
-  optionText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: theme.colors.textPrimary,
+  segmentText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    fontSize: 12,
   },
-  optionTextActive: {
+  segmentTextActive: {
     color: theme.colors.textInverse,
   },
-  submitButton: {
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
+  sliderLabels: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  riskOption: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+  riskDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: theme.colors.border,
+  },
+  riskDotActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  riskText: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  riskTextActive: {
+    color: theme.colors.primary,
+  },
+  ctaButton: {
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-    ...theme.shadows.md,
+    marginTop: 6,
   },
-  submitButtonText: {
-    ...theme.typography.buttonText,
+  ctaText: {
     color: theme.colors.textInverse,
+    fontSize: 18,
+    fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  modalCard: {
     maxHeight: '70%',
-    paddingBottom: 30,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
     color: theme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 14,
   },
   modalItem: {
-    padding: theme.spacing.lg,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   modalItemText: {
-    fontSize: 17,
     color: theme.colors.textPrimary,
+    fontSize: 16,
+  },
+  modalClose: {
+    marginTop: 14,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  modalCloseText: {
+    color: theme.colors.textPrimary,
+    fontWeight: '800',
   },
 });
