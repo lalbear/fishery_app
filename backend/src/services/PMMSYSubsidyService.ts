@@ -8,6 +8,7 @@ import {
   PMMSYSubsidyInput,
   PMMSYSubsidyOutput
 } from '../types';
+import { KnowledgeRulesService } from './KnowledgeRulesService';
 
 // PMMSY Configuration Constants
 const PMMSY_CONFIG = {
@@ -26,11 +27,16 @@ export class PMMSYSubsidyService {
    * @param input - PMMSY subsidy calculation parameters
    * @returns Calculated subsidy details
    */
-  static calculateSubsidy(input: PMMSYSubsidyInput): PMMSYSubsidyOutput {
-    const { projectType, beneficiaryCategory, unitCostInr, landAreaHectares } = input;
+  static async calculateSubsidy(input: PMMSYSubsidyInput & { stateCode?: string; preferredSpecies?: string[] }): Promise<PMMSYSubsidyOutput> {
+    const { projectType, beneficiaryCategory, unitCostInr, landAreaHectares, stateCode, preferredSpecies } = input;
+
+    const knowledgeContext = stateCode
+      ? await KnowledgeRulesService.getSubsidyKnowledgeContext(stateCode, beneficiaryCategory, projectType, preferredSpecies)
+      : undefined;
 
     // Determine subsidy percentage based on category
-    const eligibleSubsidyPercent = this.getSubsidyPercentage(beneficiaryCategory);
+    const eligibleSubsidyPercent =
+      knowledgeContext?.beneficiarySubsidyPercent ?? this.getSubsidyPercentage(beneficiaryCategory);
 
     // Determine maximum subsidy cap based on project type
     // Scale by land area (Bug 3 fix)
@@ -57,7 +63,8 @@ export class PMMSYSubsidyService {
       calculatedSubsidyInr: Math.round(calculatedSubsidyInr),
       beneficiaryContributionInr: Math.round(beneficiaryContributionInr),
       effectiveCostInr: Math.round(effectiveCostInr),
-      applicableSchemes
+      applicableSchemes,
+      knowledgeContext,
     };
   }
 
@@ -159,18 +166,21 @@ export class PMMSYSubsidyService {
     totalCapex: number,
     farmerCategory: FarmerCategory,
     projectType: PMMSYSubsidyInput['projectType'],
-    landAreaHectares: number
-  ): { effectiveCapex: number; subsidyAmount: number } {
-    const result = this.calculateSubsidy({
+    landAreaHectares: number,
+    stateCode?: string,
+    preferredSpecies?: string[]
+  ): Promise<{ effectiveCapex: number; subsidyAmount: number; knowledgeContext?: PMMSYSubsidyOutput['knowledgeContext'] }> {
+    return this.calculateSubsidy({
       projectType,
       beneficiaryCategory: farmerCategory,
       unitCostInr: totalCapex,
-      landAreaHectares: landAreaHectares
-    });
-
-    return {
+      landAreaHectares: landAreaHectares,
+      stateCode,
+      preferredSpecies,
+    }).then((result) => ({
       effectiveCapex: result.effectiveCostInr,
-      subsidyAmount: result.calculatedSubsidyInr
-    };
+      subsidyAmount: result.calculatedSubsidyInr,
+      knowledgeContext: result.knowledgeContext,
+    }));
   }
 }

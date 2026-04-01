@@ -33,8 +33,10 @@ export default function EconomicsScreen() {
   const [districtCode, setDistrictCode] = useState('');
   const [preferredSpecies, setPreferredSpecies] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [advisoryLoading, setAdvisoryLoading] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
   const [activeModal, setActiveModal] = useState<'state' | 'district' | 'species' | null>(null);
+  const [knowledgeInsights, setKnowledgeInsights] = useState<any | null>(null);
 
   const SPECIES_OPTIONS = [
     { label: 'Auto Recommend', value: '' },
@@ -62,6 +64,43 @@ export default function EconomicsScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!stateCode) {
+      return;
+    }
+
+    const projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
+
+    let isMounted = true;
+    (async () => {
+      try {
+        setAdvisoryLoading(true);
+        const response = await economicsService.getAdvisory({
+          stateCode,
+          farmerCategory,
+          projectType,
+        });
+
+        if (isMounted && response.success) {
+          setKnowledgeInsights(response.data?.knowledgeInsights ?? null);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setKnowledgeInsights(null);
+        }
+        console.error('Failed to fetch economics advisory', error);
+      } finally {
+        if (isMounted) {
+          setAdvisoryLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [stateCode, farmerCategory, salinity]);
 
   const runSimulation = async () => {
     if (!landSize || !capital || !stateCode || !districtCode) {
@@ -108,7 +147,15 @@ export default function EconomicsScreen() {
           <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Economics Input</Text>
-        <TouchableOpacity>
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate('PolicyGuidance', {
+              knowledgeInsights,
+              stateCode,
+              farmerCategory,
+            })
+          }
+        >
           <Ionicons name="help-circle-outline" size={22} color={theme.colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -173,6 +220,81 @@ export default function EconomicsScreen() {
           />
         </View>
 
+        <View style={styles.knowledgeCard}>
+          <View style={styles.knowledgeHeader}>
+            <View>
+              <Text style={styles.knowledgeEyebrow}>INSTITUTIONAL GUIDANCE</Text>
+              <Text style={styles.knowledgeTitle}>Policy-backed subsidy preview</Text>
+            </View>
+            {advisoryLoading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null}
+          </View>
+
+          {knowledgeInsights ? (
+            <>
+              <View style={styles.knowledgeStatRow}>
+                <KnowledgeStat
+                  label="Beneficiary subsidy"
+                  value={
+                    knowledgeInsights?.beneficiarySubsidyPercent
+                      ? `${knowledgeInsights.beneficiarySubsidyPercent}%`
+                      : 'Pending'
+                  }
+                  styles={styles}
+                />
+                <KnowledgeStat
+                  label="Funding pattern"
+                  value={
+                    knowledgeInsights?.fundingShare?.centralPercent != null &&
+                    knowledgeInsights?.fundingShare?.statePercent != null
+                      ? `${knowledgeInsights.fundingShare.centralPercent}:${knowledgeInsights.fundingShare.statePercent}`
+                      : 'N/A'
+                  }
+                  styles={styles}
+                />
+              </View>
+
+              <Text style={styles.knowledgeMeta}>
+                {getPolicyPreviewDescription(knowledgeInsights, farmerCategory)}
+              </Text>
+
+              {knowledgeInsights?.stateBenchmarks?.length ? (
+                <View style={styles.knowledgeList}>
+                  {knowledgeInsights.stateBenchmarks.slice(0, 2).map((item: any) => (
+                    <View key={item.idSlug} style={styles.knowledgeListItem}>
+                      <Text style={styles.knowledgeListTitle}>{item.metricName}</Text>
+                      <Text style={styles.knowledgeListValue}>
+                        {formatKnowledgeValue(item.numericValue, item.unit)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.knowledgeHint}>
+                  This state currently has no special cost override in the seeded knowledge set, so the app will use general assumptions.
+                </Text>
+              )}
+
+              <TouchableOpacity
+                style={styles.knowledgeLinkButton}
+                onPress={() =>
+                  navigation.navigate('PolicyGuidance', {
+                    knowledgeInsights,
+                    stateCode,
+                    farmerCategory,
+                  })
+                }
+              >
+                <Text style={styles.knowledgeLinkText}>Learn what these numbers mean</Text>
+                <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.knowledgeHint}>
+              Choose your state and farmer category to preview policy-backed subsidy guidance before running the simulation.
+            </Text>
+          )}
+        </View>
+
         <TouchableOpacity style={styles.ctaButton} onPress={runSimulation} disabled={isLoading}>
           {isLoading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.ctaText}>Calculate ROI</Text>}
         </TouchableOpacity>
@@ -218,6 +340,49 @@ export default function EconomicsScreen() {
   );
 }
 
+function formatKnowledgeValue(value: number | null | undefined, unit?: string | null) {
+  if (value == null) {
+    return 'N/A';
+  }
+
+  switch (unit) {
+    case 'PERCENT':
+      return `${value}%`;
+    case 'INR':
+      return `Rs ${value.toLocaleString('en-IN')}`;
+    case 'INR_PER_KG':
+      return `Rs ${value}/kg`;
+    case 'INR_PER_HA':
+      return `Rs ${value.toLocaleString('en-IN')}/ha`;
+    case 'INR_PER_50M3':
+      return `Rs ${value.toLocaleString('en-IN')}/50m3`;
+    default:
+      return `${value}`;
+  }
+}
+
+function getPolicyPreviewDescription(knowledgeInsights: any, farmerCategory: string) {
+  if (!knowledgeInsights) {
+    return 'Choose your state and category to load policy-backed guidance.';
+  }
+
+  const subsidy = knowledgeInsights?.beneficiarySubsidyPercent;
+  const central = knowledgeInsights?.fundingShare?.centralPercent;
+  const state = knowledgeInsights?.fundingShare?.statePercent;
+  const categoryLabel =
+    farmerCategory === 'GENERAL' ? 'general category' : farmerCategory.toLowerCase();
+
+  if (subsidy == null) {
+    return 'The app has not found a subsidy percentage for this profile yet.';
+  }
+
+  if (central != null && state != null) {
+    return `For a ${categoryLabel} applicant, the current seeded rules suggest up to ${subsidy}% support on eligible project cost. The ${central}:${state} split explains how the government subsidy is shared between Centre and State.`;
+  }
+
+  return `For a ${categoryLabel} applicant, the current seeded rules suggest up to ${subsidy}% support on eligible project cost.`;
+}
+
 function SectionTitle({ icon, title, theme, styles }: any) {
   return (
     <View style={styles.sectionTitleRow}>
@@ -254,6 +419,15 @@ function InputField({ label, value, onChangeText, prefix, suffix, theme, styles 
         />
         {suffix ? <Text style={styles.unitText}>{suffix}</Text> : null}
       </View>
+    </View>
+  );
+}
+
+function KnowledgeStat({ label, value, styles }: any) {
+  return (
+    <View style={styles.knowledgeStat}>
+      <Text style={styles.knowledgeStatLabel}>{label}</Text>
+      <Text style={styles.knowledgeStatValue}>{value}</Text>
     </View>
   );
 }
@@ -462,6 +636,100 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textInverse,
     fontSize: 18,
     fontWeight: '800',
+  },
+  knowledgeCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    marginBottom: 16,
+  },
+  knowledgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  knowledgeEyebrow: {
+    color: theme.colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  knowledgeTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  knowledgeStatRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  knowledgeStat: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surfaceAlt,
+    padding: 14,
+  },
+  knowledgeStatLabel: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  knowledgeStatValue: {
+    color: theme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  knowledgeMeta: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 14,
+  },
+  knowledgeLinkButton: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  knowledgeLinkText: {
+    color: theme.colors.primary,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  knowledgeList: {
+    marginTop: 14,
+    gap: 10,
+  },
+  knowledgeListItem: {
+    borderRadius: 14,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 14,
+  },
+  knowledgeListTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  knowledgeListValue: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  knowledgeHint: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 14,
   },
   modalOverlay: {
     flex: 1,

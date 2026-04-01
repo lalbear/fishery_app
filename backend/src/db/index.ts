@@ -3,7 +3,7 @@
  * PostgreSQL with JSONB support for hierarchical knowledge graph
  */
 
-import pg, { Pool, PoolConfig, QueryResult } from 'pg';
+import pg, { Pool, PoolClient, PoolConfig, QueryResult } from 'pg';
 import { logger } from '../utils/logger';
 
 // Database configuration
@@ -69,12 +69,12 @@ export async function query<T extends pg.QueryResultRow = any>(
  * Execute a transaction with multiple queries
  */
 export async function transaction<T>(
-  callback: (client: Pool) => Promise<T>
+  callback: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await callback(pool);
+    const result = await callback(client);
     await client.query('COMMIT');
     return result;
   } catch (error) {

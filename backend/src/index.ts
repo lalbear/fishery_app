@@ -19,6 +19,7 @@ import { syncRouter } from './routes/sync';
 import { marketRouter } from './routes/market';
 import { waterQualityRouter } from './routes/waterQuality';
 import { authRouter } from './routes/auth';
+import { knowledgeRouter } from './routes/knowledge';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,27 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
+
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+
+  logger.info('HTTP request started', {
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+  });
+
+  res.on('finish', () => {
+    logger.info('HTTP request completed', {
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+
+  next();
+});
 
 // Security middleware
 app.use(helmet());
@@ -68,6 +90,7 @@ app.use('/api/v1/sync', syncRouter);
 app.use('/api/v1/market', marketRouter);
 app.use('/api/v1/water-quality', waterQualityRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/knowledge', knowledgeRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -105,10 +128,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
-  logger.info(`Fishing God API server running on http://${HOST}:${PORT}`);
-});
+// Start server only when executed directly so tests can import the app safely.
+if (require.main === module) {
+  app.listen(PORT, HOST, () => {
+    logger.info(`Fishing God API server running on http://${HOST}:${PORT}`);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

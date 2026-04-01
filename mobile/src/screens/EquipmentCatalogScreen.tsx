@@ -9,6 +9,101 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 import { economicsService } from '../services/apiService';
 
+const LOCAL_EQUIPMENT_IMAGES: Record<string, any> = {
+    AERATION: require('../assets/equipment/aeration.jpg'),
+    FEEDING: require('../assets/equipment/feeding.jpg'),
+    TANK: require('../assets/equipment/tank.jpg'),
+    CIRCULATION: require('../assets/equipment/circulation.jpg'),
+    FILTRATION: require('../assets/equipment/filtration.jpg'),
+    MONITORING: require('../assets/equipment/monitoring.jpg'),
+    POWER: require('../assets/equipment/power.jpg'),
+    '550W Vortex Blower': require('../assets/equipment/blower.jpg'),
+};
+
+function getLocalEquipmentImage(item: any): any | null {
+    return LOCAL_EQUIPMENT_IMAGES[item.name] || LOCAL_EQUIPMENT_IMAGES[item.category] || null;
+}
+
+function getEquipmentVisual(item: any): { icon: keyof typeof Ionicons.glyphMap; accent: string; chip: string } {
+    const name = String(item?.name || '').toLowerCase();
+    const category = String(item?.category || '').toUpperCase();
+
+    if (name.includes('paddle') || name.includes('aerator') || category === 'AERATION') {
+        return { icon: 'refresh-circle-outline', accent: '#23A55A', chip: 'Aeration' };
+    }
+    if (name.includes('blower')) {
+        return { icon: 'speedometer-outline', accent: '#0F9D8A', chip: 'Blower' };
+    }
+    if (name.includes('tank')) {
+        return { icon: 'ellipse-outline', accent: '#3E8EDE', chip: 'Tank' };
+    }
+    if (name.includes('pump') || category === 'CIRCULATION') {
+        return { icon: 'water-outline', accent: '#2577C9', chip: 'Pump' };
+    }
+    if (name.includes('uv') || category === 'FILTRATION') {
+        return { icon: 'sunny-outline', accent: '#A06CFF', chip: 'Filter' };
+    }
+    if (name.includes('meter') || name.includes('test kit') || category === 'MONITORING') {
+        return { icon: 'pulse-outline', accent: '#F08A24', chip: 'Meter' };
+    }
+    if (name.includes('net')) {
+        return { icon: 'grid-outline', accent: '#2D9C72', chip: 'Net' };
+    }
+    if (name.includes('crate')) {
+        return { icon: 'cube-outline', accent: '#9C6B30', chip: 'Crate' };
+    }
+    if (name.includes('feeder')) {
+        return { icon: 'restaurant-outline', accent: '#D97904', chip: 'Feeder' };
+    }
+    if (name.includes('generator')) {
+        return { icon: 'flash-outline', accent: '#C96A2C', chip: 'Power' };
+    }
+
+    return { icon: 'construct-outline', accent: '#1F9D55', chip: category || 'Equipment' };
+}
+
+function EquipmentArtwork({ item, style }: { item: any; style: any }) {
+    const visual = getEquipmentVisual(item);
+
+    return (
+        <View style={[style, { backgroundColor: '#EEF5EC' }]}>
+            <View style={stylesStatic.artBackdrop} />
+            <View style={[stylesStatic.artChip, { backgroundColor: visual.accent }]}>
+                <Text style={stylesStatic.artChipText}>{visual.chip}</Text>
+            </View>
+            <View style={stylesStatic.artIconWrap}>
+                <Ionicons name={visual.icon} size={56} color={visual.accent} />
+            </View>
+            <View style={stylesStatic.artBottomRow}>
+                <View style={[stylesStatic.artMiniCard, { borderColor: `${visual.accent}33` }]}>
+                    <Ionicons name="leaf-outline" size={16} color={visual.accent} />
+                </View>
+                <View style={[stylesStatic.artMiniCard, { borderColor: `${visual.accent}33` }]}>
+                    <Ionicons name="hardware-chip-outline" size={16} color={visual.accent} />
+                </View>
+                <View style={[stylesStatic.artMiniCard, { borderColor: `${visual.accent}33` }]}>
+                    <Ionicons name="water-outline" size={16} color={visual.accent} />
+                </View>
+            </View>
+        </View>
+    );
+}
+
+function EquipmentImage({ item, style, fallbackStyle, iconColor }: { item: any; style: any; fallbackStyle: any; iconColor: string }) {
+    const localImage = getLocalEquipmentImage(item);
+    const [failed, setFailed] = useState(false);
+
+    if (localImage) {
+        return <Image source={localImage} style={style} resizeMode="cover" />;
+    }
+
+    if (failed || !item.image_url) {
+        return <EquipmentArtwork item={item} style={fallbackStyle} />;
+    }
+
+    return <Image source={{ uri: item.image_url }} style={style} resizeMode="cover" onError={() => setFailed(true)} />;
+}
+
 export default function EquipmentCatalogScreen() {
     const { theme } = useTheme();
     const styles = getStyles(theme);
@@ -80,13 +175,12 @@ export default function EquipmentCatalogScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
                 renderItem={({ item }) => (
                     <TouchableOpacity style={styles.card} onPress={() => setSelectedItem(item)}>
-                        {item.image_url ? (
-                            <Image source={{ uri: item.image_url }} style={styles.cardImage} />
-                        ) : (
-                            <View style={styles.cardImageFallback}>
-                                <Ionicons name="construct-outline" size={32} color={theme.colors.primary} />
-                            </View>
-                        )}
+                        <EquipmentImage
+                            item={item}
+                            style={styles.cardImage}
+                            fallbackStyle={styles.cardImageFallback}
+                            iconColor={theme.colors.primary}
+                        />
                         <Text style={styles.cardCategory}>{item.category}</Text>
                         <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
                         <Text style={styles.cardPrice}>Rs {parseFloat(item.cost_inr).toLocaleString('en-IN')}</Text>
@@ -99,6 +193,12 @@ export default function EquipmentCatalogScreen() {
                     <View style={styles.modalCard}>
                         {selectedItem && (
                             <ScrollView>
+                                <EquipmentImage
+                                    item={selectedItem}
+                                    style={styles.modalImage}
+                                    fallbackStyle={styles.modalImageFallback}
+                                    iconColor={theme.colors.primary}
+                                />
                                 <Text style={styles.modalTitle}>{selectedItem.name}</Text>
                                 <Text style={styles.modalMeta}>{selectedItem.category}</Text>
                                 <Text style={styles.modalLine}>Capital Cost: Rs {parseFloat(selectedItem.cost_inr).toLocaleString('en-IN')}</Text>
@@ -196,6 +296,21 @@ const getStyles = (theme: any) => StyleSheet.create({
     },
     modalTitle: { color: theme.colors.textPrimary, fontSize: 22, fontWeight: '800' },
     modalMeta: { color: theme.colors.primary, fontWeight: '700', marginTop: 6, marginBottom: 14 },
+    modalImage: {
+        width: '100%',
+        height: 180,
+        borderRadius: 18,
+        marginBottom: 16,
+    },
+    modalImageFallback: {
+        width: '100%',
+        height: 180,
+        borderRadius: 18,
+        marginBottom: 16,
+        backgroundColor: theme.colors.surfaceAlt,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     modalLine: { color: theme.colors.textSecondary, marginBottom: 10, lineHeight: 22 },
     modalButton: {
         height: 50,
@@ -215,4 +330,53 @@ const getStyles = (theme: any) => StyleSheet.create({
         marginTop: 10,
     },
     modalCloseText: { color: theme.colors.textPrimary, fontWeight: '800' },
+});
+
+const stylesStatic = StyleSheet.create({
+    artBackdrop: {
+        position: 'absolute',
+        top: 18,
+        left: 18,
+        right: 18,
+        bottom: 18,
+        borderRadius: 20,
+        backgroundColor: '#F7FBF5',
+    },
+    artChip: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 999,
+    },
+    artChipText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+    },
+    artIconWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    artBottomRow: {
+        position: 'absolute',
+        left: 12,
+        right: 12,
+        bottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    artMiniCard: {
+        width: 34,
+        height: 34,
+        borderRadius: 12,
+        borderWidth: 1,
+        backgroundColor: '#FFFFFFCC',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
 });

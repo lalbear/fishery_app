@@ -7,8 +7,10 @@
         "start": "node dist/index.js",
         "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
         "build": "tsc",
+        "typecheck": "tsc --noEmit",
         "db:migrate": "node dist/scripts/migrate.js",
         "db:seed": "node dist/scripts/seed.js",
+        "db:seed:knowledge": "node dist/scripts/seed_knowledge.js",
         "lint": "eslint . --ext .ts",
         "test": "jest"
     },

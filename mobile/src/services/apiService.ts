@@ -1,6 +1,10 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.1.7:3000';
+const DEFAULT_BACKEND_URL =
+    Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || DEFAULT_BACKEND_URL;
 
 const api = axios.create({
     baseURL: BACKEND_URL,
@@ -9,6 +13,40 @@ const api = axios.create({
         'Content-Type': 'application/json',
     },
 });
+
+if (__DEV__) {
+    api.interceptors.request.use((config) => {
+        console.log('[API request]', {
+            method: config.method,
+            baseURL: config.baseURL,
+            url: config.url,
+            data: config.data,
+        });
+        return config;
+    });
+
+    api.interceptors.response.use(
+        (response) => {
+            console.log('[API response]', {
+                status: response.status,
+                url: response.config?.url,
+                data: response.data,
+            });
+            return response;
+        },
+        (error) => {
+            console.log('[API error]', {
+                message: error.message,
+                code: error.code,
+                url: error.config?.url,
+                baseURL: error.config?.baseURL,
+                status: error.response?.status,
+                data: error.response?.data,
+            });
+            return Promise.reject(error);
+        }
+    );
+}
 
 export const geoService = {
     getZones: async () => {
@@ -35,6 +73,14 @@ export const geoService = {
 export const economicsService = {
     simulate: async (data: any) => {
         const response = await api.post('/api/v1/economics/simulate', data);
+        return response.data;
+    },
+    getAdvisory: async (params: {
+        stateCode: string;
+        farmerCategory: 'GENERAL' | 'WOMEN' | 'SC' | 'ST';
+        projectType?: 'FRESHWATER' | 'BRACKISH' | 'INTEGRATED' | 'RAS';
+    }) => {
+        const response = await api.get('/api/v1/economics/advisory', { params });
         return response.data;
     },
     getSubsidy: async (data: any) => {

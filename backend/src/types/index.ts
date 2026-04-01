@@ -250,6 +250,7 @@ export interface EconomicsSimulatorOutput {
   firstCycleWorkingCapitalInr: number;
   totalProjectCostInr: number;
   availableCapitalInr: number;
+  knowledgeInsights?: PMMSYSubsidyOutput['knowledgeContext'];
   riskAnalysisProfile: RiskAnalysisProfile;
   monthlyCashFlow: MonthlyCashFlow[];
   sensitivityAnalysis: SensitivityAnalysis;
@@ -324,6 +325,65 @@ export interface PMMSYSubsidyOutput {
   beneficiaryContributionInr: number;
   effectiveCostInr: number;
   applicableSchemes: string[];
+  knowledgeContext?: {
+    beneficiarySubsidyPercent: number | null;
+    beneficiaryRuleSource: string | null;
+    regionGroup: string;
+    fundingShare: {
+      centralPercent: number | null;
+      statePercent: number | null;
+    };
+    policyHighlights: Array<{
+      idSlug: string;
+      metricName: string;
+      numericValue: number | null;
+      unit: string | null;
+      citationText: string | null;
+      citationPage: number | null;
+      notes: string | null;
+      sourceLabel: string;
+    }>;
+    stateBenchmarks: Array<{
+      idSlug: string;
+      metricName: string;
+      numericValue: number | null;
+      unit: string | null;
+      citationText: string | null;
+      citationPage: number | null;
+      notes: string | null;
+      sourceLabel: string;
+    }>;
+    warningHighlights: Array<{
+      idSlug: string;
+      metricName: string;
+      numericValue: number | null;
+      unit: string | null;
+      citationText: string | null;
+      citationPage: number | null;
+      notes: string | null;
+      sourceLabel: string;
+    }>;
+    templateHighlights: Array<{
+      idSlug: string;
+      metricName: string;
+      numericValue: number | null;
+      unit: string | null;
+      citationText: string | null;
+      citationPage: number | null;
+      notes: string | null;
+      sourceLabel: string;
+    }>;
+    disclaimerHighlights: Array<{
+      idSlug: string;
+      metricName: string;
+      numericValue: number | null;
+      unit: string | null;
+      citationText: string | null;
+      citationPage: number | null;
+      notes: string | null;
+      sourceLabel: string;
+    }>;
+  };
 }
 
 // ============================================================================

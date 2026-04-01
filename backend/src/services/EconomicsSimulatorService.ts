@@ -21,6 +21,7 @@ import {
   EconomicData
 } from '../types';
 import { PMMSYSubsidyService } from './PMMSYSubsidyService';
+import { KnowledgeRulesService } from './KnowledgeRulesService';
 import { query } from '../db';
 import { logger } from '../utils/logger';
 
@@ -69,6 +70,12 @@ export class EconomicsSimulatorService {
 
     // Step 4: Get economic model for recommended system
     const economicModel = await this.getEconomicModel(recommendedSystem, input.preferredSpecies);
+    const mappedProjectType = this.mapSystemToProjectType(recommendedSystem, waterType);
+    const templateDefaults = await KnowledgeRulesService.getEconomicTemplateDefaults(
+      input.stateCode,
+      KnowledgeRulesService.mapProjectTypeToKnowledgeProject(mappedProjectType),
+      input.preferredSpecies
+    );
 
     // Step 5: Calculate CAPEX with equipment costs
     const totalCapex = this.calculateTotalCapex(
@@ -78,18 +85,21 @@ export class EconomicsSimulatorService {
     );
 
     // Step 6: Apply PMMSY subsidy (pass land area - Bug 3 fix)
-    const { effectiveCapex, subsidyAmount } = PMMSYSubsidyService.calculateEffectiveCapex(
+    const { effectiveCapex, subsidyAmount, knowledgeContext } = await PMMSYSubsidyService.calculateEffectiveCapex(
       totalCapex,
       input.farmerCategory,
-      this.mapSystemToProjectType(recommendedSystem, waterType),
-      input.landSizeHectares
+      mappedProjectType,
+      input.landSizeHectares,
+      input.stateCode,
+      input.preferredSpecies
     );
 
     // Step 7: Calculate base OPEX excluding feed
     const { monthlyOpex, totalOpexPerCycle, totalFeedCost } = this.calculateOpexWithFeed(
       economicModel,
       input.landSizeHectares,
-      (economicModel as any).culture_period_months?.max || 12
+      templateDefaults.cycleMonths || (economicModel as any).culture_period_months?.max || 12,
+      templateDefaults
     );
     const opexMinusFeed = totalOpexPerCycle - totalFeedCost;
 
@@ -109,7 +119,8 @@ export class EconomicsSimulatorService {
       economicModel,
       expectedYield,
       effectiveCapex,
-      opexMinusFeed
+      opexMinusFeed,
+      templateDefaults
     );
 
     // Step 11: Base main summary metrics on THE BEST recommendation (Bug FIX)
@@ -122,7 +133,7 @@ export class EconomicsSimulatorService {
       effectiveCapex,
       monthlyOpex, // Base monthly opex
       finalRevenue,
-      cultureMonths
+      templateDefaults.cycleMonths || cultureMonths
     );
 
     // Step 12: Build risk analysis profile
@@ -165,6 +176,7 @@ export class EconomicsSimulatorService {
       firstCycleWorkingCapitalInr: Math.round(totalOpexPerCycle),
       totalProjectCostInr: Math.round(effectiveCapex + totalOpexPerCycle),
       availableCapitalInr: input.availableCapitalInr,
+      knowledgeInsights: knowledgeContext,
       riskAnalysisProfile: riskProfile,
       monthlyCashFlow,
       sensitivityAnalysis
@@ -343,7 +355,11 @@ export class EconomicsSimulatorService {
   private static calculateOpexWithFeed(
     model: EconomicData,
     landSizeHectares: number,
-    months: number
+    months: number,
+    templateDefaults?: {
+      feedPriceInrPerKg: number | null;
+      fcrAverage: number | null;
+    }
   ): { monthlyOpex: number; totalOpexPerCycle: number; totalFeedCost: number } {
     const opex = model.operational_expenditure;
     const revenue = model.revenue_projections;
@@ -353,7 +369,11 @@ export class EconomicsSimulatorService {
 
     // Feed logic: 50% - 70% of cost is usually feed. 
     // We use the feed_cost_inr_per_kg_fish metric.
-    const totalFeedCost = avgYieldKg * (opex.feed_cost_inr_per_kg_fish || 45);
+    const knowledgeFeedCostPerKgFish =
+      templateDefaults?.feedPriceInrPerKg != null && templateDefaults?.fcrAverage != null
+        ? templateDefaults.feedPriceInrPerKg * templateDefaults.fcrAverage
+        : null;
+    const totalFeedCost = avgYieldKg * (knowledgeFeedCostPerKgFish || opex.feed_cost_inr_per_kg_fish || 45);
 
     const laborElectricityMonthly = (
       (opex.electricity_cost_inr_per_month || 0) +
@@ -410,19 +430,31 @@ export class EconomicsSimulatorService {
     model: EconomicData,
     expectedYield: number,
     effectiveCapex: number,
-    opexMinusFeed: number
+    opexMinusFeed: number,
+    templateDefaults?: {
+      feedPriceInrPerKg: number | null;
+      fcrAverage: number | null;
+      survivalPercent: number | null;
+    }
   ): SpeciesRecommendation[] {
     return species.map(s => {
-      const avgFcr = (s.economic_parameters.feed_conversion_ratio?.min +
-        s.economic_parameters.feed_conversion_ratio?.max) / 2 || 1.8;
+      const speciesFcr =
+        s.economic_parameters.feed_conversion_ratio?.min != null &&
+        s.economic_parameters.feed_conversion_ratio?.max != null
+          ? (s.economic_parameters.feed_conversion_ratio.min +
+            s.economic_parameters.feed_conversion_ratio.max) / 2
+          : null;
+      const avgFcr = templateDefaults?.fcrAverage ?? speciesFcr ?? 1.8;
       const avgPrice = (s.economic_parameters.market_price_per_kg_inr?.min +
         s.economic_parameters.market_price_per_kg_inr?.max) / 2 || 120;
 
-      const speciesYield = expectedYield * ((s.economic_parameters.survival_rate_percent?.max || 80) / 100);
+      const survivalPercent = templateDefaults?.survivalPercent ?? (s.economic_parameters.survival_rate_percent?.max || 80);
+      const speciesYield = expectedYield * (survivalPercent / 100);
       const estRevenue = speciesYield * avgPrice;
 
       // Calculate specific OPEX for this species (Feed cost varies by species FCR)
-      const feedCost = speciesYield * avgFcr * 45; // 45 is baseline feed price
+      const feedPrice = templateDefaults?.feedPriceInrPerKg ?? 45;
+      const feedCost = speciesYield * avgFcr * feedPrice;
       const totalOpexMatch = opexMinusFeed + feedCost;
       const netProfit = estRevenue - totalOpexMatch - effectiveCapex;
       const totalInvest = effectiveCapex + totalOpexMatch;
@@ -469,7 +501,7 @@ export class EconomicsSimulatorService {
         compatibilityReasons: [
           `FCR: ${avgFcr.toFixed(2)} (${avgFcr < 1.5 ? 'Very Efficient' : 'Standard'})`,
           `BCR: ${bcr.toFixed(2)}:1`,
-          `Est. Survival: ${s.economic_parameters.survival_rate_percent?.max || 80}%`
+          `Est. Survival: ${survivalPercent}%`
         ]
       };
     }).sort((a, b) => b.compatibilityScore - a.compatibilityScore);

@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { EconomicsSimulatorService } from '../services/EconomicsSimulatorService';
 import { PMMSYSubsidyService } from '../services/PMMSYSubsidyService';
+import { KnowledgeRulesService } from '../services/KnowledgeRulesService';
 import { logger } from '../utils/logger';
 import { FarmerCategory, RiskTolerance } from '../types';
 
@@ -29,7 +30,14 @@ const subsidySchema = z.object({
   projectType: z.enum(['FRESHWATER', 'BRACKISH', 'INTEGRATED', 'RAS']),
   beneficiaryCategory: z.enum(['GENERAL', 'WOMEN', 'SC', 'ST']),
   unitCostInr: z.number().positive(),
-  landAreaHectares: z.number().positive()
+  landAreaHectares: z.number().positive(),
+  stateCode: z.string().length(2).optional()
+});
+
+const advisorySchema = z.object({
+  stateCode: z.string().length(2),
+  farmerCategory: z.enum(['GENERAL', 'WOMEN', 'SC', 'ST']),
+  projectType: z.enum(['FRESHWATER', 'BRACKISH', 'INTEGRATED', 'RAS']).optional(),
 });
 
 /**
@@ -86,11 +94,12 @@ router.post('/subsidy', async (req, res, next) => {
       projectType: validated.projectType
     });
 
-    const result = PMMSYSubsidyService.calculateSubsidy({
+    const result = await PMMSYSubsidyService.calculateSubsidy({
       projectType: validated.projectType,
       beneficiaryCategory: validated.beneficiaryCategory as FarmerCategory,
       unitCostInr: validated.unitCostInr,
-      landAreaHectares: validated.landAreaHectares
+      landAreaHectares: validated.landAreaHectares,
+      stateCode: validated.stateCode,
     });
 
     res.json({
@@ -103,6 +112,43 @@ router.post('/subsidy', async (req, res, next) => {
         success: false,
         error: 'Validation Error',
         details: error.errors
+      });
+    } else {
+      next(error);
+    }
+  }
+});
+
+/**
+ * GET /api/v1/economics/advisory
+ * Get knowledge-backed subsidy and economics guidance for the selected state/profile
+ */
+router.get('/advisory', async (req, res, next) => {
+  try {
+    const validated = advisorySchema.parse(req.query);
+
+    const projectType = validated.projectType ?? 'FRESHWATER';
+    const knowledgeInsights = await KnowledgeRulesService.getSubsidyKnowledgeContext(
+      validated.stateCode,
+      validated.farmerCategory as FarmerCategory,
+      projectType
+    );
+
+    res.json({
+      success: true,
+      data: {
+        stateCode: validated.stateCode,
+        farmerCategory: validated.farmerCategory,
+        projectType,
+        knowledgeInsights,
+      },
+    });
+  } catch (error: any) {
+    if (error.errors) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation Error',
+        details: error.errors,
       });
     } else {
       next(error);

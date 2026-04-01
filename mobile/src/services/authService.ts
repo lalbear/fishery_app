@@ -15,7 +15,7 @@ export const authService = {
                 await saveProfile({
                     ...existing,
                     name: user.name,
-                    phone: user.phone_number,
+                    phone: user.phone || user.phone_number,
                     farmerCategory: user.farmerCategory || 'GENERAL',
                     stateCode: user.stateCode || '',
                     userId: user.id
@@ -24,7 +24,11 @@ export const authService = {
             }
             return { success: false, error: 'Login failed' };
         } catch (error: any) {
-            return { success: false, error: error.response?.data?.error || 'Invalid phone or password' };
+            const fallbackMessage =
+                error.code === 'ECONNABORTED'
+                    ? 'Request timed out while connecting to the backend'
+                    : error.message || 'Invalid phone or password';
+            return { success: false, error: error.response?.data?.error || fallbackMessage };
         }
     },
 
@@ -44,7 +48,11 @@ export const authService = {
             }
             return { success: false, error: 'Signup failed' };
         } catch (error: any) {
-            return { success: false, error: error.response?.data?.error || 'An error occurred during signup' };
+            const fallbackMessage =
+                error.code === 'ECONNABORTED'
+                    ? 'Request timed out while connecting to the backend'
+                    : error.message || 'An error occurred during signup';
+            return { success: false, error: error.response?.data?.error || fallbackMessage };
         }
     },
 

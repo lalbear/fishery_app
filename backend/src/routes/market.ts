@@ -55,14 +55,22 @@ router.get('/prices', async (req, res, next) => {
 router.get('/prices/species/:speciesId', async (req, res, next) => {
   try {
     const { speciesId } = req.params;
-    const { days = '30' } = req.query;
+    const rawDays = Number.parseInt(String(req.query.days ?? '30'), 10);
+    const days = Number.isFinite(rawDays) ? rawDays : NaN;
+
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      return res.status(400).json({
+        success: false,
+        error: 'days must be an integer between 1 and 365'
+      });
+    }
     
     const result = await query(`
       SELECT * FROM market_prices
       WHERE species_id = $1
-      AND date >= CURRENT_DATE - INTERVAL '${days} days'
+      AND date >= CURRENT_DATE - ($2 * INTERVAL '1 day')
       ORDER BY date DESC
-    `, [speciesId]);
+    `, [speciesId, days]);
     
     res.json({
       success: true,

@@ -27,6 +27,7 @@ import SpeciesScreen from './src/screens/SpeciesScreen';
 import SpeciesDetailScreen from './src/screens/SpeciesDetailScreen';
 import EconomicsScreen from './src/screens/EconomicsScreen';
 import EconomicsResultScreen from './src/screens/EconomicsResultScreen';
+import PolicyGuidanceScreen from './src/screens/PolicyGuidanceScreen';
 import MapScreen from './src/screens/MapScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WaterQualityScreen from './src/screens/WaterQualityScreen';
@@ -43,6 +44,7 @@ export type RootStackParamList = {
   Main: undefined;
   SpeciesDetail: { speciesId: string };
   EconomicsResult: { simulationData: any };
+  PolicyGuidance: { knowledgeInsights?: any; stateCode?: string; farmerCategory?: string };
   WaterQuality: undefined;
   MarketPrices: undefined;
   EquipmentCatalog: undefined;
@@ -170,6 +172,7 @@ function MainApp() {
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EconomicsResult" component={EconomicsResultScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PolicyGuidance" component={PolicyGuidanceScreen} options={{ headerShown: false }} />
         <Stack.Screen name="WaterQuality" component={WaterQualityScreen} options={{ headerShown: false }} />
         <Stack.Screen name="MarketPrices" component={MarketPricesScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EquipmentCatalog" component={EquipmentCatalogScreen} options={{ headerShown: false }} />
