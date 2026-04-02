@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fishing God - Economics Input</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#004c0d",
+                "background-light": "#f5f8f6",
+                "background-dark": "#0f2312",
+              },
+              fontFamily: {
+                "display": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/20">
+<div class="flex items-center p-4 max-w-lg mx-auto justify-between">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center size-10 rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight">Economics Input</h1>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full hover:bg-primary/10">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<main class="max-w-lg mx-auto pb-32">
+<!-- Progress Header -->
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-end">
+<div>
+<p class="text-sm font-medium text-primary dark:text-primary/80 uppercase tracking-wider">Step 1 of 3</p>
+<h2 class="text-2xl font-bold">Farm Profile</h2>
+</div>
+<p class="text-sm font-semibold">33% Complete</p>
+</div>
+<div class="h-2 w-full bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 33.3%"></div>
+</div>
+</div>
+<form class="space-y-6 px-4">
+<!-- Group 1: Location & Scale -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 pb-1 border-b border-primary/10">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<h3 class="font-semibold text-lg">Location &amp; Scale</h3>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<label class="flex flex-col gap-1.5">
+<span class="text-sm font-medium opacity-80">State</span>
+<select class="form-select bg-primary/5 border-primary/20 rounded-lg focus:ring-primary focus:border-primary py-3">
+<option>Andhra Pradesh</option>
+<option>West Bengal</option>
+<option>Gujarat</option>
+</select>
+</label>
+<label class="flex flex-col gap-1.5">
+<span class="text-sm font-medium opacity-80">District</span>
+<input class="form-input bg-primary/5 border-primary/20 rounded-lg focus:ring-primary focus:border-primary py-3" placeholder="e.g. Nellore" type="text"/>
+</label>
+</div>
+<label class="flex flex-col gap-1.5">
+<span class="text-sm font-medium opacity-80">Land Size (Acres)</span>
+<div class="relative">
+<input class="form-input w-full bg-primary/5 border-primary/20 rounded-lg focus:ring-primary focus:border-primary py-3 pl-4 pr-12" placeholder="5.0" step="0.1" type="number"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-primary">Ac</span>
+</div>
+</label>
+</section>
+<!-- Group 2: Operational Data -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 pb-1 border-b border-primary/10">
+<span class="material-symbols-outlined text-primary">water_drop</span>
+<h3 class="font-semibold text-lg">Operational Data</h3>
+</div>
+<div class="space-y-4">
+<label class="flex flex-col gap-1.5">
+<span class="text-sm font-medium opacity-80">Water Salinity (ppt)</span>
+<div class="relative">
+<input class="form-input w-full bg-primary/5 border-primary/20 rounded-lg focus:ring-primary focus:border-primary py-3 pl-4 pr-12" placeholder="15" type="number"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-primary">ppt</span>
+</div>
+</label>
+<div class="space-y-2">
+<span class="text-sm font-medium opacity-80">Farmer Category</span>
+<div class="grid grid-cols-3 gap-2">
+<label class="cursor-pointer">
+<input class="hidden peer" name="category" type="radio" value="marginal"/>
+<div class="p-3 text-center border border-primary/20 rounded-lg peer-checked:bg-primary peer-checked:text-white transition-all text-sm font-medium">Marginal</div>
+</label>
+<label class="cursor-pointer">
+<input checked="" class="hidden peer" name="category" type="radio" value="small"/>
+<div class="p-3 text-center border border-primary/20 rounded-lg peer-checked:bg-primary peer-checked:text-white transition-all text-sm font-medium">Small</div>
+</label>
+<label class="cursor-pointer">
+<input class="hidden peer" name="category" type="radio" value="large"/>
+<div class="p-3 text-center border border-primary/20 rounded-lg peer-checked:bg-primary peer-checked:text-white transition-all text-sm font-medium">Large</div>
+</label>
+</div>
+</div>
+</div>
+</section>
+<!-- Group 3: Financials -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 pb-1 border-b border-primary/10">
+<span class="material-symbols-outlined text-primary">payments</span>
+<h3 class="font-semibold text-lg">Financial Settings</h3>
+</div>
+<label class="flex flex-col gap-1.5">
+<span class="text-sm font-medium opacity-80">Initial Capital (USD)</span>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-primary">$</span>
+<input class="form-input w-full bg-primary/5 border-primary/20 rounded-lg focus:ring-primary focus:border-primary py-3 pl-8 pr-4" placeholder="10,000" type="number"/>
+</div>
+</label>
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<span class="text-sm font-medium opacity-80">Risk Tolerance</span>
+<span class="text-xs font-bold text-primary uppercase" id="risk-label">Medium</span>
+</div>
+<input class="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary" max="3" min="1" type="range" value="2"/>
+<div class="flex justify-between text-[10px] font-bold opacity-50 uppercase tracking-tighter">
+<span>Conservative</span>
+<span>Moderate</span>
+<span>Aggressive</span>
+</div>
+</div>
+</section>
+</form>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-lg border-t border-primary/20">
+<div class="max-w-lg mx-auto flex gap-4">
+<button class="flex-1 bg-primary text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+<span>Calculate ROI</span>
+<span class="material-symbols-outlined text-xl">trending_up</span>
+</button>
+</div>
+</div>
+<!-- Background Decoration -->
+<div class="fixed -z-10 top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] rounded-full"></div>
+<div class="fixed -z-10 bottom-0 left-0 w-64 h-64 bg-primary/5 blur-[100px] rounded-full"></div>
+</body></html>

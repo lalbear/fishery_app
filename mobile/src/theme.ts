@@ -61,28 +61,28 @@ export const darkTheme = {
     ...lightTheme,
     isDark: true,
     colors: {
-        primary: '#0E8E2E',
-        primaryDark: '#031D0C',
-        primaryLight: '#09381A',
-        secondary: '#25A58C',
-        secondaryLight: '#0D3E34',
+        primary: '#17A34A',
+        primaryDark: '#050505',
+        primaryLight: '#102014',
+        secondary: '#2DD4BF',
+        secondaryLight: '#10211F',
         accent: '#FFB300',
-        accentSoft: '#3E3008',
+        accentSoft: '#2A220D',
 
-        background: '#071A0D',
-        surface: '#0C2412',
-        surfaceAlt: '#12331B',
-        card: '#0F2A15',
-        border: '#173B20',
+        background: '#050505',
+        surface: '#0E0E0E',
+        surfaceAlt: '#151515',
+        card: '#121212',
+        border: '#242424',
 
-        textPrimary: '#F3F6EF',
-        textSecondary: '#B5C7B8',
-        textMuted: '#7D9A83',
+        textPrimary: '#F5F5F5',
+        textSecondary: '#C2C2C2',
+        textMuted: '#8C8C8C',
         textInverse: '#FFFFFF',
 
-        success: '#4CAF50',
+        success: '#4ADE80',
         warning: '#FFB300',
-        error: '#D66745',
+        error: '#F87171',
     },
     shadows: {
         sm: {
@@ -102,11 +102,11 @@ export const darkTheme = {
     },
     typography: {
         ...lightTheme.typography,
-        h1: { ...lightTheme.typography.h1, color: '#F3F6EF' },
-        h2: { ...lightTheme.typography.h2, color: '#F3F6EF' },
-        h3: { ...lightTheme.typography.h3, color: '#F3F6EF' },
-        bodyLarge: { ...lightTheme.typography.bodyLarge, color: '#B5C7B8' },
-        body: { ...lightTheme.typography.body, color: '#B5C7B8' },
+        h1: { ...lightTheme.typography.h1, color: '#F5F5F5' },
+        h2: { ...lightTheme.typography.h2, color: '#F5F5F5' },
+        h3: { ...lightTheme.typography.h3, color: '#F5F5F5' },
+        bodyLarge: { ...lightTheme.typography.bodyLarge, color: '#C2C2C2' },
+        body: { ...lightTheme.typography.body, color: '#C2C2C2' },
     }
 };
 

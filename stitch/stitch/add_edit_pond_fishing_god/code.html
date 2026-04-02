@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fishing God - Add New Pond</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#004c0d",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#0f2312",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen font-display">
+<!-- Header Section -->
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/20">
+<div class="flex items-center justify-between p-4 max-w-2xl mx-auto">
+<button class="flex items-center justify-center size-10 rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold flex-1 text-center pr-10">Add New Pond</h1>
+</div>
+</header>
+<main class="max-w-2xl mx-auto p-4 pb-24 space-y-6">
+<!-- General Information Group -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">info</span>
+<h2 class="text-sm font-semibold uppercase tracking-wider text-primary/80">General Information</h2>
+</div>
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl p-4 border border-primary/20 space-y-4">
+<label class="block">
+<span class="text-sm font-medium mb-1.5 block">Pond Name</span>
+<input class="w-full h-14 bg-white dark:bg-background-dark border-primary/20 rounded-lg focus:ring-primary focus:border-primary px-4" placeholder="e.g. North Reservoir Alpha" type="text"/>
+</label>
+<div class="grid grid-cols-2 gap-4">
+<label class="block">
+<span class="text-sm font-medium mb-1.5 block">Area (acres)</span>
+<div class="relative">
+<input class="w-full h-14 bg-white dark:bg-background-dark border-primary/20 rounded-lg focus:ring-primary focus:border-primary px-4 pr-12" placeholder="0.00" step="0.01" type="number"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">ac</span>
+</div>
+</label>
+<label class="block">
+<span class="text-sm font-medium mb-1.5 block">Water Source</span>
+<select class="w-full h-14 bg-white dark:bg-background-dark border-primary/20 rounded-lg focus:ring-primary focus:border-primary px-4">
+<option value="">Select source</option>
+<option value="river">River/Stream</option>
+<option value="borewell">Borewell</option>
+<option value="rain">Rainwater</option>
+<option value="canal">Canal</option>
+</select>
+</label>
+</div>
+</div>
+</section>
+<!-- Configuration Group -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">settings</span>
+<h2 class="text-sm font-semibold uppercase tracking-wider text-primary/80">Configuration</h2>
+</div>
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl p-4 border border-primary/20 space-y-4">
+<label class="block">
+<span class="text-sm font-medium mb-1.5 block">System Type</span>
+<select class="w-full h-14 bg-white dark:bg-background-dark border-primary/20 rounded-lg focus:ring-primary focus:border-primary px-4">
+<option value="earthen">Earthen Pond</option>
+<option value="concrete">Concrete Tank</option>
+<option value="raceway">Raceway System</option>
+<option value="biofloc">Biofloc Tank</option>
+</select>
+</label>
+<label class="block">
+<span class="text-sm font-medium mb-1.5 block">Operational Status</span>
+<div class="flex gap-2">
+<button class="flex-1 h-12 rounded-lg border-2 border-primary bg-primary text-white font-medium">Active</button>
+<button class="flex-1 h-12 rounded-lg border-2 border-primary/20 bg-white dark:bg-background-dark text-slate-600 dark:text-slate-400 font-medium">Maintenance</button>
+<button class="flex-1 h-12 rounded-lg border-2 border-primary/20 bg-white dark:bg-background-dark text-slate-600 dark:text-slate-400 font-medium">Idle</button>
+</div>
+</label>
+</div>
+</section>
+<!-- Location Group -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<h2 class="text-sm font-semibold uppercase tracking-wider text-primary/80">Geographic Location</h2>
+</div>
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl p-4 border border-primary/20 space-y-4">
+<div class="relative h-48 w-full rounded-lg overflow-hidden border border-primary/20 bg-slate-200 dark:bg-slate-800">
+<img alt="Satellite map view of aquaculture area" class="w-full h-full object-cover opacity-60" data-alt="Satellite map view of aquaculture farm location" data-location="Rural Farm Region" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBS1fCDNc81l6jmsy4uteHe7pvOb0MkprIMGE6RTt8WF0t4RSwVcZloR8UQ3B-UfH5bSDm7bPCSgdRKl09bRTSR-XJ9cAhFNMxAvpV0EiX4h4K36zTxAFY1bp1yWFMbe0pOrwzwS1L07fhEpUs4YV9bz005YEcBwNJJbH4SGtiuBBh5rCQpuj_CimtxEYu1XHhoYF65sLw3mAtvQHchdkxle4GWiBBtCB6PcP5EXBBdrgRDhPBP6XuspnBPsYMmoSnrB8uRjpvFY2c"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="size-4 bg-primary rounded-full ring-4 ring-primary/30"></div>
+</div>
+<button class="absolute bottom-4 right-4 bg-primary text-white flex items-center gap-2 px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-all">
+<span class="material-symbols-outlined text-sm">my_location</span>
+<span class="text-sm font-bold">Auto-locate</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<label class="block">
+<span class="text-xs font-medium text-slate-500 mb-1 block">Latitude</span>
+<input class="w-full h-10 bg-slate-100 dark:bg-slate-900/50 border-none rounded text-sm text-slate-500" readonly="" type="text" value="34.0522"/>
+</label>
+<label class="block">
+<span class="text-xs font-medium text-slate-500 mb-1 block">Longitude</span>
+<input class="w-full h-10 bg-slate-100 dark:bg-slate-900/50 border-none rounded text-sm text-slate-500" readonly="" type="text" value="-118.2437"/>
+</label>
+</div>
+</div>
+</section>
+</main>
+<!-- Fixed Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-t border-primary/20">
+<div class="max-w-2xl mx-auto flex gap-4">
+<button class="flex-1 h-14 rounded-xl border-2 border-primary/30 text-primary font-bold hover:bg-primary/5 transition-colors">
+                Save Draft
+            </button>
+<button class="flex-[2] h-14 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/20 active:scale-[0.98] transition-all">
+                Create Pond
+            </button>
+</div>
+</div>
+</body></html>

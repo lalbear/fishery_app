@@ -28,6 +28,7 @@ import SpeciesDetailScreen from './src/screens/SpeciesDetailScreen';
 import EconomicsScreen from './src/screens/EconomicsScreen';
 import EconomicsResultScreen from './src/screens/EconomicsResultScreen';
 import PolicyGuidanceScreen from './src/screens/PolicyGuidanceScreen';
+import LearningCenterScreen from './src/screens/LearningCenterScreen';
 import MapScreen from './src/screens/MapScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WaterQualityScreen from './src/screens/WaterQualityScreen';
@@ -37,6 +38,7 @@ import FeedCatalogScreen from './src/screens/FeedCatalogScreen';
 import PersonalInfoScreen from './src/screens/PersonalInfoScreen';
 import PondsListScreen from './src/screens/PondsListScreen';
 import AddEditPondScreen from './src/screens/AddEditPondScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
 import AuthScreen from './src/screens/AuthScreen';
 
 // Types
@@ -45,13 +47,15 @@ export type RootStackParamList = {
   SpeciesDetail: { speciesId: string };
   EconomicsResult: { simulationData: any };
   PolicyGuidance: { knowledgeInsights?: any; stateCode?: string; farmerCategory?: string };
-  WaterQuality: undefined;
+  LearningCenter: { knowledgeInsights?: any; stateCode?: string; farmerCategory?: string } | undefined;
+  WaterQuality: { pondId?: string; initialTab?: 'log' | 'history' } | undefined;
   MarketPrices: undefined;
   EquipmentCatalog: undefined;
   FeedCatalog: undefined;
   PersonalInfo: undefined;
   PondsList: undefined;
   AddEditPond: { pondId?: string };
+  Notifications: undefined;
 };
 
 export type MainTabParamList = {
@@ -173,6 +177,7 @@ function MainApp() {
         <Stack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EconomicsResult" component={EconomicsResultScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PolicyGuidance" component={PolicyGuidanceScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="LearningCenter" component={LearningCenterScreen} options={{ headerShown: false }} />
         <Stack.Screen name="WaterQuality" component={WaterQualityScreen} options={{ headerShown: false }} />
         <Stack.Screen name="MarketPrices" component={MarketPricesScreen} options={{ headerShown: false }} />
         <Stack.Screen name="EquipmentCatalog" component={EquipmentCatalogScreen} options={{ headerShown: false }} />
@@ -180,6 +185,7 @@ function MainApp() {
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PondsList" component={PondsListScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AddEditPond" component={AddEditPondScreen} options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
     </NavigationContainer>

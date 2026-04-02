@@ -62,6 +62,33 @@ function getEquipmentVisual(item: any): { icon: keyof typeof Ionicons.glyphMap; 
     return { icon: 'construct-outline', accent: '#1F9D55', chip: category || 'Equipment' };
 }
 
+function formatEquipmentCategory(category: string): string {
+    switch (String(category || '').toUpperCase()) {
+        case 'ALL':
+            return 'All';
+        case 'AERATION':
+            return 'Aeration';
+        case 'TANK':
+            return 'Tanks';
+        case 'CIRCULATION':
+            return 'Water Flow';
+        case 'FILTRATION':
+            return 'Filtration';
+        case 'MONITORING':
+            return 'Testing';
+        case 'FEEDING':
+            return 'Feeding';
+        case 'POWER':
+            return 'Power';
+        default:
+            return String(category || 'Equipment')
+                .toLowerCase()
+                .split('_')
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ');
+    }
+}
+
 function EquipmentArtwork({ item, style }: { item: any; style: any }) {
     const visual = getEquipmentVisual(item);
 
@@ -162,7 +189,9 @@ export default function EquipmentCatalogScreen() {
                         style={[styles.categoryChip, activeCategory === item && styles.categoryChipActive]}
                         onPress={() => setActiveCategory(item)}
                     >
-                        <Text style={[styles.categoryChipText, activeCategory === item && styles.categoryChipTextActive]}>{item}</Text>
+                        <Text style={[styles.categoryChipText, activeCategory === item && styles.categoryChipTextActive]}>
+                            {formatEquipmentCategory(item)}
+                        </Text>
                     </TouchableOpacity>
                 )}
             />
@@ -181,7 +210,7 @@ export default function EquipmentCatalogScreen() {
                             fallbackStyle={styles.cardImageFallback}
                             iconColor={theme.colors.primary}
                         />
-                        <Text style={styles.cardCategory}>{item.category}</Text>
+                        <Text style={styles.cardCategory}>{formatEquipmentCategory(item.category)}</Text>
                         <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
                         <Text style={styles.cardPrice}>Rs {parseFloat(item.cost_inr).toLocaleString('en-IN')}</Text>
                     </TouchableOpacity>
@@ -200,7 +229,7 @@ export default function EquipmentCatalogScreen() {
                                     iconColor={theme.colors.primary}
                                 />
                                 <Text style={styles.modalTitle}>{selectedItem.name}</Text>
-                                <Text style={styles.modalMeta}>{selectedItem.category}</Text>
+                                <Text style={styles.modalMeta}>{formatEquipmentCategory(selectedItem.category)}</Text>
                                 <Text style={styles.modalLine}>Capital Cost: Rs {parseFloat(selectedItem.cost_inr).toLocaleString('en-IN')}</Text>
                                 <Text style={styles.modalLine}>Expected Lifespan: {selectedItem.lifespan_years} years</Text>
                                 {selectedItem.maintenance_cost_annual_inr ? <Text style={styles.modalLine}>Annual Maintenance: Rs {parseFloat(selectedItem.maintenance_cost_annual_inr).toLocaleString('en-IN')}</Text> : null}
@@ -268,15 +297,16 @@ const getStyles = (theme: any) => StyleSheet.create({
         marginTop: 12,
         marginHorizontal: 12,
         color: theme.colors.primary,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: '800',
     },
     cardTitle: {
         marginHorizontal: 12,
         marginTop: 6,
         color: theme.colors.textPrimary,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
+        lineHeight: 20,
     },
     cardPrice: {
         marginHorizontal: 12,

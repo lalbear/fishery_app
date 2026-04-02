@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fishing God - Market Prices</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#004c0d",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#0f2312",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .sparkline-container {
+            height: 32px;
+            width: 80px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="max-w-md mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl">
+<!-- Header -->
+<header class="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/10 dark:border-primary/20">
+<div class="flex items-center p-4 justify-between">
+<div class="flex items-center gap-3">
+<div class="text-primary dark:text-slate-100 cursor-pointer">
+<span class="material-symbols-outlined">arrow_back</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight">Market Prices</h1>
+</div>
+<button class="p-2 rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-primary dark:text-slate-100">notifications</span>
+</button>
+</div>
+<!-- Search Bar -->
+<div class="px-4 pb-4">
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-primary/60 dark:text-primary/40 text-xl">search</span>
+</div>
+<input class="block w-full pl-10 pr-4 py-3 bg-primary/5 dark:bg-primary/10 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary placeholder:text-slate-400 dark:placeholder:text-slate-500" placeholder="Search species (e.g. Rohu, Tilapia, Shrimp)" type="text"/>
+</div>
+</div>
+<!-- Quick Filters -->
+<div class="flex gap-2 px-4 pb-4 overflow-x-auto no-scrollbar">
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-primary text-white text-xs font-semibold">All Species</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 text-xs font-medium">Freshwater</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 text-xs font-medium">Marine</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80 text-xs font-medium">Shrimp</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+<!-- Info Banner -->
+<div class="flex items-center gap-3 p-3 rounded-lg bg-primary/5 dark:bg-primary/10 border border-primary/20">
+<span class="material-symbols-outlined text-primary text-sm">info</span>
+<p class="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400 leading-tight">
+                    Data sourced from <span class="font-bold text-primary dark:text-primary/80">National Fisheries Board</span>. Last updated: <span class="font-medium text-slate-800 dark:text-slate-200">2 mins ago</span>.
+                </p>
+</div>
+<!-- Price Cards -->
+<div class="space-y-3">
+<!-- Card 1 -->
+<div class="bg-white dark:bg-primary/10 p-4 rounded-xl border border-slate-200 dark:border-primary/20 shadow-sm hover:border-primary/40 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-3">
+<div class="flex gap-3 items-center">
+<div class="w-12 h-12 rounded-lg bg-primary/5 dark:bg-primary/20 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Freshwater fish Rohu closeup" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_UDx2nGHKnsBRjRMsfwqzO15jYqnaJAW46l1Bshlgn9BFHfgeWhbbTNvGfcILPmOTpzyplo4C5E4vIRr6iAdT08ptSQFy-Wxyz9CSC1S-gxjkzu7VxaAbh10TjA_noRDBoSpDtEmnn8fxnRMz2o5wPx1hhviYhph0q8zXog9cDNcS2Tz4FsFuGaQ9qQ5sImYMwn1QslGeqUm2AzybDFjBBcq8aMHQfarjVS9eSYgbCKQp5AAYIPfWn_oGy2xJHj0SWU_f5nZV0zc"/>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-slate-100">Rohu</h3>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Freshwater</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs text-slate-500 dark:text-slate-400">Current Price</p>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-100">₹184.50</span>
+<span class="text-[10px] text-slate-500">/kg</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-primary/10">
+<div class="flex flex-col">
+<span class="text-[10px] text-slate-500 dark:text-slate-400">Benchmark Price</span>
+<span class="text-xs font-semibold">₹178.00</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="sparkline-container relative flex items-end gap-[2px]">
+<div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-2/3 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-3/4 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-4/5 w-full rounded-t-sm"></div>
+<div class="bg-primary h-full w-full rounded-t-sm"></div>
+</div>
+<div class="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span>3.2%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-primary/10 p-4 rounded-xl border border-slate-200 dark:border-primary/20 shadow-sm hover:border-primary/40 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-3">
+<div class="flex gap-3 items-center">
+<div class="w-12 h-12 rounded-lg bg-primary/5 dark:bg-primary/20 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Tiger Prawn Shrimp" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDkFfGNpOEuv6bgsvXlmCik92uAPS3vK_npI9XYswpbPfb6zaWdmX0lGfNM_Xp4JwxZolGmo7ixhuVcwxidNwqrlMOunClWyuveJeNP-Io604_Q0ybmXgUIl0DiiK7tBvUQjdTuKfFqmLW1QoHl-57R20FUlrFrXC2LGPKvE-errqreQo84dIEQ6Zooi8mf-SSUokGqGnYl8LCPMEj7mnaaoXSvGCkgnRE8eyyaPvhgNT80qisyKYILItpTVwOkPNEraqmnZn7sEY"/>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-slate-100">Vannamei Shrimp</h3>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Shrimp • 40 Count</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs text-slate-500 dark:text-slate-400">Current Price</p>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-100">₹340.00</span>
+<span class="text-[10px] text-slate-500">/kg</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-primary/10">
+<div class="flex flex-col">
+<span class="text-[10px] text-slate-500 dark:text-slate-400">Benchmark Price</span>
+<span class="text-xs font-semibold">₹355.00</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="sparkline-container relative flex items-end gap-[2px]">
+<div class="bg-red-400/20 h-full w-full rounded-t-sm"></div>
+<div class="bg-red-400/20 h-4/5 w-full rounded-t-sm"></div>
+<div class="bg-red-400/20 h-3/4 w-full rounded-t-sm"></div>
+<div class="bg-red-400/20 h-2/3 w-full rounded-t-sm"></div>
+<div class="bg-red-400/20 h-3/5 w-full rounded-t-sm"></div>
+<div class="bg-red-500 h-1/2 w-full rounded-t-sm"></div>
+</div>
+<div class="flex items-center text-red-600 dark:text-red-400 font-bold text-xs bg-red-50 dark:bg-red-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs">trending_down</span>
+<span>4.5%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white dark:bg-primary/10 p-4 rounded-xl border border-slate-200 dark:border-primary/20 shadow-sm hover:border-primary/40 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-3">
+<div class="flex gap-3 items-center">
+<div class="w-12 h-12 rounded-lg bg-primary/5 dark:bg-primary/20 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Sea Bass fish close up" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDM7YagRv65yXT4mm5D80hqrJgqf9sjmKwDtmS0-v8Y_-0ZxcGkrXS2_-UanyPr5m8QiajZfxQcfIqewdQK_UJXqHKAz0BRlAvhik1ibjI9P3Q49Hzf8Zgdogpo9XvdqnvXoTUFMrOwbnDdKz0hrad4RET1EJWrvEfkOnZBz4t9_McQZGJ6GeNXdFF_ZP2fTof2C_l2Lqbpjp7uoJAR4j93rq0QfQholfZnjTU5VzoZTWpHq__wh3SL0Ek66VsgB7WmtLgeQC_HBac"/>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-slate-100">Sea Bass</h3>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Marine</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs text-slate-500 dark:text-slate-400">Current Price</p>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-100">₹420.00</span>
+<span class="text-[10px] text-slate-500">/kg</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-primary/10">
+<div class="flex flex-col">
+<span class="text-[10px] text-slate-500 dark:text-slate-400">Benchmark Price</span>
+<span class="text-xs font-semibold">₹415.00</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="sparkline-container relative flex items-end gap-[2px]">
+<div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-2/3 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-2/3 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-3/4 w-full rounded-t-sm"></div>
+<div class="bg-primary h-3/4 w-full rounded-t-sm"></div>
+</div>
+<div class="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs">trending_flat</span>
+<span>1.2%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-white dark:bg-primary/10 p-4 rounded-xl border border-slate-200 dark:border-primary/20 shadow-sm hover:border-primary/40 transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-3">
+<div class="flex gap-3 items-center">
+<div class="w-12 h-12 rounded-lg bg-primary/5 dark:bg-primary/20 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Tilapia fish swimming" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyPJApWZQ7NYS2WcXKoaVp9K0lSx-b82UxvT0-_lTXVy6MzUgkG6BpStTgoFZ05ajK9wkvqHtKrTueTsGnePm7l7HwghMUXS1Obc8Ft6NJlTbA4wnKHPCAVY9GlvvSKv4l3MpXPwIBa4ttEXNBOYrPnlROqd-JGuFqOvkaHV_zXs6036r2E-brZLpFFMgLKlzfVFw8tMTac0bjF52U5SMzUgkCdrWGV-uhcpfkatO8_UJOFHA1F0l_jWKGWNCcnQTQ7zhfIzn041g"/>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-slate-100">Tilapia</h3>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Freshwater</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs text-slate-500 dark:text-slate-400">Current Price</p>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-100">₹145.00</span>
+<span class="text-[10px] text-slate-500">/kg</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-primary/10">
+<div class="flex flex-col">
+<span class="text-[10px] text-slate-500 dark:text-slate-400">Benchmark Price</span>
+<span class="text-xs font-semibold">₹142.00</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="sparkline-container relative flex items-end gap-[2px]">
+<div class="bg-primary/20 h-1/3 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-1/3 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+<div class="bg-primary/20 h-2/3 w-full rounded-t-sm"></div>
+<div class="bg-primary h-2/3 w-full rounded-t-sm"></div>
+</div>
+<div class="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span>2.1%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="py-8 text-center opacity-50">
+<p class="text-xs font-medium">End of list. Showing 24 species in your region.</p>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="sticky bottom-0 bg-background-light dark:bg-background-dark border-t border-primary/10 dark:border-primary/20 px-2 pt-2 pb-6">
+<div class="flex justify-between items-center max-w-sm mx-auto">
+<a class="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-primary" href="#">
+<span class="material-symbols-outlined font-bold">analytics</span>
+<span class="text-[10px] font-bold">Markets</span>
+</a>
+<div class="relative -top-6">
+<button class="bg-primary text-white w-12 h-12 rounded-full shadow-lg shadow-primary/40 flex items-center justify-center">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<a class="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">waves</span>
+<span class="text-[10px] font-medium">My Ponds</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

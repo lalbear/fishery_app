@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
@@ -64,6 +65,25 @@ export default function PolicyGuidanceScreen() {
           <Bullet text="If the app shows state-specific benchmarks, those are useful for budgeting, especially pond development and system setup costs." styles={styles} />
           <Bullet text="If the app shows warnings or disclaimer notes, update feed price, sale price, and local market assumptions before making a business decision." styles={styles} />
         </Section>
+
+        <TouchableOpacity
+          style={styles.learnLinkCard}
+          onPress={() =>
+            navigation.navigate('LearningCenter', {
+              knowledgeInsights,
+              stateCode,
+              farmerCategory,
+            })
+          }
+        >
+          <View style={styles.learnLinkCopy}>
+            <Text style={styles.learnLinkTitle}>Need the beginner version?</Text>
+            <Text style={styles.learnLinkText}>
+              Open Learning Center for simple explanations of terms like FCR, BCR, subsidy, capital, and land planning.
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color={theme.colors.primary} />
+        </TouchableOpacity>
 
         {knowledgeInsights?.templateHighlights?.length ? (
           <Section title="Document-backed assumptions in use" styles={styles}>
@@ -198,6 +218,31 @@ const getStyles = (theme: any) => StyleSheet.create({
   bulletText: {
     color: theme.colors.textSecondary,
     lineHeight: 22,
+  },
+  learnLinkCard: {
+    marginTop: 18,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  learnLinkCopy: {
+    flex: 1,
+  },
+  learnLinkTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  learnLinkText: {
+    color: theme.colors.textSecondary,
+    marginTop: 6,
+    lineHeight: 20,
   },
   card: {
     borderRadius: 14,

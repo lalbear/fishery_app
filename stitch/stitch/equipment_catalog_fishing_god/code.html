@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fishing God - Equipment Catalog</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#004c0d",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#0f2312",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header Section -->
+<header class="sticky top-0 z-50 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md p-4 justify-between border-b border-primary/10">
+<div class="text-primary dark:text-slate-100 flex size-12 shrink-0 items-center justify-center">
+<span class="material-symbols-outlined text-2xl">menu</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center">Fishing God Catalog</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex items-center justify-center rounded-xl h-10 w-10 bg-primary/10 dark:bg-primary/20 text-primary dark:text-slate-100">
+<span class="material-symbols-outlined text-2xl">shopping_cart</span>
+</button>
+</div>
+</header>
+<!-- Search Bar -->
+<div class="px-4 py-4">
+<label class="flex flex-col w-full">
+<div class="flex w-full items-stretch rounded-xl h-12 bg-slate-200 dark:bg-primary/20">
+<div class="text-primary dark:text-slate-400 flex items-center justify-center pl-4">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full border-none bg-transparent focus:ring-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 px-4 text-base font-normal" placeholder="Search industrial equipment..." value=""/>
+</div>
+</label>
+</div>
+<!-- Category Filters -->
+<div class="flex gap-3 px-4 pb-4 overflow-x-auto no-scrollbar">
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary text-white px-6">
+<span class="text-sm font-semibold leading-normal">All</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-200 dark:bg-primary/20 text-slate-700 dark:text-slate-300 px-5">
+<span class="material-symbols-outlined text-lg">air</span>
+<span class="text-sm font-medium leading-normal">Aerators</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-200 dark:bg-primary/20 text-slate-700 dark:text-slate-300 px-5">
+<span class="material-symbols-outlined text-lg">water_drop</span>
+<span class="text-sm font-medium leading-normal">Pumps</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-200 dark:bg-primary/20 text-slate-700 dark:text-slate-300 px-5">
+<span class="material-symbols-outlined text-lg">restaurant</span>
+<span class="text-sm font-medium leading-normal">Feeders</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-200 dark:bg-primary/20 text-slate-700 dark:text-slate-300 px-5">
+<span class="material-symbols-outlined text-lg">biotech</span>
+<span class="text-sm font-medium leading-normal">Testers</span>
+</button>
+</div>
+<!-- Equipment Grid -->
+<main class="flex-1 px-4 pb-24">
+<div class="flex items-baseline justify-between mb-4 mt-2">
+<h3 class="text-slate-900 dark:text-slate-100 text-xl font-bold tracking-tight">Featured Products</h3>
+<span class="text-primary text-sm font-semibold">View All</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Product Card 1 -->
+<div class="flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm">
+<div class="aspect-square w-full bg-slate-100 dark:bg-slate-800 relative">
+<img class="w-full h-full object-cover" data-alt="High performance industrial water aerator machine" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuwdYr2eHsLPbLO3vsBw129_GA8iKMNbJwXZ44UJIAsRHjTPI_zyebNXsNHU_YA9eD3TX1EwTssuAkThpZxuhKQEtolYdJpn_l32guLoNlgzCyQlZy2Qv0rV6-hYdVv-hWXRIQNsu75qMC9b7WQ8u7HjnWOrOJPJqXogpjer6p03ye5PAKUKsKnc5Cblrcgylx13TKXq4Y-OE7CoXYTWQZP0bAPqONaghlgGKRPwIw5f_CfK-HNLcWUz9nyByjyIprH0-aBLY0DTw"/>
+<span class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Top Rated</span>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Aerators</p>
+<h4 class="text-slate-900 dark:text-slate-100 font-bold text-sm leading-tight mb-1">OxyStream Turbo 5</h4>
+<p class="text-slate-500 dark:text-slate-400 text-xs mb-3">5.0 HP • 240V • 4-Paddles</p>
+<button class="mt-auto w-full bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg text-xs transition-colors">
+                            Inquire
+                        </button>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm">
+<div class="aspect-square w-full bg-slate-100 dark:bg-slate-800 relative">
+<img class="w-full h-full object-cover" data-alt="Industrial submersible water pump for aquaculture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKUZ1wdRlfsLhTE3xkkUo7mM0Z4ZWUQVKB9ubDIcQUNJ1U9dqGUurLgNHWWlYdeurDK8-tbfNxGi_anMn459D_jtqJHTwGYHy-P6fhbsexg5XGJkgjMcxlenIKgdBJGQGH8ahPYfymw4-nnQOuDC4UkXdeYE4y0EejqhbskKe3fPTtrkl3gfnEw00ppwXhNw6tLwyptC8-KXRnCnlaMU_a6wGd5yrgPqgYwGigZ_NBykzjPDRp6mvrUm6WBq3JFzQg8Y68rZtEVvk"/>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Pumps</p>
+<h4 class="text-slate-900 dark:text-slate-100 font-bold text-sm leading-tight mb-1">AquaFlow Pro X</h4>
+<p class="text-slate-500 dark:text-slate-400 text-xs mb-3">800L/min • Submersible</p>
+<button class="mt-auto w-full bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg text-xs transition-colors">
+                            Inquire
+                        </button>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm">
+<div class="aspect-square w-full bg-slate-100 dark:bg-slate-800 relative">
+<img class="w-full h-full object-cover" data-alt="Automatic fish feeder machine for commercial ponds" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5yZ7wCHGXvSQAOinqd-DljSNSUBf4N12JlmVMY9GfOR7svl5Ww1Qrj9Qj4eSc698rEKBEkaP_Uebg8DTTrg3wAsFCaE_JgsqCm0I472sM0mHBW0sp5XYFui6jHvCgrhpGQffEVbO1KtiBA7EeRSUL8qLfDC4f5s-dsMFK9DSbdFAIvrQdlsi5AObw_5VtUBDkkekFASJGrECBxmAoGbU_UyJo83gJsg5YbR_ZLuLPTIzOvIIFHjkrG4NuPqr9OBToLq7uaZj-0k0"/>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Feeders</p>
+<h4 class="text-slate-900 dark:text-slate-100 font-bold text-sm leading-tight mb-1">SmartFeed v2</h4>
+<p class="text-slate-500 dark:text-slate-400 text-xs mb-3">100kg Cap • Solar Powered</p>
+<button class="mt-auto w-full bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg text-xs transition-colors">
+                            Inquire
+                        </button>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm">
+<div class="aspect-square w-full bg-slate-100 dark:bg-slate-800 relative">
+<img class="w-full h-full object-cover" data-alt="Digital water quality tester handheld device" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDAOBavezdJkrNDR98-W_yCteApzk-UEJK7ypABIUSq2lv4DdqBIcX0FWEW6awU0VFhGmAK9KxXiC72tpJbEpTQiSt2ZSt_1hjdzyfLaWz9N86CvCbhgrgxsZxDnJcVtLt22WJ52Jyl5QS4AyrTUPKF_0ou10pkk-lwrtpsN-CG_LJ--5j7-vBscY_rAnsJmDWy7xLYQAw0n3zeUc56lhvnq0_yc8T4jRrvzH8loEDin2nhfO1njSLQeIlckGjycng1qsXnUVnimo"/>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Testers</p>
+<h4 class="text-slate-900 dark:text-slate-100 font-bold text-sm leading-tight mb-1">DO-Master Elite</h4>
+<p class="text-slate-500 dark:text-slate-400 text-xs mb-3">O2/pH/Temp • Bluetooth</p>
+<button class="mt-auto w-full bg-primary hover:bg-primary/90 text-white font-bold py-2 rounded-lg text-xs transition-colors">
+                            Inquire
+                        </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-primary/20 pb-safe-area">
+<div class="flex h-16 items-center justify-around px-2">
+<a class="flex flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-1">storefront</span>
+<span class="text-[10px] font-bold">Catalog</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400" href="#">
+<span class="material-symbols-outlined">waves</span>
+<span class="text-[10px] font-medium">My Ponds</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

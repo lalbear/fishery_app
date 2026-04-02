@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -7,11 +7,54 @@ import { useTheme } from '../ThemeContext';
 import database from '../database';
 import Pond from '../database/models/Pond';
 import withObservables from '@nozbe/with-observables';
+import { fetchSpeciesLookup, getSpeciesDisplay, SpeciesLookup } from '../utils/speciesLookup';
 
 const PondsList = ({ ponds }: { ponds: Pond[] }) => {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
     const styles = getStyles(theme);
+    const [speciesLookup, setSpeciesLookup] = useState<SpeciesLookup>({});
+
+    useEffect(() => {
+        fetchSpeciesLookup().then(setSpeciesLookup);
+    }, []);
+
+    const handleDelete = (pond: Pond) => {
+        Alert.alert(
+            'Delete pond?',
+            `This will remove ${pond.name} from your pond list.${pond.status === 'ACTIVE' ? ' You can add it again later if needed.' : ''}`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await database.write(async () => {
+                                if (pond.localSyncStatus === 'NEW') {
+                                    await pond.destroyPermanently();
+                                    return;
+                                }
+
+                                await pond.markAsDeleted();
+                            });
+                        } catch (error: any) {
+                            Alert.alert('Delete failed', error?.message || 'Could not remove this pond right now.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const formatStockingDate = (timestamp?: number) => {
+        if (!timestamp) return null;
+        return new Date(timestamp).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        });
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -39,18 +82,54 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                     data={ponds}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.list}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AddEditPond', { pondId: item.id })}>
+                    renderItem={({ item }) => {
+                        const species = getSpeciesDisplay(item.speciesId, speciesLookup);
+                        const stockingDate = formatStockingDate(item.stockingDate);
+
+                        return (
+                        <View style={styles.card}>
                             <View style={styles.cardTop}>
                                 <Text style={styles.cardTitle}>{item.name}</Text>
                                 <View style={[styles.badge, (item.status || '').toUpperCase() === 'ACTIVE' ? styles.badgeActive : styles.badgeFallow]}>
-                                    <Text style={styles.badgeText}>{item.status}</Text>
+                                    <Text style={styles.badgeText}>{(item.status || 'UNKNOWN').toUpperCase()}</Text>
                                 </View>
                             </View>
                             <Text style={styles.cardMeta}>{item.areaHectares} hectares • {item.waterSourceType}</Text>
-                            {item.speciesId ? <Text style={styles.cardMeta}>Species ID: {item.speciesId.slice(0, 8)}...</Text> : null}
-                        </TouchableOpacity>
-                    )}
+                            {species ? (
+                                <View style={styles.infoRow}>
+                                    <Ionicons name="fish-outline" size={14} color={theme.colors.primary} />
+                                    <Text style={styles.cardMetaStrong}>{species.label}</Text>
+                                    {species.scientificName && species.scientificName !== species.label ? (
+                                        <Text style={styles.cardMetaSecondary}>({species.scientificName})</Text>
+                                    ) : null}
+                                </View>
+                            ) : (
+                                <Text style={styles.cardMetaSecondary}>Species not added yet</Text>
+                            )}
+                            {stockingDate ? (
+                                <View style={styles.infoRow}>
+                                    <Ionicons name="calendar-outline" size={14} color={theme.colors.primary} />
+                                    <Text style={styles.cardMetaSecondary}>Stocked on {stockingDate}</Text>
+                                </View>
+                            ) : (
+                                <Text style={styles.cardMetaSecondary}>Add a stocking date to unlock harvest tracking</Text>
+                            )}
+
+                            <View style={styles.cardActions}>
+                                <TouchableOpacity
+                                    style={styles.editButton}
+                                    onPress={() => navigation.navigate('AddEditPond', { pondId: item.id })}
+                                >
+                                    <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
+                                    <Text style={styles.editButtonText}>Edit pond</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item)}>
+                                    <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
+                                    <Text style={styles.deleteButtonText}>Delete</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}}
                 />
             )}
         </SafeAreaView>
@@ -91,6 +170,40 @@ const getStyles = (theme: any) => StyleSheet.create({
     badgeFallow: { backgroundColor: theme.colors.accentSoft },
     badgeText: { color: theme.colors.textPrimary, fontWeight: '800', fontSize: 11 },
     cardMeta: { color: theme.colors.textSecondary, marginTop: 10 },
+    cardMetaStrong: { color: theme.colors.textPrimary, fontWeight: '700' },
+    cardMetaSecondary: { color: theme.colors.textSecondary, marginTop: 8 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 16,
+        gap: 12,
+    },
+    editButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        paddingVertical: 12,
+        backgroundColor: theme.colors.surfaceAlt,
+    },
+    editButtonText: { color: theme.colors.textPrimary, fontWeight: '700' },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        borderRadius: 14,
+        backgroundColor: theme.colors.errorSoft || `${theme.colors.error}22`,
+    },
+    deleteButtonText: { color: theme.colors.error, fontWeight: '700' },
     emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
     emptyTitle: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '800', marginTop: 12 },
     emptySub: { color: theme.colors.textSecondary, marginTop: 8, textAlign: 'center' },

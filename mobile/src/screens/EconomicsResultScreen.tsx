@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -14,6 +14,7 @@ export default function EconomicsResultScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { simulationData } = route.params as any;
+  const [expandedSpecies, setExpandedSpecies] = useState<Record<string, boolean>>({});
 
   if (!simulationData) {
     return (
@@ -149,17 +150,56 @@ export default function EconomicsResultScreen() {
         {simulationData.recommendedSpecies?.length ? (
           <Section title="Recommended Species" styles={styles}>
             {simulationData.recommendedSpecies.map((species: any, idx: number) => (
-              <View key={idx} style={styles.listCard}>
-                <Text style={styles.listCardTitle}>
-                  {species.commonName || species.speciesName || species.scientificName || species.species || 'Recommended species'}
+              <TouchableOpacity
+                key={idx}
+                activeOpacity={0.9}
+                style={[
+                  styles.speciesCard,
+                  getCompatibilityCardStyle(species.compatibilityScore || species.score || 0, theme),
+                ]}
+                onPress={() =>
+                  setExpandedSpecies((current) => ({
+                    ...current,
+                    [species.speciesId || species.scientificName || String(idx)]: !current[species.speciesId || species.scientificName || String(idx)],
+                  }))
+                }
+              >
+                <View style={styles.speciesCardTopRow}>
+                  <View style={styles.speciesCardTextWrap}>
+                    <Text style={styles.listCardTitle}>
+                      {species.commonName || species.speciesName || species.scientificName || species.species || 'Recommended species'}
+                    </Text>
+                    <Text style={styles.listCardMeta}>
+                      {species.scientificName && species.scientificName !== species.commonName
+                        ? `${species.scientificName} • `
+                        : ''}
+                      Compatibility {species.compatibilityScore || species.score || '-'}%
+                    </Text>
+                  </View>
+                  <View style={styles.speciesBadge}>
+                    <Text style={styles.speciesBadgeText}>
+                      {getCompatibilityLabel(species.compatibilityScore || species.score || 0)}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.speciesHint}>
+                  Tap to see why this species matches your profile.
                 </Text>
-                <Text style={styles.listCardMeta}>
-                  {species.scientificName && species.scientificName !== species.commonName
-                    ? `${species.scientificName} • `
-                    : ''}
-                  Compatibility {species.compatibilityScore || species.score || '-'}%
-                </Text>
-              </View>
+
+                {expandedSpecies[species.speciesId || species.scientificName || String(idx)] ? (
+                  <View style={styles.speciesReasonBox}>
+                    {(species.compatibilityReasons || []).map((reason: string, reasonIdx: number) => (
+                      <Text key={reasonIdx} style={styles.speciesReasonText}>
+                        • {reason}
+                      </Text>
+                    ))}
+                    <Text style={styles.speciesSummaryText}>
+                      {buildCompatibilitySummary(species)}
+                    </Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
             ))}
           </Section>
         ) : null}
@@ -218,6 +258,56 @@ function getPolicyResultDescription(knowledgeInsights: any) {
   }
 
   return `This result uses a ${subsidy}% beneficiary subsidy rule from the seeded institutional guidance.`;
+}
+
+function getCompatibilityLabel(score: number) {
+  if (score > 60) return 'Strong fit';
+  if (score >= 30) return 'Moderate fit';
+  return 'Low fit';
+}
+
+function buildCompatibilitySummary(species: any) {
+  const score = species.compatibilityScore || species.score || 0;
+  const yieldText =
+    species.expectedYieldKg != null ? `Expected yield is about ${species.expectedYieldKg.toLocaleString('en-IN')} kg.` : '';
+  const revenueText =
+    species.expectedRevenueInr != null ? ` Revenue can reach around Rs ${species.expectedRevenueInr.toLocaleString('en-IN')}.` : '';
+  const profitText =
+    species.netProfitInr != null ? ` Net profit is estimated near Rs ${species.netProfitInr.toLocaleString('en-IN')}.` : '';
+
+  if (score > 60) {
+    return `This species matches your farm profile well because its efficiency and economics align strongly with the selected inputs.${yieldText}${revenueText}${profitText}`;
+  }
+
+  if (score >= 30) {
+    return `This species can work for your profile, but the match is more balanced than strong. Review costs, survival, and local market demand before choosing it.${yieldText}${revenueText}${profitText}`;
+  }
+
+  return `This species is a weaker match for the current inputs, so it may need better capital, different water conditions, or higher risk tolerance to perform well.${yieldText}${revenueText}${profitText}`;
+}
+
+function getCompatibilityCardStyle(score: number, theme: any) {
+  if (score > 60) {
+    return {
+      backgroundColor: theme.isDark ? '#101A12' : '#EAF8EE',
+      borderWidth: 1,
+      borderColor: theme.isDark ? '#1F6B37' : '#8CD3A3',
+    };
+  }
+
+  if (score >= 30) {
+    return {
+      backgroundColor: theme.isDark ? '#1D170A' : '#FFF7DB',
+      borderWidth: 1,
+      borderColor: theme.isDark ? '#8A6B13' : '#F0C45D',
+    };
+  }
+
+  return {
+    backgroundColor: theme.isDark ? '#1E1111' : '#FCE8E8',
+    borderWidth: 1,
+    borderColor: theme.isDark ? '#8D3A3A' : '#E89A9A',
+  };
 }
 
 function Section({ title, styles, children }: any) {
@@ -316,6 +406,20 @@ const getStyles = (theme: any) => StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
+  speciesCard: {
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+  },
+  speciesCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  speciesCardTextWrap: {
+    flex: 1,
+  },
   listCardTitle: {
     color: theme.colors.textPrimary,
     fontSize: 16,
@@ -323,6 +427,39 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   listCardMeta: {
     color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
+  speciesBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  speciesBadgeText: {
+    color: theme.colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  speciesHint: {
+    color: theme.colors.textSecondary,
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  speciesReasonBox: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    gap: 8,
+  },
+  speciesReasonText: {
+    color: theme.colors.textPrimary,
+    lineHeight: 20,
+  },
+  speciesSummaryText: {
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
     marginTop: 4,
   },
   policySourceText: {

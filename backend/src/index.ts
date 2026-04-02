@@ -128,11 +128,28 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Start server only when executed directly so tests can import the app safely.
-if (require.main === module) {
+async function startServer() {
+  const dbConnected = await checkConnection();
+
+  if (!dbConnected) {
+    logger.error('Startup aborted because PostgreSQL is unavailable', {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      database: process.env.DB_NAME || 'fishing_god',
+      user: process.env.DB_USER || 'fishinggod',
+    });
+    process.exit(1);
+    return;
+  }
+
   app.listen(PORT, HOST, () => {
     logger.info(`Fishing God API server running on http://${HOST}:${PORT}`);
   });
+}
+
+// Start server only when executed directly so tests can import the app safely.
+if (require.main === module) {
+  void startServer();
 }
 
 // Graceful shutdown

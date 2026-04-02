@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#004c0d",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#0f2312",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<header class="sticky top-0 z-10 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md p-4 justify-between border-b border-primary/10">
+<div class="flex items-center gap-3">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold leading-tight tracking-tight">Species Details</h1>
+</div>
+<div class="flex gap-2">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</header>
+<main class="flex-1 pb-24">
+<div class="@container px-4 py-4">
+<div class="relative aspect-video w-full overflow-hidden rounded-xl bg-primary/20 bg-cover bg-center shadow-lg" data-alt="Close up of a healthy Nile Tilapia swimming in clear water" style='background-image: linear-gradient(to top, rgba(15, 35, 18, 0.9) 0%, rgba(15, 35, 18, 0.2) 50%, rgba(0, 0, 0, 0) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCxrCV3Kd6IJqSGKqBXFvD7jnb0e6tYEYBBuc2B4o3gMEwxxBhAa4GHC5Bos7t04p1nd0AWNebXYtp_yQ8Uapl4d6u5wMXXgQfuPVQLTc2mTQRcYWHwySFoQQJGGFvvBN0BQDWCAsfar0T9shHT0dUGnrpVi8PkOdTC5zeHNA1qSsw17r2hwJomB1dT39Fn6M_k0Lj8PWnK6WtDQPsq_O5Ine7sYmcw7kD9IBVGqSSV0v1F4dl7MJFQGLHEWDg0oZKk1ECrlp4yaxQ");'>
+<div class="absolute bottom-0 left-0 p-6">
+<span class="inline-block px-3 py-1 mb-2 text-xs font-bold tracking-wider uppercase bg-primary text-white rounded-full">Most Profitable</span>
+<h2 class="text-3xl font-bold text-white leading-tight">Nile Tilapia</h2>
+<p class="text-slate-300 text-sm italic">Oreochromis niloticus</p>
+</div>
+</div>
+</div>
+<section class="px-4 mt-4">
+<h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">science</span>
+                    Biological Parameters
+                </h3>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<div class="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-4">
+<span class="material-symbols-outlined text-primary">water_drop</span>
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">pH Range</p>
+<p class="text-lg font-bold">6.5 — 8.5</p>
+<div class="w-full bg-primary/10 h-1.5 rounded-full mt-2">
+<div class="bg-primary h-1.5 rounded-full w-[70%] ml-[20%]"></div>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-4">
+<span class="material-symbols-outlined text-primary">thermostat</span>
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Temperature</p>
+<p class="text-lg font-bold">24°C — 30°C</p>
+<div class="w-full bg-primary/10 h-1.5 rounded-full mt-2">
+<div class="bg-primary h-1.5 rounded-full w-[60%] ml-[30%]"></div>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-4">
+<span class="material-symbols-outlined text-primary">waves</span>
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Salinity</p>
+<p class="text-lg font-bold">0 — 15 ppt</p>
+<p class="text-sm text-primary/80 font-medium">Fresh to Brackish</p>
+</div>
+</div>
+</div>
+</section>
+<section class="px-4 mt-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-xl font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">trending_up</span>
+                        Economic Projections
+                    </h3>
+<span class="text-xs font-medium text-slate-500 uppercase tracking-widest">Est. 2024 Data</span>
+</div>
+<div class="rounded-xl border border-primary/10 bg-white dark:bg-primary/5 overflow-hidden">
+<div class="grid grid-cols-1 divide-y divide-primary/10">
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div>
+<p class="text-sm font-medium">Avg. Market Price</p>
+<p class="text-xs text-slate-500">Retail price per kg</p>
+</div>
+</div>
+<p class="text-lg font-bold">$4.50 - $6.20</p>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">agriculture</span>
+</div>
+<div>
+<p class="text-sm font-medium">Yield Per Acre</p>
+<p class="text-xs text-slate-500">Intensive management</p>
+</div>
+</div>
+<p class="text-lg font-bold">12,000 lbs</p>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<div>
+<p class="text-sm font-medium">Harvest Cycle</p>
+<p class="text-xs text-slate-500">Fry to marketable size</p>
+</div>
+</div>
+<p class="text-lg font-bold">5 - 7 Months</p>
+</div>
+</div>
+</div>
+</section>
+<section class="px-4 mt-8">
+<h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">settings_input_component</span>
+                    Optimal Systems
+                </h3>
+<div class="space-y-3">
+<div class="flex items-center gap-4 p-4 rounded-xl border border-primary/20 bg-primary/5">
+<div class="size-12 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
+<span class="material-symbols-outlined">pool</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<p class="font-bold">Earthen Pond</p>
+<span class="text-xs font-bold text-primary">Best Match</span>
+</div>
+<div class="w-full bg-primary/20 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[95%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-xl border border-primary/5 bg-slate-100 dark:bg-primary/5 opacity-80">
+<div class="size-12 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 shrink-0">
+<span class="material-symbols-outlined">cyclone</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<p class="font-bold">Biofloc System</p>
+<span class="text-xs font-bold text-slate-500">High Skill</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[70%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-xl border border-primary/5 bg-slate-100 dark:bg-primary/5 opacity-80">
+<div class="size-12 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 shrink-0">
+<span class="material-symbols-outlined">restart_alt</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<p class="font-bold">RAS (Recirculating)</p>
+<span class="text-xs font-bold text-slate-500">Tech Intensive</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[45%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 z-20 border-t border-primary/20 bg-background-light dark:bg-background-dark/95 backdrop-blur-md px-4 pb-6 pt-2">
+<div class="mx-auto flex max-w-lg justify-between gap-1">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">set_meal</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Species</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-slate-500 dark:text-slate-400" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Inventory</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-slate-500 dark:text-slate-400" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Market</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-slate-500 dark:text-slate-400" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Profile</p>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

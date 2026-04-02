@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Species Catalog - Fishing God</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#004c0d",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#0f2312",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/10 dark:border-primary/20">
+<div class="flex items-center px-4 py-4 justify-between max-w-2xl mx-auto w-full">
+<div class="flex items-center gap-3">
+<div class="bg-primary/20 p-2 rounded-lg text-primary dark:text-emerald-400">
+<span class="material-symbols-outlined text-2xl">set_meal</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight">Species Catalog</h1>
+</div>
+<button class="p-2 rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+<div class="px-4 pb-4 max-w-2xl mx-auto w-full">
+<label class="flex flex-col w-full group">
+<div class="flex w-full items-center rounded-xl bg-primary/5 dark:bg-primary/20 border border-transparent focus-within:border-primary/40 transition-all h-12">
+<div class="text-primary/60 dark:text-emerald-400/60 flex items-center justify-center pl-4">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-emerald-400/40 px-3 text-base" placeholder="Search fish or shrimp species..." type="text"/>
+</div>
+</label>
+</div>
+<div class="flex gap-2 px-4 pb-4 overflow-x-auto no-scrollbar max-w-2xl mx-auto w-full">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary text-white px-5 text-sm font-semibold">
+                All
+            </button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/40 px-5 text-sm font-medium">
+                Freshwater
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/40 px-5 text-sm font-medium">
+                Saltwater
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/40 px-5 text-sm font-medium">
+                Crustaceans
+            </button>
+</div>
+</header>
+<main class="flex-1 p-4 max-w-2xl mx-auto w-full space-y-4">
+<div class="group relative flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm hover:shadow-md transition-shadow">
+<div class="w-full aspect-[16/9] bg-center bg-cover" data-alt="Vibrant largemouth bass swimming in clear freshwater environment" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB1bZCBsWXvm5RbO_-JeHC6I1qrM9e-d0za0EgVlCV38FFea_gR00NIRtVKReNlnBhA6COXfIKR3E-eesx7w2O1k5fQ2UC-k8XKHGW8_Ebp2UQglOU4caN6Rxd5IrJqw5XtxQY7Z-LeC0Qf38LB0d7q27J4h-VuAbh2m_fAqxdaxxzdIyIe-tCnixZA3kdY68EVW9kBURIIBgcuxRIiKj3uXlDvPjGXPrkOZ3b6wRovh5CrnxAHY1wIojleYFoLVCLihSPkk0trtTY");'></div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-xl font-bold leading-tight">Largemouth Bass</h3>
+<span class="px-2 py-1 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold uppercase tracking-wider">Freshwater</span>
+</div>
+<p class="text-slate-500 dark:text-emerald-400/70 text-sm italic mb-4">Micropterus salmoides</p>
+<div class="grid grid-cols-2 gap-3 mb-4">
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">water_ph</span>
+<span class="text-sm font-medium">pH 6.5 - 8.5</span>
+</div>
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">thermostat</span>
+<span class="text-sm font-medium">65°F - 80°F</span>
+</div>
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">waves</span>
+<span class="text-sm font-medium">Salinity: 0-2ppt</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    View Species Profile
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="group relative flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm hover:shadow-md transition-shadow">
+<div class="w-full aspect-[16/9] bg-center bg-cover" data-alt="Blue king prawn on sandy seafloor bottom" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAC2BUhzDraXFKvhvNq3hXwSiVthADoopKGbUEYVd64uOQ5R3r0db_ACUaG_muFpRCsXLAww3t-xozLwjhagYtGjcRQcrsPwfBq10L8RbeXKYqOcw-9eD47s3u-3VQcM71_Y12tm5tGeufkXPArDimAxkeLxwkRkVsQSA54AAIXTHMCCdI_c9Yeb2HGNZNTPOa8361CVBbcC2llaPe9FNSnlqkoITLBs5MKAa20lxEe0u1MiqT_sZoAbQCI7SeWoHm8kQXw0bTeOu4");'></div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-xl font-bold leading-tight">Blue King Prawn</h3>
+<span class="px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider">Saltwater</span>
+</div>
+<p class="text-slate-500 dark:text-emerald-400/70 text-sm italic mb-4">Penaeus latisulcatus</p>
+<div class="grid grid-cols-2 gap-3 mb-4">
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">water_ph</span>
+<span class="text-sm font-medium">pH 8.1 - 8.4</span>
+</div>
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">thermostat</span>
+<span class="text-sm font-medium">72°F - 78°F</span>
+</div>
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">waves</span>
+<span class="text-sm font-medium">Salinity: 32-35ppt</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    View Species Profile
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="group relative flex flex-col bg-white dark:bg-primary/10 rounded-xl overflow-hidden border border-slate-200 dark:border-primary/20 shadow-sm hover:shadow-md transition-shadow">
+<div class="w-full aspect-[16/9] bg-center bg-cover" data-alt="Nile Tilapia swimming in a school in tropical waters" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDZMkKc4NHgLASsP4jrDxND4Coocwz5CFv6f6fXuud-apvDFQi5tv-25Gap0Csu-rFrsUbGY-2y4SZ6Zpw2OZ34C1cIdc4eaDo9oJ9zOXML7w0AMRgPJNSGOkHSMpfiOnWhleNUnRJRYvGFvEirASYvhr4200pkwZpA6TIPASM-1YuAJt8STWJZV6O7nCBWMgijiQKInamxlgyfk16hEIegpEAVWHjHSWGinHI87vMp03M2mQuNJPxR6xPOW9EY1kScCc7SfuEEnVo");'></div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-xl font-bold leading-tight">Nile Tilapia</h3>
+<span class="px-2 py-1 rounded-md bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-xs font-bold uppercase tracking-wider">Brackish</span>
+</div>
+<p class="text-slate-500 dark:text-emerald-400/70 text-sm italic mb-4">Oreochromis niloticus</p>
+<div class="grid grid-cols-2 gap-3 mb-4">
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">water_ph</span>
+<span class="text-sm font-medium">pH 7.0 - 9.0</span>
+</div>
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">thermostat</span>
+<span class="text-sm font-medium">75°F - 86°F</span>
+</div>
+<div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-primary text-lg">waves</span>
+<span class="text-sm font-medium">Salinity: 0-15ppt</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    View Species Profile
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="h-24"></div>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 backdrop-blur-lg border-t border-primary/10 dark:border-primary/20 pb-safe z-20">
+<div class="flex justify-around items-center h-20 max-w-2xl mx-auto px-2">
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary dark:text-emerald-400" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">set_meal</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Species</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Economics</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Maps</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Profile</span>
+</a>
+</div>
+</nav>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</body></html>

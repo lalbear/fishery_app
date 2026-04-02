@@ -37,10 +37,12 @@
         "welcome": "Welcome to Fishing God",
         "subtitle": "Your Aquaculture Companion",
         "quickActions": "Quick Actions",
-        "checkSpecies": "Check Species",
-        "calculateROI": "Calculate ROI",
-        "logWaterQuality": "Log Water Quality",
-        "viewMarkets": "View Markets",
+        "checkSpecies": "Species Guide",
+        "calculateROI": "ROI Planner",
+        "logWaterQuality": "Water Log",
+        "viewMarkets": "Market Prices",
+        "equipmentCatalog": "Equipment",
+        "feedNutrition": "Feed Guide",
         "recentActivity": "Recent Activity"
     },
     "species": {

@@ -139,6 +139,16 @@ export default function EconomicsScreen() {
 
   const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
   const relevantDistricts = zones.find(z => z.state_code === stateCode)?.district_codes || [];
+  const profileFields = [
+    Boolean(stateCode),
+    Boolean(districtCode),
+    Boolean(landSize.trim()),
+    Boolean(salinity.trim()),
+    Boolean(capital.trim()),
+    Boolean(farmerCategory),
+  ];
+  const completedFieldCount = profileFields.filter(Boolean).length;
+  const profileCompletionPercent = Math.round((completedFieldCount / profileFields.length) * 100);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -164,11 +174,34 @@ export default function EconomicsScreen() {
         <Text style={styles.stepText}>STEP 1 OF 3</Text>
         <View style={styles.heroRow}>
           <Text style={styles.heroTitle}>Farm Profile</Text>
-          <Text style={styles.heroProgress}>33% Complete</Text>
+          <Text style={styles.heroProgress}>{profileCompletionPercent}% Inputs Filled</Text>
         </View>
         <View style={styles.progressTrack}>
-          <View style={styles.progressFill} />
+          <View style={[styles.progressFill, { width: `${profileCompletionPercent}%` }]} />
         </View>
+
+        <TouchableOpacity
+          style={styles.learnBanner}
+          onPress={() =>
+            navigation.navigate('LearningCenter', {
+              knowledgeInsights,
+              stateCode,
+              farmerCategory,
+            })
+          }
+          activeOpacity={0.9}
+        >
+          <View style={styles.learnBannerIcon}>
+            <Ionicons name="school-outline" size={18} color={theme.colors.primary} />
+          </View>
+          <View style={styles.learnBannerCopy}>
+            <Text style={styles.learnBannerTitle}>New here?</Text>
+            <Text style={styles.learnBannerText}>
+              Learn FCR, BCR, subsidy logic, land needs, and how this business works in simple terms.
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color={theme.colors.primary} />
+        </TouchableOpacity>
 
         <View style={styles.sectionCard}>
           <SectionTitle icon="location-outline" title="Location & Scale" theme={theme} styles={styles} />
@@ -507,6 +540,39 @@ const getStyles = (theme: any) => StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.primary,
     borderRadius: 3,
+  },
+  learnBanner: {
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 14,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  learnBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  learnBannerCopy: {
+    flex: 1,
+  },
+  learnBannerTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  learnBannerText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
   sectionCard: {
     backgroundColor: theme.colors.surface,

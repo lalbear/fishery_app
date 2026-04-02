@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fishing God - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#004c0d",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#0f2312",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen pb-24">
+<!-- Header Section -->
+<header class="flex items-center bg-background-light dark:bg-background-dark p-4 justify-between sticky top-0 z-50 border-b border-primary/10 backdrop-blur-md">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
+<span class="material-symbols-outlined text-primary">tsunami</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 ml-3">Fishing God</h2>
+<div class="flex gap-2">
+<button class="flex size-10 items-center justify-center rounded-xl bg-slate-200 dark:bg-primary/20 text-slate-900 dark:text-slate-100">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<main class="max-w-md mx-auto">
+<!-- Hero Welcome Section -->
+<section class="p-4 @container">
+<div class="flex w-full flex-col gap-4">
+<div class="flex gap-4 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-16 w-16 border-2 border-primary" data-alt="Professional portrait of a middle-aged fish farmer" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD51eySixYPiXYe9ievZ-oALPbJ1Wu_95C3Iqj7_BHFM8cm4AmOAzTdaJq-6TE3u2jsIhSqZnRB5qHQ2mrAYQDnS9n5mPvel3HDa3jIi4ulvWTLYqP7hrsMiEVOR1y2Uwqk6jhQx4QLM_e9PEgK_UnbUr6cL43sUYaqGjW1H9W8XrgBt0N_4e8RWSv4XpsB9ydRTqF6B-OenLpwbB0ZTTpdDTvULkbzWL9_d3anCVBj54rBgQyoYlcZq0Jtn_8yqNmg4MbQV_2WP2c");'></div>
+<div class="flex flex-col">
+<p class="text-slate-900 dark:text-white text-2xl font-bold leading-tight">Welcome back, Chief!</p>
+<p class="text-primary dark:text-primary/80 text-sm font-medium">Monitoring 4 active ponds • 12.4t expected yield</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Weather Advisory Card -->
+<section class="p-4 @container">
+<div class="flex flex-col items-stretch justify-start rounded-xl shadow-lg bg-white dark:bg-primary/10 border border-slate-200 dark:border-primary/20 overflow-hidden">
+<div class="w-full bg-center bg-no-repeat aspect-[21/9] bg-cover" data-alt="Cloudy dramatic sky over a large aquaculture pond" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBm-VF79Rqaytrular_FiuaSdRdt_4j7FpDtrmJK2JE9qkNnAnohQgVCvamVNGEV20IBU93AppmeUEdt__IDHS_v7VNxYMZNfEjrJvvmsvLPG3LlsmE7iqdmvAPZQ1hVVHiyxkj8MLkxsF_R25VohJD2_mbd_sZnfWVkHENxaL-vfkP5gPfGUfDbqBoNaC66idQNWvZ6iJq81yWEYcdiLP0zhtjqAtu-PjQOEEZLFLBXqqxSby_gYKTQswP_RbWqBUaJO_BCRB3IvM");'></div>
+<div class="flex w-full grow flex-col gap-2 p-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-orange-500 text-sm">warning</span>
+<p class="text-orange-500 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">Urgent Alert: Pond 2</p>
+</div>
+<p class="text-slate-900 dark:text-white text-lg font-bold leading-tight">Low Oxygen Risk</p>
+<p class="text-slate-600 dark:text-slate-300 text-sm leading-normal">Cloudy sky reducing photosynthesis. Activate aerators in Pond 2 immediately to maintain levels above 5mg/L.</p>
+<div class="flex items-center justify-end mt-2">
+<button class="flex items-center justify-center rounded-lg h-9 px-4 bg-primary text-white text-sm font-semibold">
+                            Activate Aerators
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Action Grid (6 items) -->
+<section class="p-4">
+<h3 class="text-slate-900 dark:text-white text-base font-bold mb-3">Quick Management</h3>
+<div class="grid grid-cols-3 gap-3">
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 text-center">
+<span class="material-symbols-outlined text-primary mb-1">set_meal</span>
+<span class="text-[10px] font-medium text-slate-600 dark:text-slate-300">Species</span>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 text-center">
+<span class="material-symbols-outlined text-primary mb-1">payments</span>
+<span class="text-[10px] font-medium text-slate-600 dark:text-slate-300">ROI</span>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 text-center">
+<span class="material-symbols-outlined text-primary mb-1">water_drop</span>
+<span class="text-[10px] font-medium text-slate-600 dark:text-slate-300">Water Quality</span>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 text-center">
+<span class="material-symbols-outlined text-primary mb-1">trending_up</span>
+<span class="text-[10px] font-medium text-slate-600 dark:text-slate-300">Market Prices</span>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 text-center">
+<span class="material-symbols-outlined text-primary mb-1">construction</span>
+<span class="text-[10px] font-medium text-slate-600 dark:text-slate-300">Equipment</span>
+</div>
+<div class="flex flex-col items-center justify-center p-3 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 text-center">
+<span class="material-symbols-outlined text-primary mb-1">restaurant</span>
+<span class="text-[10px] font-medium text-slate-600 dark:text-slate-300">Feed</span>
+</div>
+</div>
+</section>
+<!-- Harvest Countdown Card -->
+<section class="p-4">
+<div class="flex items-stretch justify-between gap-4 rounded-xl bg-primary text-white p-5 shadow-lg relative overflow-hidden">
+<div class="absolute -right-8 -top-8 size-32 bg-white/10 rounded-full blur-2xl"></div>
+<div class="flex flex-[2_2_0px] flex-col justify-between relative z-10">
+<div class="flex flex-col gap-1">
+<p class="text-white/80 text-xs font-semibold uppercase tracking-wider">Next Harvest</p>
+<p class="text-2xl font-bold leading-tight">Pond 1 - Tilapia</p>
+<p class="text-white/90 text-sm font-medium">12 Days Remaining</p>
+</div>
+<button class="mt-4 flex min-w-[100px] cursor-pointer items-center justify-center rounded-lg h-9 px-4 bg-white text-primary gap-2 text-sm font-bold w-fit">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+<span class="truncate">View Timeline</span>
+</button>
+</div>
+<div class="w-24 bg-center bg-no-repeat aspect-square bg-cover rounded-xl border-2 border-white/20 relative z-10" data-alt="Close up of healthy silver tilapia fish in water" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp5y3iSW1x50XcEqsjaHKY24PpMjt5zJ40KpTqO8nDEurow_MOFwsB8AgpM7NFkF24EYtpkChKQ9CymsM3GpjmfnHJhantL5oJXnU1BxmaPqEgWqJZUOweneRoZ_hg5t-_1dykmoti8t1LKjtVwFtiU_NfpYm-CWq8ktrnCW02-6qC58QYKYsLlI5QySC053T8BJ4v89Y6FXWC-Yq8nc5u5fUEKAsqdYxG4-M9Alb1JHFwGit_PHEy2xWcrVVNjvUuk-yU1VusrOI");'></div>
+</div>
+</section>
+<!-- Insights Summary -->
+<section class="p-4 pt-0">
+<div class="bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/20 rounded-xl p-4 flex justify-between items-center">
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs">Total Feed Consumed (MT)</p>
+<p class="text-slate-900 dark:text-white text-xl font-bold">14.2</p>
+</div>
+<div class="h-10 w-px bg-slate-200 dark:bg-primary/20"></div>
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs">Est. Revenue ($)</p>
+<p class="text-primary dark:text-primary/80 text-xl font-bold">42,800</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 border-t border-slate-200 dark:border-primary/20 bg-white/90 dark:bg-background-dark/90 backdrop-blur-lg px-4 pb-6 pt-2 z-50">
+<div class="max-w-md mx-auto flex justify-between items-center">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined">home</span>
+<p class="text-[10px] font-bold">Home</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">set_meal</span>
+<p class="text-[10px] font-medium">Species</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<p class="text-[10px] font-medium">Economics</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">map</span>
+<p class="text-[10px] font-medium">Maps</p>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<p class="text-[10px] font-medium">Profile</p>
+</a>
+</div>
+</nav>
+</body></html>

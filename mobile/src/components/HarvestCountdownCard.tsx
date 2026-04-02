@@ -7,24 +7,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
-
-// Culture period in days per species (conservative estimates)
-const CULTURE_PERIODS: Record<string, { days: number; label: string }> = {
-    'Litopenaeus vannamei': { days: 120, label: 'Vannamei Shrimp' },
-    'Penaeus monodon': { days: 150, label: 'Tiger Shrimp' },
-    'Labeo rohita': { days: 300, label: 'Rohu' },
-    'Catla catla': { days: 300, label: 'Catla' },
-    'Cirrhinus mrigala': { days: 300, label: 'Mrigal' },
-    'Oreochromis niloticus': { days: 180, label: 'Tilapia' },
-    'Pangasianodon hypophthalmus': { days: 200, label: 'Pangasius' },
-};
-
-const DEFAULT_CULTURE = { days: 180, label: 'Fish' };
+import { getHarvestMetrics } from '../utils/pondLifecycle';
 
 interface Pond {
     id: string;
     name: string;
     species_id?: string | null;
+    species_name?: string | null;
+    species_label?: string | null;
     stocking_date?: number | null;
     status: string;
     area_hectares: number;
@@ -71,7 +61,7 @@ export default function HarvestCountdownCard({ ponds, onPressPond }: HarvestCoun
     const { theme } = useTheme();
     const styles = getStyles(theme);
 
-    const activePonds = ponds.filter(p => p.status === 'active' && p.stocking_date);
+    const activePonds = ponds.filter(p => String(p.status || '').toLowerCase() === 'active' && p.stocking_date);
 
     if (activePonds.length === 0) return null;
 
@@ -79,28 +69,26 @@ export default function HarvestCountdownCard({ ponds, onPressPond }: HarvestCoun
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>🎣 Active Harvests</Text>
             {activePonds.map(pond => {
-                const culture = CULTURE_PERIODS[pond.species_id ?? ''] ?? DEFAULT_CULTURE;
-                const now = Date.now();
-                const stockingMs = pond.stocking_date!;
-                const daysElapsed = Math.max(0, Math.floor((now - stockingMs) / 86400000));
-                const daysRemaining = Math.max(0, culture.days - daysElapsed);
-                const progress = Math.min(1, daysElapsed / culture.days);
-                const isReady = daysRemaining === 0;
+                const harvest = getHarvestMetrics({
+                    stockingDate: pond.stocking_date,
+                    speciesScientificName: pond.species_name,
+                });
+                const displaySpecies = pond.species_label || harvest.culture.label;
 
-                const ringColor = isReady
+                const ringColor = harvest.isReady
                     ? theme.colors.success
-                    : progress > 0.85
+                    : harvest.progress > 0.85
                         ? theme.colors.accent
                         : theme.colors.primary;
 
                 const milestone =
-                    daysRemaining === 0
+                    harvest.daysRemaining === 0
                         ? '🎉 Ready to harvest!'
-                        : daysRemaining <= 14
-                            ? `⏳ Harvest window in ${daysRemaining} days`
-                            : daysElapsed < 30
+                        : harvest.daysRemaining <= 14
+                            ? `⏳ Harvest window in ${harvest.daysRemaining} days`
+                            : harvest.daysElapsed < 30
                                 ? '🐟 Early growth stage'
-                                : daysElapsed < culture.days * 0.5
+                                : harvest.daysElapsed < harvest.culture.days * 0.5
                                     ? '📈 Active growth phase'
                                     : '🔄 Final grow-out stage';
 
@@ -113,26 +101,26 @@ export default function HarvestCountdownCard({ ponds, onPressPond }: HarvestCoun
                     >
                         <View style={styles.ringWrapper}>
                             <ProgressRing
-                                progress={progress}
+                                progress={harvest.progress}
                                 size={72}
                                 strokeWidth={7}
                                 color={ringColor}
                             />
                             <View style={styles.ringCenter}>
                                 <Text style={[styles.ringPercent, { color: ringColor }]}>
-                                    {Math.round(progress * 100)}%
+                                    {Math.round(harvest.progress * 100)}%
                                 </Text>
                             </View>
                         </View>
 
                         <View style={styles.info}>
                             <Text style={styles.pondName} numberOfLines={1}>{pond.name}</Text>
-                            <Text style={styles.speciesName}>{culture.label}</Text>
+                            <Text style={styles.speciesName}>{displaySpecies}</Text>
                             <Text style={styles.milestone}>{milestone}</Text>
                             <View style={styles.statsRow}>
-                                <StatBadge icon="today-outline" label={`Day ${daysElapsed}`} theme={theme} />
-                                {!isReady && (
-                                    <StatBadge icon="flag-outline" label={`${daysRemaining}d left`} theme={theme} />
+                                <StatBadge icon="today-outline" label={`Day ${harvest.daysElapsed}`} theme={theme} />
+                                {!harvest.isReady && (
+                                    <StatBadge icon="flag-outline" label={`${harvest.daysRemaining}d left`} theme={theme} />
                                 )}
                                 <StatBadge
                                     icon="resize-outline"

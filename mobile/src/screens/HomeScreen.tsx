@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import WeatherCard from '../components/WeatherCard';
 import HarvestCountdownCard from '../components/HarvestCountdownCard';
 import { database } from '../database';
+import { fetchSpeciesLookup } from '../utils/speciesLookup';
+import { getUnreadNotificationCount } from '../utils/notificationCenter';
 
 export default function HomeScreen() {
   const { theme } = useTheme();
@@ -16,64 +18,50 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const [activePonds, setActivePonds] = useState<any[]>([]);
   const [pondCount, setPondCount] = useState(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
-  useEffect(() => {
-    const loadPonds = async () => {
-      try {
-        const pondsCollection = database.get<any>('ponds');
-        const allPonds = await pondsCollection.query().fetch();
-        setPondCount(allPonds.length);
-        setActivePonds(
-          allPonds
-            .filter((p: any) => (p.status || '').toLowerCase() === 'active' && p.stockingDate)
-            .map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              species_id: p.speciesId,
-              stocking_date: p.stockingDate,
-              status: p.status,
-              area_hectares: p.areaHectares ?? 1,
-            }))
-        );
-      } catch {
-        // Ignore local-db bootstrap issues during initial app load.
-      }
-    };
+  const loadPonds = useCallback(async () => {
+    try {
+      const pondsCollection = database.get<any>('ponds');
+      const allPonds = await pondsCollection.query().fetch();
+      const speciesLookup = await fetchSpeciesLookup();
 
-    loadPonds();
+      setPondCount(allPonds.length);
+      setActivePonds(
+        allPonds
+          .filter((p: any) => (p.status || '').toLowerCase() === 'active' && p.stockingDate)
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            species_id: p.speciesId,
+            species_name: speciesLookup[p.speciesId]?.scientificName || null,
+            species_label: speciesLookup[p.speciesId]?.label || null,
+            stocking_date: p.stockingDate,
+            status: p.status,
+            area_hectares: p.areaHectares ?? 1,
+          }))
+      );
+
+      const unreadCount = await getUnreadNotificationCount();
+      setUnreadNotificationCount(unreadCount);
+    } catch {
+      // Ignore local-db bootstrap issues during initial app load.
+    }
   }, []);
 
-  const handleNotificationsPress = () => {
-    if (activePonds.length > 0) {
-      Alert.alert(
-        'Farm Alerts',
-        `You currently have ${activePonds.length} active pond${activePonds.length === 1 ? '' : 's'} to monitor.`,
-        [
-          { text: 'Water Quality', onPress: () => navigation.navigate('WaterQuality') },
-          { text: 'My Ponds', onPress: () => navigation.navigate('PondsList') },
-          { text: 'Close', style: 'cancel' },
-        ]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Notifications',
-      'No active pond alerts yet. Add a pond or log water quality readings to start getting actionable updates.',
-      [
-        { text: 'Add Pond', onPress: () => navigation.navigate('AddEditPond') },
-        { text: 'Close', style: 'cancel' },
-      ]
-    );
-  };
+  useFocusEffect(
+    useCallback(() => {
+      loadPonds();
+    }, [loadPonds])
+  );
 
   const quickActions = [
-    { icon: 'fish-outline' as const, label: t('home.checkSpecies') || 'Species', screen: 'Species' },
-    { icon: 'calculator-outline' as const, label: t('home.calculateROI') || 'ROI', screen: 'Economics' },
-    { icon: 'water-outline' as const, label: t('home.logWaterQuality') || 'Water Quality', screen: 'WaterQuality' },
-    { icon: 'trending-up-outline' as const, label: t('home.viewMarkets') || 'Market Prices', screen: 'MarketPrices' },
-    { icon: 'construct-outline' as const, label: t('home.equipmentCatalog') || 'Equipment', screen: 'EquipmentCatalog' },
-    { icon: 'restaurant-outline' as const, label: t('home.feedNutrition') || 'Feed', screen: 'FeedCatalog' },
+    { icon: 'fish-outline' as const, label: t('home.checkSpecies'), screen: 'Species' },
+    { icon: 'calculator-outline' as const, label: t('home.calculateROI'), screen: 'Economics' },
+    { icon: 'water-outline' as const, label: t('home.logWaterQuality'), screen: 'WaterQuality' },
+    { icon: 'trending-up-outline' as const, label: t('home.viewMarkets'), screen: 'MarketPrices' },
+    { icon: 'construct-outline' as const, label: t('home.equipmentCatalog'), screen: 'EquipmentCatalog' },
+    { icon: 'restaurant-outline' as const, label: t('home.feedNutrition'), screen: 'FeedCatalog' },
   ];
 
   return (
@@ -86,8 +74,15 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.brandText}>Fishing God</Text>
           </View>
-          <TouchableOpacity style={styles.iconButton} onPress={handleNotificationsPress}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notifications')}>
             <Ionicons name="notifications" size={18} color={theme.colors.textPrimary} />
+            {unreadNotificationCount > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
         </View>
 
@@ -109,6 +104,23 @@ export default function HomeScreen() {
           <WeatherCard locationName="Your District" />
         </View>
 
+        <TouchableOpacity
+          style={styles.learnCard}
+          onPress={() => navigation.navigate('LearningCenter')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.learnCardIcon}>
+            <Ionicons name="school-outline" size={18} color={theme.colors.primary} />
+          </View>
+          <View style={styles.learnCopy}>
+            <Text style={styles.learnTitle}>New to aquaculture?</Text>
+            <Text style={styles.learnText}>
+              Learn business basics, subsidy rules, key terms, and how to read the app&apos;s numbers.
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color={theme.colors.primary} />
+        </TouchableOpacity>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Management</Text>
           <View style={styles.actionGrid}>
@@ -120,7 +132,9 @@ export default function HomeScreen() {
                 activeOpacity={0.85}
               >
                 <Ionicons name={action.icon} size={20} color={theme.colors.primary} />
-                <Text style={styles.actionText}>{action.label}</Text>
+                <Text style={styles.actionText} numberOfLines={2}>
+                  {action.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -175,6 +189,23 @@ const getStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.surfaceAlt,
   },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: theme.colors.textInverse,
+    fontSize: 10,
+    fontWeight: '800',
+  },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -200,6 +231,39 @@ const getStyles = (theme: any) => StyleSheet.create({
   weatherShell: {
     marginBottom: 20,
   },
+  learnCard: {
+    marginBottom: 20,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  learnCardIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: theme.colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  learnCopy: {
+    flex: 1,
+  },
+  learnTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  learnText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
   section: {
     marginBottom: 20,
   },
@@ -213,20 +277,23 @@ const getStyles = (theme: any) => StyleSheet.create({
     gap: 12,
   },
   actionCard: {
-    width: '31%',
-    minHeight: 84,
+    width: '48%',
+    minHeight: 92,
+    paddingHorizontal: 10,
+    paddingVertical: 14,
     borderRadius: theme.borderRadius.lg,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   actionText: {
     color: theme.colors.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
+    lineHeight: 16,
   },
 });

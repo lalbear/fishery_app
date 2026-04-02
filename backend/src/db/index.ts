@@ -6,6 +6,33 @@
 import pg, { Pool, PoolClient, PoolConfig, QueryResult } from 'pg';
 import { logger } from '../utils/logger';
 
+function describeError(error: unknown) {
+  if (error instanceof AggregateError) {
+    return {
+      name: error.name,
+      message: error.message || 'Multiple connection attempts failed',
+      errors: error.errors?.map((entry: any) => ({
+        name: entry?.name,
+        message: entry?.message,
+        code: entry?.code,
+        errno: entry?.errno,
+        address: entry?.address,
+        port: entry?.port,
+      })),
+    };
+  }
+
+  const err = error as any;
+  return {
+    name: err?.name || 'Error',
+    message: err?.message || 'Unknown database error',
+    code: err?.code,
+    errno: err?.errno,
+    address: err?.address,
+    port: err?.port,
+  };
+}
+
 // Database configuration
 const poolConfig: PoolConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -58,7 +85,7 @@ export async function query<T extends pg.QueryResultRow = any>(
     return result;
   } catch (error) {
     logger.error('Query execution failed', {
-      error: (error as Error).message,
+      error: describeError(error),
       query: text.slice(0, 100)
     });
     throw error;
@@ -152,7 +179,11 @@ export async function checkConnection(): Promise<boolean> {
     return true;
   } catch (error) {
     logger.error('Database connection failed', {
-      error: (error as Error).message
+      error: describeError(error),
+      host: poolConfig.host,
+      port: poolConfig.port,
+      database: poolConfig.database,
+      user: poolConfig.user,
     });
     return false;
   }

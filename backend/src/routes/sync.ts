@@ -9,6 +9,17 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
+function toClientTimestamp(value: string | Date | null | undefined): number | null {
+  if (!value) return null;
+  return new Date(value).getTime();
+}
+
+function fromClientTimestamp(value: number | null | undefined): Date | null {
+  if (!value) return null;
+  const normalized = value > 1_000_000_000_000 ? value : value * 1000;
+  return new Date(normalized);
+}
+
 /**
  * GET /api/v1/sync/changes
  * Pull changes from server since a given timestamp.
@@ -82,8 +93,8 @@ router.get('/changes', async (req, res, next) => {
           parent_id: row.parent_id || null,
           node_type: row.node_type,
           data: typeof row.data === 'string' ? row.data : JSON.stringify(row.data),
-          created_at: Math.floor(new Date(row.created_at).getTime() / 1000),
-          updated_at: Math.floor(new Date(row.updated_at).getTime() / 1000),
+          created_at: new Date(row.created_at).getTime(),
+          updated_at: new Date(row.updated_at).getTime(),
         })),
         deleted: [],
       },
@@ -97,9 +108,9 @@ router.get('/changes', async (req, res, next) => {
           state_code: row.state_code,
           price_inr_per_kg: parseFloat(row.price_inr_per_kg),
           grade: row.grade || '',
-          date: Math.floor(new Date(row.date).getTime() / 1000),
+          date: new Date(row.date).getTime(),
           source: row.source,
-          created_at: Math.floor(new Date(row.created_at).getTime() / 1000),
+          created_at: new Date(row.created_at).getTime(),
         })),
         deleted: [],
       },
@@ -113,15 +124,13 @@ router.get('/changes', async (req, res, next) => {
           water_source_type: row.water_source_type || '',
           system_type: row.system_type || '',
           species_id: row.species_id || '',
-          stocking_date: row.stocking_date
-            ? Math.floor(new Date(row.stocking_date).getTime() / 1000)
-            : null,
+          stocking_date: toClientTimestamp(row.stocking_date),
           status: row.status || 'ACTIVE',
           latitude: row.latitude || 0,
           longitude: row.longitude || 0,
           sync_status: 'SYNCED',
-          created_at: Math.floor(new Date(row.created_at).getTime() / 1000),
-          updated_at: Math.floor(new Date(row.updated_at).getTime() / 1000),
+          created_at: new Date(row.created_at).getTime(),
+          updated_at: new Date(row.updated_at).getTime(),
         })),
         deleted: [],
       },
@@ -131,7 +140,7 @@ router.get('/changes', async (req, res, next) => {
           id: row.id,
           log_id: row.id,
           pond_id: row.pond_id,
-          timestamp: Math.floor(new Date(row.timestamp).getTime() / 1000),
+          timestamp: toClientTimestamp(row.timestamp),
           temperature: row.temperature != null ? parseFloat(row.temperature) : null,
           dissolved_oxygen: row.dissolved_oxygen != null ? parseFloat(row.dissolved_oxygen) : null,
           ph: row.ph != null ? parseFloat(row.ph) : null,
@@ -142,7 +151,7 @@ router.get('/changes', async (req, res, next) => {
           turbidity: row.turbidity != null ? parseFloat(row.turbidity) : null,
           alerts: JSON.stringify([]),
           sync_status: 'SYNCED',
-          created_at: Math.floor(new Date(row.created_at).getTime() / 1000),
+          created_at: new Date(row.created_at).getTime(),
         })),
         deleted: [],
       }
@@ -216,12 +225,24 @@ router.post('/', async (req, res, next) => {
           `, [
             pond.id, userId, pond.name, pond.area_hectares,
             pond.water_source_type || '', pond.system_type || '',
-            pond.species_id || null, pond.stocking_date ? new Date(pond.stocking_date * 1000) : null,
+            pond.species_id || null, fromClientTimestamp(pond.stocking_date),
             pond.status || 'ACTIVE', pond.latitude || null, pond.longitude || null
           ]);
           pushedCount++;
         } catch (err: any) {
           conflicts.push({ table: 'ponds', id: pond.id, error: err.message });
+        }
+      }
+
+      for (const deletedPondId of changes.ponds.deleted || []) {
+        try {
+          await query(`
+            DELETE FROM ponds
+            WHERE id = $1 AND user_id = $2
+          `, [deletedPondId, userId]);
+          pushedCount++;
+        } catch (err: any) {
+          conflicts.push({ table: 'ponds', id: deletedPondId, error: err.message });
         }
       }
     }
@@ -251,7 +272,7 @@ router.post('/', async (req, res, next) => {
             log.id,
             userId,
             log.pond_id,
-            log.timestamp ? new Date(log.timestamp * 1000) : new Date(),
+            fromClientTimestamp(log.timestamp) || new Date(),
             log.temperature ?? null,
             log.dissolved_oxygen ?? null,
             log.ph ?? null,

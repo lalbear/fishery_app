@@ -269,7 +269,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     },
     heroOverlay: {
         flex: 1,
-        backgroundColor: theme.isDark ? '#173B20' : '#295D31',
+        backgroundColor: theme.isDark ? '#050505' : '#295D31',
         opacity: 0.85,
     },
     content: {

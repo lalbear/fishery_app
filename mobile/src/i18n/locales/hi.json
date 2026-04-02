@@ -37,10 +37,12 @@
     "welcome": "फिशिंग गॉड में आपका स्वागत है",
     "subtitle": "आपका जलकृषि साथी",
     "quickActions": "त्वरित कार्य",
-    "checkSpecies": "प्रजातियां देखें",
-    "calculateROI": "ROI की गणना करें",
-    "logWaterQuality": "जल गुणवत्ता लॉग करें",
-    "viewMarkets": "बाजार मूल्य देखें",
+    "checkSpecies": "प्रजाति गाइड",
+    "calculateROI": "ROI प्लानर",
+    "logWaterQuality": "वॉटर लॉग",
+    "viewMarkets": "बाजार मूल्य",
+    "equipmentCatalog": "उपकरण",
+    "feedNutrition": "फीड गाइड",
     "recentActivity": "हाल की गतिविधि"
   },
   "species": {

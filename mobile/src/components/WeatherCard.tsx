@@ -149,7 +149,7 @@ export default function WeatherCard({
             ? theme.isDark ? '#4a1111' : '#FFF0F0'
             : impact.level === 'warning'
                 ? theme.isDark ? '#4a2f11' : '#FFFBEB'
-                : theme.isDark ? '#0d2e1a' : '#F0FDF4';
+                : theme.isDark ? '#121A14' : '#F0FDF4';
 
     const impactColor =
         impact.level === 'critical'
