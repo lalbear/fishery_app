@@ -1,10 +1,20 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-const DEFAULT_BACKEND_URL =
+const LOCAL_BACKEND_URL =
     Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || DEFAULT_BACKEND_URL;
+const MISSING_PRODUCTION_BACKEND_URL = 'https://backend-not-configured.invalid';
+
+const BACKEND_URL =
+    process.env.EXPO_PUBLIC_BACKEND_URL ||
+    (__DEV__ ? LOCAL_BACKEND_URL : MISSING_PRODUCTION_BACKEND_URL);
+
+if (!__DEV__ && !process.env.EXPO_PUBLIC_BACKEND_URL) {
+    console.warn(
+        'EXPO_PUBLIC_BACKEND_URL is not set. Production builds must point to a deployed backend before release or TestFlight.'
+    );
+}
 
 const api = axios.create({
     baseURL: BACKEND_URL,

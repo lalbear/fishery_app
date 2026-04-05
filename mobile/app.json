@@ -2,12 +2,30 @@
   "expo": {
     "name": "Fishing God",
     "slug": "fishing-god-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
     "softwareKeyboardLayoutMode": "pan",
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Fishing God uses your location to help analyze pond suitability and save pond coordinates."
+        }
+      ]
     ],
     "experiments": {
       "baseUrl": "/fishery_app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.pranjalupadhyay.fishinggod",
+      "buildNumber": "1",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.pranjalupadhyay.fishinggod",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro"

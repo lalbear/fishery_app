@@ -2,3 +2,5 @@ node_modules
 .expo/
 backend/dist/
 .env
+mobile/.env
+mobile/.env.local
