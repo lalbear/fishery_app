@@ -9,7 +9,7 @@ import { fetchSpeciesLookup } from './speciesLookup';
 const NOTIFICATION_READS_KEY = '@fishing_god_notification_reads';
 
 export type NotificationSeverity = 'info' | 'warning' | 'critical';
-export type NotificationType = 'harvest' | 'water_quality' | 'setup';
+export type NotificationType = 'harvest' | 'water_quality' | 'setup' | 'feed' | 'disease' | 'market' | 'subsidy';
 
 export interface FarmNotification {
   id: string;
@@ -158,6 +158,69 @@ function buildNotifications(params: {
       isRead: Boolean(readMap[id]),
     });
   }
+
+  // --- MOCK / PLACEHOLDER ALERTS (5 Suggested Features) ---
+  const nowMock = Date.now();
+  
+  // 1. Feed Schedule & FCR Alerts
+  const feedId = 'mock-feed-alert';
+  items.push({
+    id: feedId,
+    type: 'feed',
+    severity: 'info',
+    title: 'Did you feed your fish today?',
+    message: '[Placeholder] Throw 50kg of feed today to optimize your Feed Conversion Ratio based on current estimated biomass.',
+    timestamp: nowMock - 1000 * 60 * 60 * 2, // 2 hours ago
+    isRead: Boolean(readMap[feedId]),
+  });
+
+  // 2. Water Quality Checkups
+  const wqReminderId = 'mock-wq-reminder';
+  items.push({
+    id: wqReminderId,
+    type: 'water_quality',
+    severity: 'warning',
+    title: 'Water Quality Check Due',
+    message: '[Placeholder] It\'s been 5 days since you logged pH levels. Remember to check Dissolved Oxygen today!',
+    timestamp: nowMock - 1000 * 60 * 60 * 24, // 1 day ago
+    isRead: Boolean(readMap[wqReminderId]),
+  });
+
+  // 3. Local Disease Outbreak Warnings
+  const diseaseId = 'mock-disease-outbreak';
+  items.push({
+    id: diseaseId,
+    type: 'disease',
+    severity: 'critical',
+    title: 'Regional Disease Alert: ARGULUS',
+    message: '[Placeholder] Reports of ARGULUS (fish lice) in your district. Watch for fish rubbing against surfaces & consider preventive measures.',
+    timestamp: nowMock - 1000 * 60 * 60 * 48, // 2 days ago
+    isRead: Boolean(readMap[diseaseId]),
+  });
+
+  // 4. Market Price Surges
+  const marketId = 'mock-market-surge';
+  items.push({
+    id: marketId,
+    type: 'market',
+    severity: 'info',
+    title: 'Market Prices Surging',
+    message: '[Placeholder] Rohu prices are up 12% in your local market this week! Great time to consider partial harvest.',
+    timestamp: nowMock - 1000 * 60 * 60 * 72, // 3 days ago
+    isRead: Boolean(readMap[marketId]),
+  });
+
+  // 5. Subsidy & Compliance Deadlines
+  const subsidyId = 'mock-subsidy-deadline';
+  items.push({
+    id: subsidyId,
+    type: 'subsidy',
+    severity: 'info',
+    title: 'PMMSY Subsidy Deadline',
+    message: '[Placeholder] Deadline approaching for the latest Pradhan Mantri Matsya Sampada Yojana cycle. Subsidize your aeration equipment now.',
+    timestamp: nowMock - 1000 * 60 * 60 * 96, // 4 days ago
+    isRead: Boolean(readMap[subsidyId]),
+  });
 
   return items.sort((a, b) => b.timestamp - a.timestamp);
 }

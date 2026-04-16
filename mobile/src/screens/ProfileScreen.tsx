@@ -115,11 +115,18 @@ export default function ProfileScreen({ navigation }: any) {
           title={t('profile.language') || 'Language'}
           value={i18n.language === 'hi' ? 'Hindi' : 'English'}
           onPress={() => {
-            Alert.alert('Select Language', 'Choose your preferred language.', [
-              { text: 'English', onPress: () => i18n.changeLanguage('en') },
-              { text: 'Hindi', onPress: () => i18n.changeLanguage('hi') },
-              { text: 'Cancel', style: 'cancel' },
-            ]);
+            const isHindi = i18n.language === 'hi';
+            const targetLangCode = isHindi ? 'en' : 'hi';
+            const targetLangName = isHindi ? 'English' : 'Hindi';
+
+            Alert.alert(
+              'Change Language',
+              `Are you sure you want to change the language to ${targetLangName}?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Confirm', onPress: () => i18n.changeLanguage(targetLangCode) },
+              ]
+            );
           }}
           theme={theme}
         />

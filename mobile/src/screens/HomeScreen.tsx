@@ -100,6 +100,12 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {activePonds.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            <HarvestCountdownCard ponds={activePonds} onPressPond={() => navigation.navigate('PondsList')} />
+          </View>
+        )}
+
         <View style={styles.weatherShell}>
           <WeatherCard locationName="Your District" />
         </View>
@@ -140,9 +146,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {activePonds.length > 0 && (
-          <HarvestCountdownCard ponds={activePonds} onPressPond={() => navigation.navigate('PondsList')} />
-        )}
       </ScrollView>
     </SafeAreaView>
   );

@@ -114,6 +114,7 @@ export default function MapScreen() {
   const [suitabilityData, setSuitabilityData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGettingLocation, setIsGettingLocation] = useState<boolean>(true);
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false);
   const scrollViewRef = useRef<any>(null);
 
   // Form state
@@ -163,8 +164,10 @@ export default function MapScreen() {
         if (status !== 'granted') {
           Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
           setIsGettingLocation(false);
+          setHasLocationPermission(false);
           return;
         }
+        setHasLocationPermission(true);
 
         const lastKnown = await Location.getLastKnownPositionAsync();
         if (lastKnown) {
@@ -272,8 +275,10 @@ export default function MapScreen() {
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
         setIsGettingLocation(false);
+        setHasLocationPermission(false);
         return;
       }
+      setHasLocationPermission(true);
       const lastKnown = await Location.getLastKnownPositionAsync();
       const loc = lastKnown || await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -371,8 +376,8 @@ export default function MapScreen() {
                 latitudeDelta: 0.0922,
                 longitudeDelta: 0.0421,
               }}
-              showsUserLocation={true}
-              showsMyLocationButton={true}
+              showsUserLocation={hasLocationPermission}
+              showsMyLocationButton={hasLocationPermission}
               onPress={handleMapPress}
             >
               <Marker

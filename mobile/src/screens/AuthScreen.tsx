@@ -60,6 +60,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
     const [name, setName] = useState('');
     const [stateCode, setStateCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async () => {
         if (!phone || !password) {
@@ -67,10 +68,16 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
             return;
         }
 
+        let formattedPhone = phone.trim();
+        // If they did not provide a country code, prepend +91 automatically
+        if (!formattedPhone.startsWith('+')) {
+            formattedPhone = '+91' + formattedPhone;
+        }
+
         setLoading(true);
         try {
             if (isLogin) {
-                const res = await authService.login(phone, password);
+                const res = await authService.login(formattedPhone, password);
                 if (res.success) onLoginSuccess();
                 else Alert.alert('Login Failed', res.error);
             } else {
@@ -87,7 +94,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                     return;
                 }
 
-                const res = await authService.signup(phone, password, name, normalizedStateCode, 'GENERAL');
+                const res = await authService.signup(formattedPhone, password, name, normalizedStateCode, 'GENERAL');
                 if (res.success) {
                     Alert.alert('Signup Successful', 'Welcome to Fishing God!');
                     onLoginSuccess();
@@ -159,8 +166,8 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
 
                     <Field
                         icon="phone-portrait-outline"
-                        label="Phone Number"
-                        placeholder="+91 00000 00000"
+                        label="Phone Number (Enter +code for intl)"
+                        placeholder="e.g. 9876543210"
                         value={phone}
                         onChangeText={setPhone}
                         keyboardType="phone-pad"
@@ -174,9 +181,11 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                         placeholder="Enter password"
                         value={password}
                         onChangeText={setPassword}
-                        secureTextEntry
+                        secureTextEntry={!showPassword}
                         theme={theme}
                         styles={styles}
+                        rightIcon={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                        onRightIconPress={() => setShowPassword(!showPassword)}
                     />
 
                     {isLogin && (
@@ -227,6 +236,8 @@ function Field({
     label,
     theme,
     styles,
+    rightIcon,
+    onRightIconPress,
     ...props
 }: any) {
     return (
@@ -239,6 +250,11 @@ function Field({
                     placeholderTextColor={theme.colors.textMuted}
                     {...props}
                 />
+                {rightIcon && (
+                    <TouchableOpacity onPress={onRightIconPress} style={{ padding: 4 }}>
+                        <Ionicons name={rightIcon} size={20} color={theme.colors.textMuted} />
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );
