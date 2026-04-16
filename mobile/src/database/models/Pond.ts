@@ -18,6 +18,7 @@ export default class Pond extends Model {
   @field('status') status!: string;
   @field('latitude') latitude?: number;
   @field('longitude') longitude?: number;
+  @field('image_uri') imageUri?: string;
   @field('sync_status') localSyncStatus!: string;
   @readonly @date('created_at') createdAt!: Date;
   @readonly @date('updated_at') updatedAt!: Date;

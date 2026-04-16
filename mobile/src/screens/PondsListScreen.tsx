@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import database from '../database';
 import Pond from '../database/models/Pond';
 import withObservables from '@nozbe/with-observables';
 import { fetchSpeciesLookup, getSpeciesDisplay, SpeciesLookup } from '../utils/speciesLookup';
+import * as ImagePicker from 'expo-image-picker';
 
 const PondsList = ({ ponds }: { ponds: Pond[] }) => {
     const navigation = useNavigation<any>();
@@ -54,6 +55,65 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
             month: 'short',
             year: 'numeric',
         });
+    };
+
+    const saveImageToPond = async (pond: Pond, uri: string) => {
+        try {
+            await database.write(async () => {
+                await pond.update((p) => {
+                    p.imageUri = uri;
+                });
+            });
+        } catch (e: any) {
+            Alert.alert('Error', 'Failed to update pond photo.');
+        }
+    };
+
+    const handlePickImage = async (pond: Pond) => {
+        Alert.alert(
+            'Update Pond Photo',
+            'Take a photo of the pond or how the stock looks right now.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Take Photo',
+                    onPress: async () => {
+                        const permission = await ImagePicker.requestCameraPermissionsAsync();
+                        if (!permission.granted) {
+                            Alert.alert('Permission Denied', 'Camera access is required.');
+                            return;
+                        }
+                        const result = await ImagePicker.launchCameraAsync({
+                            allowsEditing: true,
+                            aspect: [16, 9],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled && result.assets?.length) {
+                            saveImageToPond(pond, result.assets[0].uri);
+                        }
+                    }
+                },
+                {
+                    text: 'Choose from Gallery',
+                    onPress: async () => {
+                        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                        if (!permission.granted) {
+                            Alert.alert('Permission Denied', 'Gallery access is required.');
+                            return;
+                        }
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [16, 9],
+                            quality: 0.5,
+                        });
+                         if (!result.canceled && result.assets?.length) {
+                            saveImageToPond(pond, result.assets[0].uri);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     return (
@@ -114,6 +174,23 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                             ) : (
                                 <Text style={styles.cardMetaSecondary}>Add a stocking date to unlock harvest tracking</Text>
                             )}
+
+                            <View style={styles.imageSection}>
+                                {item.imageUri ? (
+                                    <TouchableOpacity style={styles.imageWrapper} onPress={() => handlePickImage(item)}>
+                                        <Image source={{ uri: item.imageUri }} style={styles.pondImage} />
+                                        <View style={styles.imageOverlay}>
+                                            <Ionicons name="camera" size={16} color="#fff" />
+                                            <Text style={styles.imageOverlayText}>Update Photo</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <TouchableOpacity style={styles.noImageContainer} onPress={() => handlePickImage(item)}>
+                                        <Ionicons name="camera-outline" size={24} color={theme.colors.textMuted} />
+                                        <Text style={styles.noImageText}>Add Pond Photo</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
 
                             <View style={styles.cardActions}>
                                 <TouchableOpacity
@@ -204,6 +281,13 @@ const getStyles = (theme: any) => StyleSheet.create({
         backgroundColor: theme.colors.errorSoft || `${theme.colors.error}22`,
     },
     deleteButtonText: { color: theme.colors.error, fontWeight: '700' },
+    imageSection: { marginTop: 16 },
+    imageWrapper: { borderRadius: 12, overflow: 'hidden', height: 160, backgroundColor: theme.colors.surfaceAlt, position: 'relative' },
+    pondImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+    imageOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
+    imageOverlayText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    noImageContainer: { height: 100, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.colors.surfaceAlt },
+    noImageText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600' },
     emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
     emptyTitle: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '800', marginTop: 12 },
     emptySub: { color: theme.colors.textSecondary, marginTop: 8, textAlign: 'center' },
