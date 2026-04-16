@@ -159,34 +159,73 @@ function buildNotifications(params: {
     });
   }
 
-  // --- MOCK / PLACEHOLDER ALERTS (5 Suggested Features) ---
+  const now = Date.now();
+  const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+
+  for (const pond of ponds) {
+    const normalizedStatus = String(pond.status || '').toLowerCase();
+    
+    if (normalizedStatus === 'active') {
+      // 1. REAL Feed Schedule / Reminder
+      if (pond.stockingDate && pond.stockingDate < now) {
+        // Calculate rough biomass-based feed just for fun (or keep it simple)
+        const daysSinceStocking = Math.floor((now - pond.stockingDate) / (1000 * 60 * 60 * 24));
+        const estimatedFeedKg = Math.max(1, Math.min(50, Math.floor(daysSinceStocking * 0.5))); // Just an estimate logic
+        
+        const feedId = `feed-reminder-${pond.id}`;
+        items.push({
+          id: feedId,
+          type: 'feed',
+          severity: 'info',
+          title: `Time to feed ${pond.name}`,
+          message: `Based on your stocking date (${daysSinceStocking} days ago), we suggest throwing ~${estimatedFeedKg}kg of feed today.`,
+          timestamp: now - (1000 * 60 * 60 * 6), // 6 hours ago
+          pondId: pond.id,
+          pondName: pond.name,
+          isRead: Boolean(readMap[feedId]),
+        });
+      }
+
+      // 2. REAL Water Quality Checkups
+      const lastLog = latestLogByPond.get(pond.id);
+      if (lastLog) {
+        const timeSinceLastLog = now - lastLog.timestamp;
+        if (timeSinceLastLog > FIVE_DAYS_MS) {
+          const daysAgo = Math.floor(timeSinceLastLog / (1000 * 60 * 60 * 24));
+          const wqReminderId = `wq-reminder-${pond.id}`;
+          items.push({
+            id: wqReminderId,
+            type: 'water_quality',
+            severity: 'warning',
+            title: `Water Check Due for ${pond.name}`,
+            message: `It's been ${daysAgo} days since you last logged water quality. Regular checking prevents disease!`,
+            timestamp: now - 1000 * 60 * 60 * 24, // 1 day ago
+            pondId: pond.id,
+            pondName: pond.name,
+            isRead: Boolean(readMap[wqReminderId]),
+          });
+        }
+      } else {
+        // No logs ever
+        const wqMissingId = `wq-missing-${pond.id}`;
+        items.push({
+          id: wqMissingId,
+          type: 'water_quality',
+          severity: 'warning',
+          title: `Start logging ${pond.name}`,
+          message: `Add your first water quality log to unlock health analytics for this pond!`,
+          timestamp: pond.updatedAt || pond.createdAt || now,
+          pondId: pond.id,
+          pondName: pond.name,
+          isRead: Boolean(readMap[wqMissingId]),
+        });
+      }
+    }
+  }
+
+  // --- PLACEHOLDER ALERTS FOR EXTERNAL DATA (Disease, Market, Subsidy) ---
   const nowMock = Date.now();
-  
-  // 1. Feed Schedule & FCR Alerts
-  const feedId = 'mock-feed-alert';
-  items.push({
-    id: feedId,
-    type: 'feed',
-    severity: 'info',
-    title: 'Did you feed your fish today?',
-    message: '[Placeholder] Throw 50kg of feed today to optimize your Feed Conversion Ratio based on current estimated biomass.',
-    timestamp: nowMock - 1000 * 60 * 60 * 2, // 2 hours ago
-    isRead: Boolean(readMap[feedId]),
-  });
 
-  // 2. Water Quality Checkups
-  const wqReminderId = 'mock-wq-reminder';
-  items.push({
-    id: wqReminderId,
-    type: 'water_quality',
-    severity: 'warning',
-    title: 'Water Quality Check Due',
-    message: '[Placeholder] It\'s been 5 days since you logged pH levels. Remember to check Dissolved Oxygen today!',
-    timestamp: nowMock - 1000 * 60 * 60 * 24, // 1 day ago
-    isRead: Boolean(readMap[wqReminderId]),
-  });
-
-  // 3. Local Disease Outbreak Warnings
   const diseaseId = 'mock-disease-outbreak';
   items.push({
     id: diseaseId,
@@ -198,7 +237,6 @@ function buildNotifications(params: {
     isRead: Boolean(readMap[diseaseId]),
   });
 
-  // 4. Market Price Surges
   const marketId = 'mock-market-surge';
   items.push({
     id: marketId,
@@ -210,7 +248,6 @@ function buildNotifications(params: {
     isRead: Boolean(readMap[marketId]),
   });
 
-  // 5. Subsidy & Compliance Deadlines
   const subsidyId = 'mock-subsidy-deadline';
   items.push({
     id: subsidyId,
