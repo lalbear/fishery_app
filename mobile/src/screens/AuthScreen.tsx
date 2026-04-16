@@ -55,7 +55,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
     const styles = getStyles(theme);
 
     const [isLogin, setIsLogin] = useState(true);
-    const [phone, setPhone] = useState('');
+    const [phone, setPhone] = useState('+91 ');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [stateCode, setStateCode] = useState('');
@@ -166,8 +166,8 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
 
                     <Field
                         icon="phone-portrait-outline"
-                        label="Phone Number (Enter +code for intl)"
-                        placeholder="e.g. 9876543210"
+                        label="Phone Number"
+                        placeholder="+91 00000 00000"
                         value={phone}
                         onChangeText={setPhone}
                         keyboardType="phone-pad"
