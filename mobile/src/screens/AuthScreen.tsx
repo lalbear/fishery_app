@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authService } from '../services/authService';
@@ -118,7 +119,11 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
             </View>
 
             <View style={styles.heroImage}>
-                <View style={styles.heroOverlay} />
+                <Image 
+                    source={require('../../assets/icon.png')} 
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                />
             </View>
 
             <View style={styles.content}>
@@ -282,11 +287,12 @@ const getStyles = (theme: any) => StyleSheet.create({
         height: 180,
         backgroundColor: theme.colors.primaryDark,
         overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    heroOverlay: {
-        flex: 1,
-        backgroundColor: theme.isDark ? '#050505' : '#295D31',
-        opacity: 0.85,
+    logoImage: {
+        width: 100,
+        height: 100,
     },
     content: {
         paddingHorizontal: 20,
