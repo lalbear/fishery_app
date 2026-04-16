@@ -115,7 +115,6 @@ async function runMigration() {
     await client.query('BEGIN');
     await ensureMigrationsTable(client);
     await baselineExistingBootstrap(client, migrationFiles);
-    await enforceRuntimeSchema(client);
     await client.query('COMMIT');
 
     const appliedResult = await client.query<{ filename: string }>('SELECT filename FROM schema_migrations');
@@ -134,6 +133,11 @@ async function runMigration() {
       await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [migration.filename]);
       await client.query('COMMIT');
     }
+
+    // Apply runtime schema alignment AFTER base tables are confirmed created
+    await client.query('BEGIN');
+    await enforceRuntimeSchema(client);
+    await client.query('COMMIT');
 
     logger.info('Database migration completed successfully');
   } catch (error) {
