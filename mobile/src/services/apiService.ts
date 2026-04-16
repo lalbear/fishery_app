@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 const LOCAL_BACKEND_URL =
     Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 
-const MISSING_PRODUCTION_BACKEND_URL = 'https://backend-not-configured.invalid';
+const MISSING_PRODUCTION_BACKEND_URL = 'https://fishery-app.onrender.com';
 
 const BACKEND_URL =
     process.env.EXPO_PUBLIC_BACKEND_URL ||
