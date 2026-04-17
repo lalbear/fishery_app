@@ -14,12 +14,6 @@
         {
           "locationWhenInUsePermission": "Fishing God uses your location to help analyze pond suitability and save pond coordinates."
         }
-      ],
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": ""
-        }
       ]
     ],
     "experiments": {
