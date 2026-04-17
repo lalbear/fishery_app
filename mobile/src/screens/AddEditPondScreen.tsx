@@ -179,18 +179,19 @@ export default function AddEditPondScreen({ route }: any) {
     };
 
     const handleGetLocation = async () => {
+        setIsGettingLocation(true);
         try {
-            setIsGettingLocation(true);
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Allow location access to get pond coordinates.');
+            const permResult = await Location.requestForegroundPermissionsAsync();
+            if (permResult.status !== 'granted') {
+                Alert.alert('Permission Denied', 'Location access was not granted. You can enter coordinates manually instead.');
                 return;
             }
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-            setLat(loc.coords.latitude.toString());
-            setLng(loc.coords.longitude.toString());
-        } catch {
-            Alert.alert('Error', 'Failed to get location.');
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            setLat(loc.coords.latitude.toFixed(6));
+            setLng(loc.coords.longitude.toFixed(6));
+        } catch (err: any) {
+            const msg = err?.message || 'Could not detect your location. Try again or enter coordinates manually.';
+            Alert.alert('Location Error', msg);
         } finally {
             setIsGettingLocation(false);
         }

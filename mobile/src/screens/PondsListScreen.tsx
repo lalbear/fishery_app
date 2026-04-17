@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import database from '../database';
 import Pond from '../database/models/Pond';
+import { Q } from '@nozbe/watermelondb';
 import withObservables from '@nozbe/with-observables';
 import { fetchSpeciesLookup, getSpeciesDisplay, SpeciesLookup } from '../utils/speciesLookup';
 import * as ImagePicker from 'expo-image-picker';
@@ -84,9 +85,7 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                             return;
                         }
                         const result = await ImagePicker.launchCameraAsync({
-                            allowsEditing: true,
-                            aspect: [16, 9],
-                            quality: 0.5,
+                            quality: 0.7,
                         });
                         if (!result.canceled && result.assets?.length) {
                             saveImageToPond(pond, result.assets[0].uri);
@@ -103,11 +102,9 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                         }
                         const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: true,
-                            aspect: [16, 9],
-                            quality: 0.5,
+                            quality: 0.7,
                         });
-                         if (!result.canceled && result.assets?.length) {
+                        if (!result.canceled && result.assets?.length) {
                             saveImageToPond(pond, result.assets[0].uri);
                         }
                     }
@@ -214,7 +211,10 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
 };
 
 const EnhancedPondsList = withObservables([], () => ({
-    ponds: database.collections.get<Pond>('ponds').query().observe(),
+    ponds: database.collections
+        .get<Pond>('ponds')
+        .query(Q.where('local_sync_status', Q.notEq('DELETED')))
+        .observe(),
 }))(PondsList);
 
 export default function PondsListScreen() {
@@ -282,7 +282,7 @@ const getStyles = (theme: any) => StyleSheet.create({
     },
     deleteButtonText: { color: theme.colors.error, fontWeight: '700' },
     imageSection: { marginTop: 16 },
-    imageWrapper: { borderRadius: 12, overflow: 'hidden', height: 160, backgroundColor: theme.colors.surfaceAlt, position: 'relative' },
+    imageWrapper: { borderRadius: 12, overflow: 'hidden', aspectRatio: 4/3, backgroundColor: theme.colors.surfaceAlt, position: 'relative' },
     pondImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     imageOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
     imageOverlayText: { color: '#fff', fontSize: 12, fontWeight: '700' },

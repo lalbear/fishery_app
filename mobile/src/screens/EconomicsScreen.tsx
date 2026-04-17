@@ -32,6 +32,7 @@ export default function EconomicsScreen() {
   const [stateCode, setStateCode] = useState('');
   const [districtCode, setDistrictCode] = useState('');
   const [preferredSpecies, setPreferredSpecies] = useState<string>('');
+  const [pondSystem, setPondSystem] = useState<'EARTHEN' | 'BIOFLOC' | 'RAS' | 'CAGES'>('EARTHEN');
   const [isLoading, setIsLoading] = useState(false);
   const [advisoryLoading, setAdvisoryLoading] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
@@ -70,7 +71,13 @@ export default function EconomicsScreen() {
       return;
     }
 
-    const projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
+    // Map pond system to projectType for advisory + simulation
+    let projectType: 'FRESHWATER' | 'BRACKISH' | 'RAS' = 'FRESHWATER';
+    if (pondSystem === 'RAS') {
+      projectType = 'RAS';
+    } else {
+      projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
+    }
 
     let isMounted = true;
     (async () => {
@@ -79,7 +86,7 @@ export default function EconomicsScreen() {
         const response = await economicsService.getAdvisory({
           stateCode,
           farmerCategory,
-          projectType,
+          projectType: projectType as any,
         });
 
         if (isMounted && response.success) {
@@ -100,7 +107,7 @@ export default function EconomicsScreen() {
     return () => {
       isMounted = false;
     };
-  }, [stateCode, farmerCategory, salinity]);
+  }, [stateCode, farmerCategory, salinity, pondSystem]);
 
   const runSimulation = async () => {
     if (!landSize || !capital || !stateCode || !districtCode) {
@@ -111,6 +118,17 @@ export default function EconomicsScreen() {
     setIsLoading(true);
     try {
       const landHectares = parseFloat(landSize) * 0.4047;
+
+      // Map pond system to projectType
+      let projectType: string;
+      if (pondSystem === 'RAS') {
+        projectType = 'RAS';
+      } else if (pondSystem === 'BIOFLOC') {
+        projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
+      } else {
+        projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
+      }
+
       const payload: any = {
         landSizeHectares: landHectares,
         waterSourceSalinityUsCm: parseFloat(salinity),
@@ -119,6 +137,8 @@ export default function EconomicsScreen() {
         farmerCategory,
         stateCode,
         districtCode,
+        projectType,
+        systemType: pondSystem,
       };
 
       if (preferredSpecies) payload.preferredSpecies = [preferredSpecies];
@@ -138,7 +158,17 @@ export default function EconomicsScreen() {
   };
 
   const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
-  const relevantDistricts = zones.find(z => z.state_code === stateCode)?.district_codes || [];
+  const currentZone = zones.find(z => z.state_code === stateCode);
+  const relevantDistricts: { label: string; value: string }[] = (() => {
+    if (!currentZone) return [];
+    const codes: string[] = currentZone.district_codes || [];
+    const names: string[] = currentZone.district_names || [];
+    return codes.map((code: string, idx: number) => ({
+      label: names[idx] || code, // full name if available, fall back to code
+      value: code,
+    }));
+  })();
+  const currentDistrictLabel = relevantDistricts.find(d => d.value === districtCode)?.label || districtCode || 'Select';
   const profileFields = [
     Boolean(stateCode),
     Boolean(districtCode),
@@ -207,7 +237,7 @@ export default function EconomicsScreen() {
           <SectionTitle icon="location-outline" title="Location & Scale" theme={theme} styles={styles} />
           <View style={styles.row}>
             <PickerField label="State" value={statesList.find(s => s.value === stateCode)?.label || 'Select'} onPress={() => setActiveModal('state')} theme={theme} styles={styles} />
-            <PickerField label="District" value={districtCode || 'Select'} onPress={() => setActiveModal('district')} theme={theme} styles={styles} />
+            <PickerField label="District" value={currentDistrictLabel} onPress={() => setActiveModal('district')} theme={theme} styles={styles} />
           </View>
           <InputField label="Land Size (Acres)" value={landSize} onChangeText={setLandSize} suffix="Ac" theme={theme} styles={styles} />
         </View>
@@ -225,6 +255,19 @@ export default function EconomicsScreen() {
                 onPress={() => setFarmerCategory(item as any)}
               >
                 <Text style={[styles.segmentText, farmerCategory === item && styles.segmentTextActive]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Pond System Type</Text>
+          <View style={styles.segmentRow}>
+            {(['EARTHEN', 'BIOFLOC', 'RAS', 'CAGES'] as const).map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={[styles.segment, pondSystem === item && styles.segmentActive]}
+                onPress={() => setPondSystem(item)}
+              >
+                <Text style={[styles.segmentText, pondSystem === item && styles.segmentTextActive]}>{item}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -349,7 +392,7 @@ export default function EconomicsScreen() {
       <SelectionModal
         visible={activeModal === 'district'}
         title="Select District"
-        data={relevantDistricts.map((item: string) => ({ label: item, value: item }))}
+        data={relevantDistricts}
         onClose={() => setActiveModal(null)}
         onSelect={(item: any) => {
           setDistrictCode(item.value);
@@ -475,6 +518,8 @@ function SelectionModal({ visible, title, data, onClose, onSelect, theme }: any)
           <FlatList
             data={data}
             keyExtractor={(item) => item.value}
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
                 <Text style={styles.modalItemText}>{item.label}</Text>

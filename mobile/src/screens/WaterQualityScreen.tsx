@@ -72,9 +72,16 @@ export default function WaterQualityScreen({ route }: any) {
   const [isLoadingPonds, setIsLoadingPonds] = useState(true);
   const [pondSelectorVisible, setPondSelectorVisible] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const speciesLookupRef = React.useRef<Record<string, any>>({});
 
   const selectedPond = ponds.find((pond) => pond.id === selectedPondId);
 
+  // Load species lookup once on mount (non-blocking — ponds load independently)
+  useEffect(() => {
+    fetchSpeciesLookup()
+      .then((lookup) => { speciesLookupRef.current = lookup; })
+      .catch(() => {}); // silent — species labels are cosmetic
+  }, []);
   const loadNotificationCount = useCallback(async () => {
     const count = await getUnreadNotificationCount();
     setUnreadNotificationCount(count);
@@ -83,10 +90,8 @@ export default function WaterQualityScreen({ route }: any) {
   const loadPonds = useCallback(async () => {
     try {
       setIsLoadingPonds(true);
-      const [pondRecords, speciesLookup] = await Promise.all([
-        database.collections.get<Pond>('ponds').query().fetch(),
-        fetchSpeciesLookup(),
-      ]);
+      const pondRecords = await database.collections.get<Pond>('ponds').query().fetch();
+      const speciesLookup = speciesLookupRef.current;
 
       const options = pondRecords
         .map((pond) => {

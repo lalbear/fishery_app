@@ -56,6 +56,19 @@ export default function EconomicsResultScreen() {
           <StatRow label="Government Subsidy" value={`- ${formatCurrency(simulationData.subsidyAmountInr)}`} styles={styles} valueColor={theme.colors.success} />
           <StatRow label="Working Capital" value={formatCurrency(simulationData.firstCycleWorkingCapitalInr)} styles={styles} />
           <StatRow label="Total Startup Capital" value={formatCurrency(simulationData.totalProjectCostInr)} styles={styles} strong />
+          {simulationData.availableCapitalInr != null && (
+            (() => {
+              const surplus = simulationData.availableCapitalInr - simulationData.totalProjectCostInr;
+              return (
+                <StatRow
+                  label="Your Capital (gap/surplus)"
+                  value={`${formatCurrency(simulationData.availableCapitalInr)} (${surplus >= 0 ? '+' : ''}${formatCurrency(surplus)})`}
+                  styles={styles}
+                  valueColor={surplus >= 0 ? theme.colors.success : theme.colors.error}
+                />
+              );
+            })()
+          )}
           <StatRow label="Breakeven" value={`${simulationData.breakevenTimelineMonths} months`} styles={styles} />
         </Section>
 

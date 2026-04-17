@@ -37,6 +37,7 @@ function matchesCategory(species: any, filter: string) {
 
 const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPress: () => void; theme: any; styles: any; }) => {
   const { t, i18n } = useTranslation();
+  const [imageError, setImageError] = useState(false);
   const d = species.data || {};
   const params = d.biological_parameters || {};
   const temp = params.temperature_celsius || {};
@@ -48,8 +49,13 @@ const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPres
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {d.image_url ? (
-        <Image source={{ uri: d.image_url }} style={styles.image} resizeMode="cover" />
+      {d.image_url && !imageError ? (
+        <Image
+          source={{ uri: d.image_url }}
+          style={styles.image}
+          resizeMode="cover"
+          onError={() => setImageError(true)}
+        />
       ) : (
         <View style={styles.imageFallback}>
           <Ionicons name="fish" size={42} color={theme.colors.primary} />
