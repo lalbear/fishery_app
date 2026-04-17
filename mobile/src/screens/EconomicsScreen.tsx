@@ -33,12 +33,14 @@ export default function EconomicsScreen() {
   const [districtCode, setDistrictCode] = useState('');
   const [preferredSpecies, setPreferredSpecies] = useState<string>('');
   const [pondSystem, setPondSystem] = useState<'EARTHEN' | 'BIOFLOC' | 'RAS' | 'CAGES'>('EARTHEN');
+  const [waterSource, setWaterSource] = useState('BOREWELL');
   const [isLoading, setIsLoading] = useState(false);
   const [advisoryLoading, setAdvisoryLoading] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
   const [activeModal, setActiveModal] = useState<'state' | 'district' | 'species' | null>(null);
   const [knowledgeInsights, setKnowledgeInsights] = useState<any | null>(null);
 
+  const WATER_SOURCES = ['BOREWELL', 'OPEN_WELL', 'CANAL', 'RIVER', 'TANK'];
   const SPECIES_OPTIONS = [
     { label: 'Auto Recommend', value: '' },
     { label: 'Vannamei Shrimp', value: 'Litopenaeus vannamei' },
@@ -139,6 +141,7 @@ export default function EconomicsScreen() {
         districtCode,
         projectType,
         systemType: pondSystem,
+        waterSourceType: waterSource,
       };
 
       if (preferredSpecies) payload.preferredSpecies = [preferredSpecies];
@@ -271,6 +274,19 @@ export default function EconomicsScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Water Source</Text>
+          <View style={styles.segmentRow}>
+            {WATER_SOURCES.map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={[styles.segment, waterSource === item && styles.segmentActive]}
+                onPress={() => setWaterSource(item)}
+              >
+                <Text style={[styles.segmentText, waterSource === item && styles.segmentTextActive]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.sectionCard}>
@@ -381,10 +397,9 @@ export default function EconomicsScreen() {
         title="Select State"
         data={statesList}
         onClose={() => setActiveModal(null)}
-        onSelect={(item: any) => {
-          setStateCode(item.value);
+        onSelect={(value: string) => {
+          setStateCode(value);
           setDistrictCode('');
-          setActiveModal(null);
         }}
         theme={theme}
       />
@@ -394,9 +409,8 @@ export default function EconomicsScreen() {
         title="Select District"
         data={relevantDistricts}
         onClose={() => setActiveModal(null)}
-        onSelect={(item: any) => {
-          setDistrictCode(item.value);
-          setActiveModal(null);
+        onSelect={(value: string) => {
+          setDistrictCode(value);
         }}
         theme={theme}
       />
@@ -406,9 +420,8 @@ export default function EconomicsScreen() {
         title="Select Species"
         data={SPECIES_OPTIONS}
         onClose={() => setActiveModal(null)}
-        onSelect={(item: any) => {
-          setPreferredSpecies(item.value);
-          setActiveModal(null);
+        onSelect={(value: string) => {
+          setPreferredSpecies(value);
         }}
         theme={theme}
       />
@@ -518,16 +531,22 @@ function SelectionModal({ visible, title, data, onClose, onSelect, theme }: any)
           <FlatList
             data={data}
             keyExtractor={(item) => item.value}
-            style={{ flex: 1 }}
-            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
+              <TouchableOpacity
+                style={styles.modalItem}
+                onPress={() => {
+                  onSelect(item.value);
+                  onClose();
+                }}
+              >
                 <Text style={styles.modalItemText}>{item.label}</Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.border} />
               </TouchableOpacity>
             )}
           />
           <TouchableOpacity style={styles.modalClose} onPress={onClose}>
-            <Text style={styles.modalCloseText}>Close</Text>
+            <Text style={styles.modalCloseText}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -848,11 +867,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    maxHeight: '70%',
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+    minHeight: 300,
   },
   modalTitle: {
     color: theme.colors.textPrimary,

@@ -234,6 +234,8 @@ export interface EconomicsSimulatorInput {
   stateCode: string;
   districtCode: string;
   preferredSpecies?: string[];
+  systemType?: CultivationSystem;
+  waterSourceType?: string;
 }
 
 export interface EconomicsSimulatorOutput {

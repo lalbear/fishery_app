@@ -14,6 +14,12 @@
         {
           "locationWhenInUsePermission": "Fishing God uses your location to help analyze pond suitability and save pond coordinates."
         }
+      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": ""
+        }
       ]
     ],
     "experiments": {
@@ -33,6 +39,8 @@
       },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
@@ -48,6 +56,12 @@
       "eas": {
         "projectId": "2d8baa63-8bf9-4d0b-b463-d4f8d56a7a34"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2d8baa63-8bf9-4d0b-b463-d4f8d56a7a34"
     }
   }
 }

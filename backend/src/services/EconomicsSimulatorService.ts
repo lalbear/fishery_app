@@ -61,8 +61,8 @@ export class EconomicsSimulatorService {
     // Step 2: Filter eligible species based on salinity
     const eligibleSpecies = await this.getEligibleSpecies(waterType, input.preferredSpecies);
 
-    // Step 3: Determine optimal cultivation system (scaled per hectare - Bug 4 fix)
-    const recommendedSystem = this.determineOptimalSystem(
+    // Step 3: Determine optimal cultivation system (scaled per hectare)
+    const recommendedSystem = input.systemType || this.determineOptimalSystem(
       waterType,
       input.riskTolerance,
       input.availableCapitalInr / input.landSizeHectares
@@ -94,23 +94,45 @@ export class EconomicsSimulatorService {
       input.preferredSpecies
     );
 
+    const cultureMonths = (economicModel as any).culture_period_months?.max || 12;
+
     // Step 7: Calculate base OPEX excluding feed
     const { monthlyOpex, totalOpexPerCycle, totalFeedCost } = this.calculateOpexWithFeed(
       economicModel,
       input.landSizeHectares,
-      templateDefaults.cycleMonths || (economicModel as any).culture_period_months?.max || 12,
+      cultureMonths,
       templateDefaults
     );
-    const opexMinusFeed = totalOpexPerCycle - totalFeedCost;
+    
+    // Impact of Water Source on OPEX
+    let sourceSurcharge = 0;
+    if (input.waterSourceType === 'BOREWELL') {
+      sourceSurcharge = 2500 * input.landSizeHectares; // Pumping cost
+    } else if (input.waterSourceType === 'CANAL' || input.waterSourceType === 'RIVER') {
+      sourceSurcharge = 1000 * input.landSizeHectares; // Filtering/Cleaning
+    }
+
+    const opexMinusFeed = (totalOpexPerCycle - totalFeedCost) + (sourceSurcharge * cultureMonths);
+    const totalOpexWithSurcharge = totalOpexPerCycle + (sourceSurcharge * cultureMonths);
 
     // Step 8: Calculate potential yield (max potential for the system)
-    const { expectedYield } = this.calculateRevenue(
+    let { expectedYield, projectedRevenue } = this.calculateRevenue(
       eligibleSpecies,
       economicModel,
       input.landSizeHectares
     );
 
-    const cultureMonths = (economicModel as any).culture_period_months?.max || 12;
+    // Step 9: Capital Efficiency Impact (More capital = Better automation/ROI)
+    // If available capital > 1.2x of effective capex, boost yield by up to 15%
+    let efficiencyFactor = 1.0;
+    if (input.availableCapitalInr > (effectiveCapex * 1.2)) {
+      const surplusRatio = Math.min(0.15, (input.availableCapitalInr / effectiveCapex - 1) * 0.1);
+      efficiencyFactor = 1.0 + surplusRatio;
+      logger.info('Capital efficiency boost applied', { surplusRatio });
+    }
+
+    expectedYield *= efficiencyFactor;
+    projectedRevenue *= efficiencyFactor;
 
     // Step 10: Generate species recommendations (Calculates individual metrics - Bug FIX)
     const speciesRecommendations = this.generateSpeciesRecommendations(
@@ -125,13 +147,13 @@ export class EconomicsSimulatorService {
 
     // Step 11: Base main summary metrics on THE BEST recommendation (Bug FIX)
     const bestRec = speciesRecommendations[0];
-    const finalRevenue = bestRec ? bestRec.expectedRevenueInr : 0;
-    const finalProfit = bestRec ? (bestRec.netProfitInr || 0) : (finalRevenue - totalOpexPerCycle - effectiveCapex);
-    const finalBcr = bestRec ? (bestRec.benefitCostRatio || 0) : 0;
+    const finalRevenue = bestRec ? (bestRec.expectedRevenueInr * efficiencyFactor) : projectedRevenue;
+    const finalProfit = bestRec ? ((bestRec.netProfitInr || 0) * efficiencyFactor - (sourceSurcharge * cultureMonths)) : (finalRevenue - totalOpexWithSurcharge - effectiveCapex);
+    const finalBcr = finalRevenue / (effectiveCapex + totalOpexWithSurcharge);
 
     const finalBreakEvenMonths = this.calculateBreakEven(
       effectiveCapex,
-      monthlyOpex, // Base monthly opex
+      (monthlyOpex + sourceSurcharge), // Base monthly opex
       finalRevenue,
       templateDefaults.cycleMonths || cultureMonths
     );

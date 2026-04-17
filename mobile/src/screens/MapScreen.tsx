@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import {
   View as RNView,
   Text as RNText,
@@ -23,11 +23,40 @@ const FlatList = RNFlatList as any;
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
-import * as Location from 'expo-location';
 import { useTheme } from '../ThemeContext';
 import { geoService } from '../services/apiService';
 import { useNavigation } from '@react-navigation/native';
+
+// Lazy-import MapView so a native crash here doesn't kill the whole app
+let MapView: any = null;
+let Marker: any = null;
+try {
+  const maps = require('react-native-maps');
+  MapView = maps.default;
+  Marker = maps.Marker;
+} catch (e) {
+  // react-native-maps not available (web, or native init failure)
+}
+
+import * as Location from 'expo-location';
+
+// ─── Error Boundary (Cause A fix) ─────────────────────────────────────────────
+// Wrapping MapView in this ensures a native Maps crash never propagates to crash
+// the entire app. Instead it shows a friendly fallback within the Maps screen.
+interface EBState { hasError: boolean; errorMessage: string }
+class MapErrorBoundary extends Component<{ children: React.ReactNode; fallback: React.ReactNode }, EBState> {
+  state: EBState = { hasError: false, errorMessage: '' };
+  static getDerivedStateFromError(error: any): EBState {
+    return { hasError: true, errorMessage: error?.message || 'Map failed to load' };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.warn('[MapScreen] MapView crashed:', error, info);
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
 
 const WATER_SOURCES = [
   { label: 'Borewell', value: 'BOREWELL' },
@@ -37,47 +66,22 @@ const WATER_SOURCES = [
   { label: 'Tank', value: 'TANK' },
 ];
 
-// Helper to reliably map state names to abbreviations when Google returns full names
 const STATE_MAP: Record<string, string> = {
-  "Andhra Pradesh": "AP",
-  "Arunachal Pradesh": "AR",
-  "Assam": "AS",
-  "Bihar": "BR",
-  "Chhattisgarh": "CT",
-  "Goa": "GA",
-  "Gujarat": "GJ",
-  "Haryana": "HR",
-  "Himachal Pradesh": "HP",
-  "Jharkhand": "JH",
-  "Karnataka": "KA",
-  "Kerala": "KL",
-  "Madhya Pradesh": "MP",
-  "Maharashtra": "MH",
-  "Manipur": "MN",
-  "Meghalaya": "ML",
-  "Mizoram": "MZ",
-  "Nagaland": "NL",
-  "Odisha": "OR",
-  "Punjab": "PB",
-  "Rajasthan": "RJ",
-  "Sikkim": "SK",
-  "Tamil Nadu": "TN",
-  "Telangana": "TG",
-  "Tripura": "TR",
-  "Uttar Pradesh": "UP",
-  "Uttarakhand": "UT",
-  "West Bengal": "WB",
-  "Andaman and Nicobar Islands": "AN",
-  "Chandigarh": "CH",
-  "Dadra and Nagar Haveli and Daman and Diu": "DN",
-  "Delhi": "DL",
-  "Jammu and Kashmir": "JK",
-  "Ladakh": "LA",
-  "Lakshadweep": "LD",
+  "Andhra Pradesh": "AP", "Arunachal Pradesh": "AR", "Assam": "AS",
+  "Bihar": "BR", "Chhattisgarh": "CT", "Goa": "GA", "Gujarat": "GJ",
+  "Haryana": "HR", "Himachal Pradesh": "HP", "Jharkhand": "JH",
+  "Karnataka": "KA", "Kerala": "KL", "Madhya Pradesh": "MP",
+  "Maharashtra": "MH", "Manipur": "MN", "Meghalaya": "ML",
+  "Mizoram": "MZ", "Nagaland": "NL", "Odisha": "OR", "Punjab": "PB",
+  "Rajasthan": "RJ", "Sikkim": "SK", "Tamil Nadu": "TN",
+  "Telangana": "TG", "Tripura": "TR", "Uttar Pradesh": "UP",
+  "Uttarakhand": "UT", "West Bengal": "WB",
+  "Andaman and Nicobar Islands": "AN", "Chandigarh": "CH",
+  "Dadra and Nagar Haveli and Daman and Diu": "DN", "Delhi": "DL",
+  "Jammu and Kashmir": "JK", "Ladakh": "LA", "Lakshadweep": "LD",
   "Puducherry": "PY"
 };
 
-// --- Free geocoding via OpenStreetMap Nominatim (no API key, no rate-limit issues) ---
 interface NominatimResult {
   display_name: string;
   address: {
@@ -104,18 +108,28 @@ async function reverseGeocode(lat: number, lng: number): Promise<NominatimResult
   }
 }
 
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function MapScreen() {
   const { theme, isDark } = useTheme();
   const styles = getStyles(theme, isDark);
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState<string | null>(null);
   const [suitabilityData, setSuitabilityData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGettingLocation, setIsGettingLocation] = useState<boolean>(true);
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false);
+  const [mapAvailable, setMapAvailable] = useState<boolean>(!!MapView);
   const scrollViewRef = useRef<any>(null);
+
+  // Cause B fix: mounted guard — never call setState after unmount
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // Form state
   const [stateCode, setStateCode] = useState('');
@@ -129,11 +143,12 @@ export default function MapScreen() {
   const [isDistrictOpen, setIsDistrictOpen] = useState(false);
   const [isWaterOpen, setIsWaterOpen] = useState(false);
 
-  // Load zones in parallel with location so the UI does not block on network fetches.
+  // Load zones
   useEffect(() => {
     (async () => {
       try {
         const response = await geoService.getZones();
+        if (!isMounted.current) return;
         if (response.success && response.data.length > 0) {
           setZones(response.data);
         }
@@ -143,7 +158,7 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Set default state/district safely if nothing selected and zones arrive
+  // Set default state/district when zones arrive
   useEffect(() => {
     if (zones.length > 0 && !stateCode) {
       const firstZone = zones[0];
@@ -152,15 +167,70 @@ export default function MapScreen() {
         setDistrictCode(firstZone.district_codes[0]);
       }
     }
-  }, [zones]); // run if zones load and no stateCode yet
+  }, [zones]);
 
-  // Load location immediately and prefer the last known fix for faster startup.
+  // Cause D fix: safe null-checks throughout autoFillLocation
+  const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
+
+  const autoFillLocation = async (loc: Location.LocationObject, force: boolean = false) => {
+    try {
+      if (!force && lastGeocodedCoords.current) {
+        const dLat = Math.abs(lastGeocodedCoords.current.lat - loc.coords.latitude);
+        const dLng = Math.abs(lastGeocodedCoords.current.lng - loc.coords.longitude);
+        if (dLat < 0.0005 && dLng < 0.0005) return;
+      }
+      lastGeocodedCoords.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+
+      const nominatim = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+      if (!isMounted.current) return;
+      // Cause D fix: guard .address access
+      if (!nominatim || !nominatim.address) return;
+
+      setAddress(nominatim.display_name || 'Unknown Location');
+
+      const stateName = nominatim.address.state;
+      const districtName = nominatim.address.state_district
+        || nominatim.address.county
+        || nominatim.address.city
+        || nominatim.address.town
+        || nominatim.address.village;
+
+      if (stateName && isMounted.current) {
+        const mappedCode = STATE_MAP[stateName] || stateName;
+        // Read zones from the ref to get latest value without a closure issue
+        setZones(currentZones => {
+          if (!isMounted.current) return currentZones;
+          const foundState = currentZones.find((z: any) => z.state_code === mappedCode || z.zone_name === stateName);
+          if (foundState) {
+            setStateCode(foundState.state_code);
+            if (districtName && foundState.district_codes) {
+              const match = foundState.district_codes.find((d: string) =>
+                d.toLowerCase() === districtName.toLowerCase()
+              );
+              setDistrictCode(match || foundState.district_codes[0]);
+            } else if (foundState.district_codes?.length > 0) {
+              setDistrictCode(foundState.district_codes[0]);
+            }
+          }
+          return currentZones; // no change to zones
+        });
+      }
+    } catch (err) {
+      console.warn('[MapScreen] autoFillLocation error:', err);
+    }
+  };
+
+  // Cause B+F fix: mounted guard + null-safe watchPositionAsync cleanup
   useEffect(() => {
-    let locationSubscription: Location.LocationSubscription | null = null;
+    // Cause F fix: use a closure-scoped variable, not module-level let
+    let locationSubscription: { remove: () => void } | null = null;
+    let cancelled = false;
 
     const initLocation = async () => {
       try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (cancelled || !isMounted.current) return;
+
         if (status !== 'granted') {
           Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
           setIsGettingLocation(false);
@@ -169,98 +239,60 @@ export default function MapScreen() {
         }
         setHasLocationPermission(true);
 
-        const lastKnown = await Location.getLastKnownPositionAsync();
-        if (lastKnown) {
-          setLocation(lastKnown);
-          setIsGettingLocation(false);
-          autoFillLocation(lastKnown).catch(() => undefined);
+        // Show last known position first for instant feedback
+        try {
+          const lastKnown = await Location.getLastKnownPositionAsync();
+          if (lastKnown && isMounted.current && !cancelled) {
+            setLocation(lastKnown);
+            setIsGettingLocation(false);
+            autoFillLocation(lastKnown).catch(() => undefined);
+          }
+        } catch {
+          // lastKnown can fail — ignore
         }
 
+        // Then get accurate position
         const freshLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
+        if (!isMounted.current || cancelled) return;
         setLocation(freshLocation);
         setIsGettingLocation(false);
         autoFillLocation(freshLocation, true).catch(() => undefined);
 
-        // Start real-time watching after the first render so the screen opens faster.
-        locationSubscription = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.Balanced, distanceInterval: 100, timeInterval: 15000 },
-          (newLoc) => {
-            setLocation(newLoc);
+        // Cause F fix: only start watch if not yet cancelled; guard cleanup
+        if (!cancelled) {
+          try {
+            locationSubscription = await Location.watchPositionAsync(
+              { accuracy: Location.Accuracy.Balanced, distanceInterval: 100, timeInterval: 15000 },
+              (newLoc) => {
+                if (isMounted.current) setLocation(newLoc);
+              }
+            );
+          } catch {
+            // watch can fail on some devices
           }
-        );
+        }
       } catch (err) {
-        console.error("Location acquisition failed:", err);
-        setIsGettingLocation(false);
+        console.warn('[MapScreen] initLocation error:', err);
+        if (isMounted.current) setIsGettingLocation(false);
       }
     };
 
     initLocation();
 
+    // Cause F fix: safe cleanup — cancel flag + null guard on .remove()
     return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
+      cancelled = true;
+      try { locationSubscription?.remove(); } catch { /* ignore */ }
     };
   }, []);
 
-  // Keep track of the last geocoded coordinates to prevent spamming the geocoder
-  const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
-
-  const autoFillLocation = async (loc: Location.LocationObject, force: boolean = false) => {
-    try {
-      // Prevent rapid requests for very near locations (< ~50 meters)
-      // 0.0005 degrees is approx 55 meters
-      if (!force && lastGeocodedCoords.current) {
-        const dLat = Math.abs(lastGeocodedCoords.current.lat - loc.coords.latitude);
-        const dLng = Math.abs(lastGeocodedCoords.current.lng - loc.coords.longitude);
-        if (dLat < 0.0005 && dLng < 0.0005) {
-          return; // Skip reverse geocoding if we haven't moved far
-        }
-      }
-      lastGeocodedCoords.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-
-      // Use OSM Nominatim instead of expo-location to avoid rate limits
-      const nominatim = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-      if (!nominatim) return;
-
-      setAddress(nominatim.display_name || 'Unknown Location');
-
-      const stateName = nominatim.address?.state;
-      const districtName = nominatim.address?.state_district
-        || nominatim.address?.county
-        || nominatim.address?.city
-        || nominatim.address?.town
-        || nominatim.address?.village;
-
-      if (stateName) {
-        const mappedCode = STATE_MAP[stateName] || stateName;
-        const foundState = zones.find((z: any) => z.state_code === mappedCode || z.zone_name === stateName);
-        if (foundState) {
-          setStateCode(foundState.state_code);
-          if (districtName && foundState.district_codes) {
-            const match = foundState.district_codes.find((d: string) =>
-              d.toLowerCase() === districtName.toLowerCase()
-            );
-            setDistrictCode(match || foundState.district_codes[0]);
-          } else {
-            setDistrictCode(foundState.district_codes[0]);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Auto fill reverse geocode error', err);
-    }
-  };
-
-
-
-  // Sync district when user manually changes state ONLY if current district is invalid for new state
+  // Sync district when state changes
   useEffect(() => {
     if (stateCode && zones.length > 0) {
       const selectedZone = zones.find(z => z.state_code === stateCode);
-      if (selectedZone && selectedZone.district_codes.length > 0) {
+      if (selectedZone && selectedZone.district_codes?.length > 0) {
         if (!selectedZone.district_codes.includes(districtCode)) {
           setDistrictCode(selectedZone.district_codes[0]);
         }
@@ -271,46 +303,45 @@ export default function MapScreen() {
   const handleDetectLocation = async () => {
     try {
       setIsGettingLocation(true);
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
+        Alert.alert('Permission denied', 'Location permission is required.');
         setIsGettingLocation(false);
         setHasLocationPermission(false);
         return;
       }
       setHasLocationPermission(true);
-      const lastKnown = await Location.getLastKnownPositionAsync();
-      const loc = lastKnown || await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setLocation(loc);
-      await autoFillLocation(loc, true);
+      let loc: Location.LocationObject | null = null;
+      try { loc = await Location.getLastKnownPositionAsync(); } catch { /* ignore */ }
+      if (!loc) {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      }
+      if (loc && isMounted.current) {
+        setLocation(loc);
+        await autoFillLocation(loc, true);
+      }
     } catch (err) {
-      console.error("Location acquisition failed:", err);
+      console.warn('[MapScreen] handleDetectLocation error:', err);
       Alert.alert('Error', 'Could not detect your location.');
     } finally {
-      setIsGettingLocation(false);
+      if (isMounted.current) setIsGettingLocation(false);
     }
   };
 
   const analyzeLocation = async () => {
     if (!location) return;
     setIsLoading(true);
-
     try {
-      // We removed the redundant reverse geocoding here to prevent hitting
-      // rate limits. The address should already be populated by autoFillLocation.
-
-      // Call real backend API
       const result = await geoService.analyzeSuitability({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        stateCode: stateCode,
-        districtCode: districtCode,
+        stateCode,
+        districtCode,
         waterSourceType: waterSource,
         measuredSalinityUsCm: salinity ? parseFloat(salinity) : undefined
       });
 
+      if (!isMounted.current) return;
       if (result.success) {
         setSuitabilityData(result.data);
         setTimeout(() => {
@@ -319,36 +350,57 @@ export default function MapScreen() {
       } else {
         Alert.alert("Analysis Failed", result.message || "Failed to analyze location data.");
       }
-
     } catch (error: any) {
       const apiErrorMsg = error.response?.data?.message || error.response?.data?.error;
-      const genericMsg = error?.message || "Failed to connect to backend service. Please check your network.";
+      const genericMsg = error?.message || "Failed to connect to backend service.";
       Alert.alert("Analysis Error", apiErrorMsg || genericMsg);
-      console.error("Analysis Error:", error);
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) setIsLoading(false);
     }
   };
 
+  // Cause E fix: handleMapPress accepts both native event and LocationObject shapes
   const handleMapPress = async (e: any) => {
-    if (location) {
-      const newLoc = {
-        ...location,
+    if (!isMounted.current) return;
+    try {
+      // Native MapView event: e.nativeEvent.coordinate
+      // onDragEnd also fires with e.nativeEvent.coordinate
+      const coord = e?.nativeEvent?.coordinate || e?.coords;
+      if (!coord) return;
+
+      const newLoc: Location.LocationObject = {
         coords: {
-          ...location.coords,
-          latitude: e.nativeEvent.coordinate.latitude,
-          longitude: e.nativeEvent.coordinate.longitude
-        }
+          ...(location?.coords || { altitude: null, accuracy: null, altitudeAccuracy: null, heading: null, speed: null }),
+          latitude: coord.latitude,
+          longitude: coord.longitude,
+        },
+        timestamp: Date.now(),
       };
       setLocation(newLoc);
-      // re-autofill using the selected map point!
       await autoFillLocation(newLoc);
+    } catch (err) {
+      console.warn('[MapScreen] handleMapPress error:', err);
     }
   };
 
   const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
   const relevantDistricts = zones.find(z => z.state_code === stateCode)?.district_codes || [];
   const selectedStateName = statesList.find(s => s.value === stateCode)?.label || stateCode || 'Select State';
+
+  // Map fallback UI (used both when MapView unavailable and inside ErrorBoundary)
+  const mapFallback = (
+    <View style={[styles.loadingMap, { borderRadius: theme.borderRadius.lg }]}>
+      <Ionicons name="map-outline" size={48} color={theme.colors.primary} />
+      <Text style={[styles.loadingText, { textAlign: 'center', marginTop: 12 }]}>
+        {mapAvailable ? 'Map view unavailable' : 'Map not available in this build'}
+      </Text>
+      {location && (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 6 }}>
+          📍 {location.coords.latitude.toFixed(5)}, {location.coords.longitude.toFixed(5)}
+        </Text>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
@@ -367,26 +419,31 @@ export default function MapScreen() {
         </View>
 
         <View style={styles.mapContainer}>
-          {location ? (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
-              showsUserLocation={hasLocationPermission}
-              showsMyLocationButton={hasLocationPermission}
-              onPress={handleMapPress}
-            >
-              <Marker
-                coordinate={{ latitude: location.coords.latitude, longitude: location.coords.longitude }}
-                title="Selected Location"
-                draggable
-                onDragEnd={handleMapPress}
-              />
-            </MapView>
+          {location && MapView ? (
+            // Cause A fix: ErrorBoundary ensures a MapView crash stays contained
+            <MapErrorBoundary fallback={mapFallback}>
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
+                }}
+                showsUserLocation={hasLocationPermission}
+                showsMyLocationButton={hasLocationPermission}
+                onPress={handleMapPress}
+              >
+                {Marker && (
+                  <Marker
+                    coordinate={{ latitude: location.coords.latitude, longitude: location.coords.longitude }}
+                    title="Selected Location"
+                    draggable
+                    onDragEnd={handleMapPress}
+                  />
+                )}
+              </MapView>
+            </MapErrorBoundary>
           ) : (
             <View style={styles.loadingMap}>
               {isGettingLocation ? (
@@ -395,7 +452,7 @@ export default function MapScreen() {
                   <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
                 </>
               ) : (
-                <Text style={styles.loadingText}>GPS Unavailable</Text>
+                mapFallback
               )}
             </View>
           )}
@@ -405,9 +462,12 @@ export default function MapScreen() {
           <View style={styles.formHeaderRow}>
             <Text style={styles.formTitle}>Environment Details</Text>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              <TouchableOpacity onPress={handleDetectLocation} style={styles.detectBtn}>
-                <Ionicons name="locate" size={16} color={theme.colors.primary} />
-                <Text style={styles.detectBtnText}>Auto-Locate</Text>
+              <TouchableOpacity onPress={handleDetectLocation} style={styles.detectBtn} disabled={isGettingLocation}>
+                {isGettingLocation
+                  ? <ActivityIndicator size="small" color={theme.colors.primary} />
+                  : <Ionicons name="locate" size={16} color={theme.colors.primary} />
+                }
+                <Text style={styles.detectBtnText}>{isGettingLocation ? 'Locating...' : 'Auto-Locate'}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => Alert.alert("Why this is needed?", "Fisheries policies, subsidies, and climate data are mapped by administrative zones. Your selection helps us provide accurate species and system recommendations for your region.")}>
                 <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary} />
@@ -449,11 +509,12 @@ export default function MapScreen() {
               onChangeText={setSalinity}
               keyboardType="decimal-pad"
               placeholder="e.g. 500"
+              placeholderTextColor={theme.colors.textMuted}
             />
           </View>
 
           <TouchableOpacity
-            style={styles.checkButton}
+            style={[styles.checkButton, (!location || isLoading) && { opacity: 0.6 }]}
             onPress={analyzeLocation}
             activeOpacity={0.8}
             disabled={isLoading || !location}
@@ -576,9 +637,12 @@ function SelectionModal({ visible, items, onSelect, onClose, title, styles, them
           <FlatList
             data={items}
             keyExtractor={(item: any) => item.value}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }: { item: any }) => (
               <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item.value)}>
                 <Text style={styles.modalItemText}>{item.label}</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
               </TouchableOpacity>
             )}
           />
@@ -697,7 +761,8 @@ const getStyles = (theme: any, isDark: boolean) => StyleSheet.create({
   },
   pickerText: {
     fontSize: 16,
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
+    flex: 1
   },
   input: {
     padding: 12,
@@ -835,7 +900,8 @@ const getStyles = (theme: any, isDark: boolean) => StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
+    maxHeight: '75%',
+    minHeight: 300,
     paddingBottom: 30
   },
   modalHeader: {
@@ -852,12 +918,16 @@ const getStyles = (theme: any, isDark: boolean) => StyleSheet.create({
     color: theme.colors.textPrimary
   },
   modalItem: {
-    padding: 20,
+    padding: 18,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border
+    borderBottomColor: theme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
   },
   modalItemText: {
     fontSize: 16,
-    color: theme.colors.textPrimary
+    color: theme.colors.textPrimary,
+    flex: 1
   }
 });
