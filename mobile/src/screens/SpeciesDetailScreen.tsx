@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
+import { getSpeciesImageUri } from '../utils/speciesImages';
 
 export default function SpeciesDetailScreen() {
   const { t, i18n } = useTranslation();
@@ -30,13 +31,14 @@ export default function SpeciesDetailScreen() {
   const enName = d.common_names?.en;
   const translatedName = enName ? t(`species.names.${enName}`, { defaultValue: '' }) : '';
   const commonName = translatedName || d.common_names?.[currentLang] || enName || d.scientific_name;
+  const heroImageUri = getSpeciesImageUri(d.scientific_name, d.image_url);
 
   return (
     <SafeAreaView style={styles.safeContainer} edges={['top']}>
       <ScreenHeader title={commonName} onBack={() => (navigation as any).goBack()} variant="surface" />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {d.image_url ? (
-          <Image source={{ uri: d.image_url }} style={styles.heroImage} resizeMode="cover" />
+        {heroImageUri ? (
+          <Image source={{ uri: heroImageUri }} style={styles.heroImage} resizeMode="cover" />
         ) : (
           <View style={styles.heroFallback}>
             <Ionicons name="fish" size={56} color={theme.colors.primary} />

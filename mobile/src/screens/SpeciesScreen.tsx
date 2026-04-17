@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 import { speciesService } from '../services/apiService';
+import { getSpeciesImageUri } from '../utils/speciesImages';
 
 const CATEGORY_FILTERS = ['All', 'Freshwater', 'Saltwater', 'Crustaceans'];
 
@@ -47,11 +48,13 @@ const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPres
   const commonName = translatedName || d.common_names?.[currentLang] || enName || d.scientific_name || 'Unknown Species';
   const category = (d.category || '').replace(/_/g, ' ') || 'Species';
 
+  const imageUri = getSpeciesImageUri(d.scientific_name, d.image_url);
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {d.image_url && !imageError ? (
+      {imageUri && !imageError ? (
         <Image
-          source={{ uri: d.image_url }}
+          source={{ uri: imageUri }}
           style={styles.image}
           resizeMode="cover"
           onError={() => setImageError(true)}
