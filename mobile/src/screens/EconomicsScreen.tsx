@@ -528,13 +528,16 @@ function SelectionModal({ visible, title, data, onClose, onSelect, theme }: any)
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>{title}</Text>
-          <FlatList
-            data={data}
-            keyExtractor={(item) => item.value}
+          <ScrollView
+            style={styles.modalScrollArea}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
+            keyboardShouldPersistTaps="handled"
+          >
+            {(data || []).map((item: { label: string; value: string }) => (
               <TouchableOpacity
+                key={item.value}
                 style={styles.modalItem}
+                activeOpacity={0.7}
                 onPress={() => {
                   onSelect(item.value);
                   onClose();
@@ -543,8 +546,8 @@ function SelectionModal({ visible, title, data, onClose, onSelect, theme }: any)
                 <Text style={styles.modalItemText}>{item.label}</Text>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.border} />
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </ScrollView>
           <TouchableOpacity style={styles.modalClose} onPress={onClose}>
             <Text style={styles.modalCloseText}>Cancel</Text>
           </TouchableOpacity>
@@ -553,6 +556,7 @@ function SelectionModal({ visible, title, data, onClose, onSelect, theme }: any)
     </Modal>
   );
 }
+
 
 const getStyles = (theme: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
@@ -873,6 +877,10 @@ const getStyles = (theme: any) => StyleSheet.create({
     padding: 24,
     maxHeight: '80%',
     minHeight: 300,
+    flexDirection: 'column',
+  },
+  modalScrollArea: {
+    flex: 1,
   },
   modalTitle: {
     color: theme.colors.textPrimary,
