@@ -18,7 +18,8 @@ if (!__DEV__ && !process.env.EXPO_PUBLIC_BACKEND_URL) {
 
 const api = axios.create({
     baseURL: BACKEND_URL,
-    timeout: 10000,
+    // 30 s — gives Render free-tier time to wake from cold start
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -57,6 +58,43 @@ if (__DEV__) {
 }
     );
 }
+
+// Offline fallback for geographic zones — covers all major Indian states so
+// state/district dropdowns always work even when the backend is unreachable.
+const FALLBACK_ZONES = [
+    { state_code: 'AP', zone_name: 'Andhra Pradesh', district_codes: ['Guntur', 'Krishna', 'East Godavari', 'West Godavari', 'Visakhapatnam', 'Srikakulam', 'Vizianagaram', 'Kurnool', 'Kadapa', 'Nellore', 'Chittoor', 'Prakasam', 'Anantapur'], district_names: ['Guntur', 'Krishna', 'East Godavari', 'West Godavari', 'Visakhapatnam', 'Srikakulam', 'Vizianagaram', 'Kurnool', 'Kadapa', 'Nellore', 'Chittoor', 'Prakasam', 'Anantapur'] },
+    { state_code: 'AR', zone_name: 'Arunachal Pradesh', district_codes: ['East Siang', 'West Siang', 'Upper Siang', 'Lower Subansiri', 'Upper Subansiri', 'Papum Pare', 'Tawang', 'Changlang', 'Tirap'], district_names: ['East Siang', 'West Siang', 'Upper Siang', 'Lower Subansiri', 'Upper Subansiri', 'Papum Pare', 'Tawang', 'Changlang', 'Tirap'] },
+    { state_code: 'AS', zone_name: 'Assam', district_codes: ['Kamrup', 'Nagaon', 'Jorhat', 'Dibrugarh', 'Tinsukia', 'Golaghat', 'Barpeta', 'Dhubri', 'Cachar', 'Lakhimpur'], district_names: ['Kamrup', 'Nagaon', 'Jorhat', 'Dibrugarh', 'Tinsukia', 'Golaghat', 'Barpeta', 'Dhubri', 'Cachar', 'Lakhimpur'] },
+    { state_code: 'BR', zone_name: 'Bihar', district_codes: ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur', 'Darbhanga', 'Purnia', 'Araria', 'Samastipur', 'Vaishali', 'Sitamarhi'], district_names: ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur', 'Darbhanga', 'Purnia', 'Araria', 'Samastipur', 'Vaishali', 'Sitamarhi'] },
+    { state_code: 'CT', zone_name: 'Chhattisgarh', district_codes: ['Raipur', 'Bilaspur', 'Durg', 'Rajnandgaon', 'Raigarh', 'Korba', 'Jashpur', 'Surguja', 'Bastar', 'Jagdalpur'], district_names: ['Raipur', 'Bilaspur', 'Durg', 'Rajnandgaon', 'Raigarh', 'Korba', 'Jashpur', 'Surguja', 'Bastar', 'Jagdalpur'] },
+    { state_code: 'GA', zone_name: 'Goa', district_codes: ['North Goa', 'South Goa'], district_names: ['North Goa', 'South Goa'] },
+    { state_code: 'GJ', zone_name: 'Gujarat', district_codes: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Amreli', 'Anand', 'Navsari', 'Bharuch', 'Valsad'], district_names: ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Amreli', 'Anand', 'Navsari', 'Bharuch', 'Valsad'] },
+    { state_code: 'HR', zone_name: 'Haryana', district_codes: ['Gurugram', 'Faridabad', 'Hisar', 'Rohtak', 'Ambala', 'Karnal', 'Panipat', 'Sonipat', 'Yamunanagar', 'Kurukshetra'], district_names: ['Gurugram', 'Faridabad', 'Hisar', 'Rohtak', 'Ambala', 'Karnal', 'Panipat', 'Sonipat', 'Yamunanagar', 'Kurukshetra'] },
+    { state_code: 'HP', zone_name: 'Himachal Pradesh', district_codes: ['Shimla', 'Kangra', 'Mandi', 'Kullu', 'Solan', 'Una', 'Hamirpur', 'Bilaspur', 'Chamba', 'Sirmaur'], district_names: ['Shimla', 'Kangra', 'Mandi', 'Kullu', 'Solan', 'Una', 'Hamirpur', 'Bilaspur', 'Chamba', 'Sirmaur'] },
+    { state_code: 'JH', zone_name: 'Jharkhand', district_codes: ['Ranchi', 'Dhanbad', 'Bokaro', 'Jamshedpur', 'Hazaribagh', 'Deoghar', 'Giridih', 'Dumka', 'Palamu', 'Gumla'], district_names: ['Ranchi', 'Dhanbad', 'Bokaro', 'Jamshedpur', 'Hazaribagh', 'Deoghar', 'Giridih', 'Dumka', 'Palamu', 'Gumla'] },
+    { state_code: 'KA', zone_name: 'Karnataka', district_codes: ['Bengaluru Urban', 'Mysuru', 'Tumkur', 'Dakshina Kannada', 'Uttara Kannada', 'Udupi', 'Shimoga', 'Hassan', 'Belagavi', 'Dharwad', 'Bidar', 'Kolar'], district_names: ['Bengaluru Urban', 'Mysuru', 'Tumkur', 'Dakshina Kannada', 'Uttara Kannada', 'Udupi', 'Shimoga', 'Hassan', 'Belagavi', 'Dharwad', 'Bidar', 'Kolar'] },
+    { state_code: 'KL', zone_name: 'Kerala', district_codes: ['Thiruvananthapuram', 'Kollam', 'Pathanamthitta', 'Alappuzha', 'Kottayam', 'Idukki', 'Ernakulam', 'Thrissur', 'Palakkad', 'Malappuram', 'Kozhikode', 'Wayanad', 'Kannur', 'Kasaragod'], district_names: ['Thiruvananthapuram', 'Kollam', 'Pathanamthitta', 'Alappuzha', 'Kottayam', 'Idukki', 'Ernakulam', 'Thrissur', 'Palakkad', 'Malappuram', 'Kozhikode', 'Wayanad', 'Kannur', 'Kasaragod'] },
+    { state_code: 'MP', zone_name: 'Madhya Pradesh', district_codes: ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Rewa', 'Satna', 'Chhindwara', 'Hoshangabad'], district_names: ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Rewa', 'Satna', 'Chhindwara', 'Hoshangabad'] },
+    { state_code: 'MH', zone_name: 'Maharashtra', district_codes: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Solapur', 'Amravati', 'Raigad', 'Ratnagiri', 'Sindhudurg', 'Thane', 'Kolhapur'], district_names: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Solapur', 'Amravati', 'Raigad', 'Ratnagiri', 'Sindhudurg', 'Thane', 'Kolhapur'] },
+    { state_code: 'MN', zone_name: 'Manipur', district_codes: ['Imphal West', 'Imphal East', 'Bishnupur', 'Thoubal', 'Churachandpur', 'Senapati', 'Ukhrul', 'Chandel'], district_names: ['Imphal West', 'Imphal East', 'Bishnupur', 'Thoubal', 'Churachandpur', 'Senapati', 'Ukhrul', 'Chandel'] },
+    { state_code: 'ML', zone_name: 'Meghalaya', district_codes: ['East Khasi Hills', 'West Khasi Hills', 'Ri Bhoi', 'East Jaintia Hills', 'West Jaintia Hills', 'East Garo Hills', 'West Garo Hills', 'South Garo Hills'], district_names: ['East Khasi Hills', 'West Khasi Hills', 'Ri Bhoi', 'East Jaintia Hills', 'West Jaintia Hills', 'East Garo Hills', 'West Garo Hills', 'South Garo Hills'] },
+    { state_code: 'MZ', zone_name: 'Mizoram', district_codes: ['Aizawl', 'Lunglei', 'Champhai', 'Serchhip', 'Kolasib', 'Lawngtlai', 'Mamit', 'Siaha'], district_names: ['Aizawl', 'Lunglei', 'Champhai', 'Serchhip', 'Kolasib', 'Lawngtlai', 'Mamit', 'Siaha'] },
+    { state_code: 'NL', zone_name: 'Nagaland', district_codes: ['Kohima', 'Dimapur', 'Mokokchung', 'Wokha', 'Zunheboto', 'Tuensang', 'Mon', 'Phek'], district_names: ['Kohima', 'Dimapur', 'Mokokchung', 'Wokha', 'Zunheboto', 'Tuensang', 'Mon', 'Phek'] },
+    { state_code: 'OR', zone_name: 'Odisha', district_codes: ['Bhubaneswar', 'Cuttack', 'Puri', 'Berhampur', 'Balasore', 'Bhadrak', 'Kendrapara', 'Jagatsinghpur', 'Ganjam', 'Jajpur', 'Khordha', 'Nayagarh'], district_names: ['Bhubaneswar', 'Cuttack', 'Puri', 'Berhampur', 'Balasore', 'Bhadrak', 'Kendrapara', 'Jagatsinghpur', 'Ganjam', 'Jajpur', 'Khordha', 'Nayagarh'] },
+    { state_code: 'PB', zone_name: 'Punjab', district_codes: ['Amritsar', 'Ludhiana', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Gurdaspur', 'Hoshiarpur', 'Firozpur', 'Moga'], district_names: ['Amritsar', 'Ludhiana', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Gurdaspur', 'Hoshiarpur', 'Firozpur', 'Moga'] },
+    { state_code: 'RJ', zone_name: 'Rajasthan', district_codes: ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner', 'Bharatpur', 'Alwar', 'Barmer', 'Chittorgarh'], district_names: ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner', 'Bharatpur', 'Alwar', 'Barmer', 'Chittorgarh'] },
+    { state_code: 'SK', zone_name: 'Sikkim', district_codes: ['East Sikkim', 'West Sikkim', 'North Sikkim', 'South Sikkim'], district_names: ['East Sikkim', 'West Sikkim', 'North Sikkim', 'South Sikkim'] },
+    { state_code: 'TN', zone_name: 'Tamil Nadu', district_codes: ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Thanjavur', 'Nagapattinam', 'Cuddalore', 'Villupuram', 'Ramanathapuram', 'Thoothukudi', 'Kanyakumari'], district_names: ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Thanjavur', 'Nagapattinam', 'Cuddalore', 'Villupuram', 'Ramanathapuram', 'Thoothukudi', 'Kanyakumari'] },
+    { state_code: 'TG', zone_name: 'Telangana', district_codes: ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam', 'Nalgonda', 'Medak', 'Rangareddy', 'Mahabubnagar', 'Adilabad'], district_names: ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam', 'Nalgonda', 'Medak', 'Rangareddy', 'Mahabubnagar', 'Adilabad'] },
+    { state_code: 'TR', zone_name: 'Tripura', district_codes: ['West Tripura', 'South Tripura', 'North Tripura', 'Gomati', 'Khowai', 'Sepahijala', 'Sipahijala', 'Unokoti'], district_names: ['West Tripura', 'South Tripura', 'North Tripura', 'Gomati', 'Khowai', 'Sepahijala', 'Sipahijala', 'Unokoti'] },
+    { state_code: 'UP', zone_name: 'Uttar Pradesh', district_codes: ['Lucknow', 'Kanpur', 'Agra', 'Varanasi', 'Allahabad', 'Meerut', 'Gorakhpur', 'Bareilly', 'Aligarh', 'Moradabad', 'Saharanpur', 'Ghaziabad'], district_names: ['Lucknow', 'Kanpur', 'Agra', 'Varanasi', 'Allahabad', 'Meerut', 'Gorakhpur', 'Bareilly', 'Aligarh', 'Moradabad', 'Saharanpur', 'Ghaziabad'] },
+    { state_code: 'UT', zone_name: 'Uttarakhand', district_codes: ['Dehradun', 'Haridwar', 'Nainital', 'Udham Singh Nagar', 'Almora', 'Pauri Garhwal', 'Tehri Garhwal', 'Chamoli', 'Pithoragarh', 'Champawat'], district_names: ['Dehradun', 'Haridwar', 'Nainital', 'Udham Singh Nagar', 'Almora', 'Pauri Garhwal', 'Tehri Garhwal', 'Chamoli', 'Pithoragarh', 'Champawat'] },
+    { state_code: 'WB', zone_name: 'West Bengal', district_codes: ['Kolkata', 'North 24 Parganas', 'South 24 Parganas', 'Howrah', 'Hooghly', 'Burdwan', 'Murshidabad', 'Nadia', 'Medinipur', 'Jalpaiguri', 'Malda', 'Cooch Behar'], district_names: ['Kolkata', 'North 24 Parganas', 'South 24 Parganas', 'Howrah', 'Hooghly', 'Burdwan', 'Murshidabad', 'Nadia', 'Medinipur', 'Jalpaiguri', 'Malda', 'Cooch Behar'] },
+    { state_code: 'AN', zone_name: 'Andaman & Nicobar', district_codes: ['North and Middle Andaman', 'South Andaman', 'Nicobars'], district_names: ['North and Middle Andaman', 'South Andaman', 'Nicobars'] },
+    { state_code: 'DL', zone_name: 'Delhi', district_codes: ['Central Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi', 'New Delhi', 'North East Delhi', 'South West Delhi'], district_names: ['Central Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi', 'New Delhi', 'North East Delhi', 'South West Delhi'] },
+    { state_code: 'JK', zone_name: 'Jammu & Kashmir', district_codes: ['Srinagar', 'Jammu', 'Anantnag', 'Baramulla', 'Pulwama', 'Kupwara', 'Budgam', 'Kathua', 'Udhampur', 'Rajouri'], district_names: ['Srinagar', 'Jammu', 'Anantnag', 'Baramulla', 'Pulwama', 'Kupwara', 'Budgam', 'Kathua', 'Udhampur', 'Rajouri'] },
+    { state_code: 'PY', zone_name: 'Puducherry', district_codes: ['Puducherry', 'Karaikal', 'Mahe', 'Yanam'], district_names: ['Puducherry', 'Karaikal', 'Mahe', 'Yanam'] },
+];
 
 const FALLBACK_EQUIPMENT = [
     { id: 'eq_1', name: 'Paddle Wheel Aerator 1HP', category: 'AERATION', cost_inr: 25000, lifespan_years: 5, maintenance_cost_annual_inr: 2000, shop_url: 'https://dir.indiamart.com/search.mp?ss=Paddle+Wheel+Aerator' },
@@ -111,12 +149,31 @@ const FALLBACK_SPECIES = [
 
 export const geoService = {
     getZones: async () => {
-        const response = await api.get('/api/v1/geo/zones');
-        return response.data;
+        try {
+            const response = await api.get('/api/v1/geo/zones');
+            // If the backend returned an empty list, use the fallback so dropdowns always work
+            if (response.data?.data?.length > 0) {
+                return response.data;
+            }
+            console.warn('[Offline Mode] No zones from backend, using built-in zone list');
+            return { success: true, data: FALLBACK_ZONES };
+        } catch (error) {
+            console.warn('[Offline Mode] Falling back to built-in geographic zones');
+            return { success: true, data: FALLBACK_ZONES };
+        }
     },
     getZonesByState: async (stateCode: string) => {
-        const response = await api.get(`/api/v1/geo/zones/${stateCode}`);
-        return response.data;
+        try {
+            const response = await api.get(`/api/v1/geo/zones/${stateCode}`);
+            if (response.data?.data?.length > 0) {
+                return response.data;
+            }
+            const fallback = FALLBACK_ZONES.filter(z => z.state_code === stateCode.toUpperCase());
+            return { success: true, data: fallback };
+        } catch (error) {
+            const fallback = FALLBACK_ZONES.filter(z => z.state_code === stateCode.toUpperCase());
+            return { success: true, data: fallback };
+        }
     },
     analyzeSuitability: async (data: {
         latitude: number;
