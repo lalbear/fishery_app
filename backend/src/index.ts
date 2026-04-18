@@ -57,13 +57,28 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+// Rate limiting — generous limits for a mobile app whose users may share
+// a NAT IP.  Catalog reads are cheap; auth/write calls get a tighter cap.
+const readLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000, // 1 000 catalog/data reads per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests. Please wait a moment and try again.' },
 });
-app.use(limiter as any);
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200, // tighter cap for mutations / sync
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests. Please wait a moment and try again.' },
+});
+
+// Apply per-route-type limiters instead of a single global cap
+app.use('/api/v1/auth', writeLimiter as any);
+app.use('/api/v1/sync', writeLimiter as any);
+app.use('/api/v1/water-quality', writeLimiter as any);
+app.use(readLimiter as any); // everything else (species, market, geo, economics, equipment)
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

@@ -158,13 +158,18 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Set default state/district when zones arrive
+  // Set default state/district when zones arrive — pick alphabetically first state
   useEffect(() => {
     if (zones.length > 0 && !stateCode) {
-      const firstZone = zones[0];
-      setStateCode(firstZone.state_code);
-      if (firstZone.district_codes && firstZone.district_codes.length > 0) {
-        setDistrictCode(firstZone.district_codes[0]);
+      const statesSeen = new Map<string, any>();
+      zones.forEach(z => { if (!statesSeen.has(z.state_code)) statesSeen.set(z.state_code, z); });
+      const sorted = Array.from(statesSeen.values()).sort((a, b) =>
+        (a.zone_name || a.state_code).localeCompare(b.zone_name || b.state_code)
+      );
+      const first = sorted[0];
+      if (first) {
+        setStateCode(first.state_code);
+        if (first.district_codes?.length > 0) setDistrictCode(first.district_codes[0]);
       }
     }
   }, [zones]);
@@ -197,22 +202,33 @@ export default function MapScreen() {
 
       if (stateName && isMounted.current) {
         const mappedCode = STATE_MAP[stateName] || stateName;
-        // Read zones from the ref to get latest value without a closure issue
         setZones(currentZones => {
           if (!isMounted.current) return currentZones;
-          const foundState = currentZones.find((z: any) => z.state_code === mappedCode || z.zone_name === stateName);
+          // Match on state_code (2-letter ISO) which is reliable
+          const foundState = currentZones.find((z: any) =>
+            z.state_code === mappedCode || z.zone_name === stateName
+          );
           if (foundState) {
             setStateCode(foundState.state_code);
-            if (districtName && foundState.district_codes) {
-              const match = foundState.district_codes.find((d: string) =>
-                d.toLowerCase() === districtName.toLowerCase()
-              );
-              setDistrictCode(match || foundState.district_codes[0]);
-            } else if (foundState.district_codes?.length > 0) {
-              setDistrictCode(foundState.district_codes[0]);
+            // Collect all districts for this state across all zones
+            const allDistricts: string[] = [];
+            currentZones
+              .filter((z: any) => z.state_code === foundState.state_code)
+              .forEach((z: any) => (z.district_codes || []).forEach((d: string) => {
+                if (!allDistricts.includes(d)) allDistricts.push(d);
+              }));
+            if (districtName && allDistricts.length > 0) {
+              // Try substring match (handles "East Godavari" vs "EG" and full-name DB values)
+              const dn = districtName.toLowerCase();
+              const match =
+                allDistricts.find(d => d.toLowerCase() === dn) ||
+                allDistricts.find(d => d.toLowerCase().includes(dn) || dn.includes(d.toLowerCase()));
+              setDistrictCode(match || allDistricts[0]);
+            } else if (allDistricts.length > 0) {
+              setDistrictCode(allDistricts[0]);
             }
           }
-          return currentZones; // no change to zones
+          return currentZones;
         });
       }
     } catch (err) {
@@ -291,11 +307,14 @@ export default function MapScreen() {
   // Sync district when state changes
   useEffect(() => {
     if (stateCode && zones.length > 0) {
-      const selectedZone = zones.find(z => z.state_code === stateCode);
-      if (selectedZone && selectedZone.district_codes?.length > 0) {
-        if (!selectedZone.district_codes.includes(districtCode)) {
-          setDistrictCode(selectedZone.district_codes[0]);
-        }
+      const allDistricts: string[] = [];
+      zones
+        .filter(z => z.state_code === stateCode)
+        .forEach(z => (z.district_codes || []).forEach((d: string) => {
+          if (!allDistricts.includes(d)) allDistricts.push(d);
+        }));
+      if (allDistricts.length > 0 && !allDistricts.includes(districtCode)) {
+        setDistrictCode(allDistricts[0]);
       }
     }
   }, [stateCode, zones]);
@@ -383,8 +402,16 @@ export default function MapScreen() {
     }
   };
 
-  const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
-  const relevantDistricts = zones.find(z => z.state_code === stateCode)?.district_codes || [];
+  // Deduplicate zones so each state appears once in the state picker
+  const statesMap = new Map<string, string>();
+  zones.forEach(z => { if (!statesMap.has(z.state_code)) statesMap.set(z.state_code, z.zone_name); });
+  const statesList = Array.from(statesMap.entries()).map(([value, label]) => ({ label, value })).sort((a, b) => a.label.localeCompare(b.label));
+
+  // Merge district_codes from all zones that belong to the selected state
+  const zonesForState = zones.filter(z => z.state_code === stateCode);
+  const allDistrictCodes: string[] = [];
+  zonesForState.forEach(z => (z.district_codes || []).forEach((d: string) => { if (!allDistrictCodes.includes(d)) allDistrictCodes.push(d); }));
+  const relevantDistricts = allDistrictCodes.sort();
   const selectedStateName = statesList.find(s => s.value === stateCode)?.label || stateCode || 'Select State';
 
   // Map fallback UI (used both when MapView unavailable and inside ErrorBoundary)

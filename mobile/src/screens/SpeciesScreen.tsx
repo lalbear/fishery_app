@@ -112,21 +112,37 @@ export default function SpeciesScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadSpecies = useCallback(async () => {
+    setLoadError(null);
     try {
       const res = await speciesService.getAll();
       if (res.success && res.data) {
-        setSpeciesList(res.data);
-        setFiltered(res.data);
+        // Only accept the result if it has more than the 3-item offline fallback
+        // (fallback items have ids like 'sp_1', real DB rows have UUIDs)
+        const isFallback = res.data.length <= 3 && res.data[0]?.id?.startsWith('sp_');
+        if (!isFallback) {
+          setSpeciesList(res.data);
+          setFiltered(res.data);
+          setLoadError(null);
+        } else if (speciesList.length === 0) {
+          // Only show offline data if we have nothing better cached
+          setSpeciesList(res.data);
+          setFiltered(res.data);
+          setLoadError('Showing offline data. Pull down to refresh when connected.');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load species', err);
+      if (speciesList.length === 0) {
+        setLoadError('Could not load species. Check your connection and pull down to retry.');
+      }
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [speciesList.length]);
 
   useEffect(() => { loadSpecies(); }, [loadSpecies]);
   const currentLang = i18n.language || 'en';
@@ -197,6 +213,13 @@ export default function SpeciesScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {loadError ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="cloud-offline-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.errorBannerText}>{loadError}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={filtered}
@@ -387,6 +410,24 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textInverse,
     fontWeight: '800',
     fontSize: 14,
+  },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: theme.colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: theme.colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',

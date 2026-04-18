@@ -56,10 +56,17 @@ export default function EconomicsScreen() {
         const response = await geoService.getZones();
         if (response.success && response.data.length > 0) {
           setZones(response.data);
-          const firstZone = response.data[0];
-          setStateCode(firstZone.state_code);
-          if (firstZone.district_codes?.length > 0) {
-            setDistrictCode(firstZone.district_codes[0]);
+          // Pick alphabetically first state so default is consistent
+          const statesSeen = new Map<string, any>();
+          response.data.forEach((z: any) => { if (!statesSeen.has(z.state_code)) statesSeen.set(z.state_code, z); });
+          const sortedStates = Array.from(statesSeen.values()).sort((a, b) =>
+            (a.zone_name || a.state_code).localeCompare(b.zone_name || b.state_code)
+          );
+          const firstState = sortedStates[0];
+          if (firstState) {
+            setStateCode(firstState.state_code);
+            const firstDistrict = firstState.district_codes?.[0];
+            if (firstDistrict) setDistrictCode(firstDistrict);
           }
         }
       } catch (error) {
@@ -160,17 +167,25 @@ export default function EconomicsScreen() {
     }
   };
 
-  const statesList = zones.map(z => ({ label: z.zone_name, value: z.state_code }));
-  const currentZone = zones.find(z => z.state_code === stateCode);
-  const relevantDistricts: { label: string; value: string }[] = (() => {
-    if (!currentZone) return [];
-    const codes: string[] = currentZone.district_codes || [];
-    const names: string[] = currentZone.district_names || [];
-    return codes.map((code: string, idx: number) => ({
-      label: names[idx] || code, // full name if available, fall back to code
-      value: code,
-    }));
-  })();
+  // Deduplicate — each state shows once using its first zone_name as the label
+  const statesMap = new Map<string, string>();
+  zones.forEach(z => { if (!statesMap.has(z.state_code)) statesMap.set(z.state_code, z.zone_name); });
+  const statesList = Array.from(statesMap.entries())
+    .map(([value, label]) => ({ label, value }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Merge district_codes from all zones that belong to the selected state
+  const allDistrictCodes: string[] = [];
+  zones.filter(z => z.state_code === stateCode).forEach(z => {
+    const codes: string[] = z.district_codes || [];
+    const names: string[] = z.district_names || [];
+    codes.forEach((code: string, idx: number) => {
+      if (!allDistrictCodes.includes(code)) allDistrictCodes.push(names[idx] || code);
+    });
+  });
+  const relevantDistricts: { label: string; value: string }[] = allDistrictCodes
+    .sort()
+    .map(d => ({ label: d, value: d }));
   const currentDistrictLabel = relevantDistricts.find(d => d.value === districtCode)?.label || districtCode || 'Select';
   const profileFields = [
     Boolean(stateCode),

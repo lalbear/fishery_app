@@ -25,6 +25,28 @@ const api = axios.create({
     },
 });
 
+// 429 retry interceptor — when the server rate-limits us, wait for the
+// Retry-After header (or a 5-second default) then try once more.
+// This prevents a brief rate-limit burst from silently falling back to the
+// 3-item offline placeholder.
+api.interceptors.response.use(
+    response => response,
+    async (error) => {
+        const status = error.response?.status;
+        if (status === 429) {
+            const retryAfterHeader = error.response?.headers?.['retry-after'];
+            const waitMs = retryAfterHeader
+                ? parseInt(retryAfterHeader, 10) * 1000
+                : 5000; // default 5 s
+            console.warn(`[API] 429 rate-limited on ${error.config?.url}. Retrying in ${waitMs / 1000}s…`);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            // Retry the original request exactly once
+            return api.request(error.config);
+        }
+        return Promise.reject(error);
+    }
+);
+
 if (__DEV__) {
     api.interceptors.request.use((config) => {
         console.log('[API request]', {
@@ -55,7 +77,7 @@ if (__DEV__) {
                 data: error.response?.data,
             });
             return Promise.reject(error);
-}
+        }
     );
 }
 
