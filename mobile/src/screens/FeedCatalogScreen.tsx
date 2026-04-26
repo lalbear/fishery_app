@@ -59,7 +59,10 @@ export default function FeedCatalogScreen() {
 
 function FeedCard({ item, theme, styles }: { item: any; theme: any; styles: any }) {
     const [imageError, setImageError] = useState(false);
-    const imageUri = getFeedImageUri(item.feed_type, item.brand);
+    // Priority: DB image_url (like equipment) → type-based fallback map
+    const imageUri = (item.image_url && !imageError)
+        ? item.image_url
+        : getFeedImageUri(item.feed_type, item.brand, item.suitable_for, item.name);
     const typeColor = getFeedTypeColor(item.feed_type);
 
     return (
