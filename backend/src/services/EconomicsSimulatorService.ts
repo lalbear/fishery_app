@@ -122,17 +122,10 @@ export class EconomicsSimulatorService {
       input.landSizeHectares
     );
 
-    // Step 9: Capital Efficiency Impact (More capital = Better automation/ROI)
-    // If available capital > 1.2x of effective capex, boost yield by up to 15%
-    let efficiencyFactor = 1.0;
-    if (input.availableCapitalInr > (effectiveCapex * 1.2)) {
-      const surplusRatio = Math.min(0.15, (input.availableCapitalInr / effectiveCapex - 1) * 0.1);
-      efficiencyFactor = 1.0 + surplusRatio;
-      logger.info('Capital efficiency boost applied', { surplusRatio });
-    }
-
-    expectedYield *= efficiencyFactor;
-    projectedRevenue *= efficiencyFactor;
+    // No capital efficiency multiplier — having more cash on hand does not automatically
+    // increase biological yield. Working capital buffers reduce risk but are already
+    // captured by the risk analysis and sensitivity bands.
+    const efficiencyFactor = 1.0;
 
     // Step 10: Generate species recommendations (Calculates individual metrics - Bug FIX)
     const speciesRecommendations = this.generateSpeciesRecommendations(
@@ -419,13 +412,17 @@ export class EconomicsSimulatorService {
     landSizeHectares: number
   ): { projectedRevenue: number; expectedYield: number } {
     const revenue = model.revenue_projections;
-    const avgYield = (revenue.expected_yield_kg_per_hectare.min +
-      revenue.expected_yield_kg_per_hectare.max) / 2;
-    const avgPrice = (revenue.market_price_inr_per_kg.min +
-      revenue.market_price_inr_per_kg.max) / 2;
+    // Use 35th percentile for yield — first-time farmers rarely hit the midpoint;
+    // disease, weather, and management gaps consistently push outcomes toward the lower end.
+    const yieldRange = revenue.expected_yield_kg_per_hectare.max - revenue.expected_yield_kg_per_hectare.min;
+    const conservativeYield = revenue.expected_yield_kg_per_hectare.min + yieldRange * 0.35;
+    // Use 40th percentile for price — local/farm-gate prices are typically well below
+    // national averages listed in extension literature.
+    const priceRange = revenue.market_price_inr_per_kg.max - revenue.market_price_inr_per_kg.min;
+    const conservativePrice = revenue.market_price_inr_per_kg.min + priceRange * 0.40;
 
-    const totalYield = avgYield * landSizeHectares;
-    const totalRevenue = totalYield * avgPrice;
+    const totalYield = conservativeYield * landSizeHectares;
+    const totalRevenue = totalYield * conservativePrice;
 
     return { projectedRevenue: totalRevenue, expectedYield: totalYield };
   }
@@ -470,12 +467,16 @@ export class EconomicsSimulatorService {
       const avgPrice = (s.economic_parameters.market_price_per_kg_inr?.min +
         s.economic_parameters.market_price_per_kg_inr?.max) / 2 || 120;
 
-      const survivalPercent = templateDefaults?.survivalPercent ?? (s.economic_parameters.survival_rate_percent?.max || 80);
+      // Use the minimum (pessimistic) survival rate — disease, water quality events,
+      // and handling losses mean first-cycle farmers rarely achieve peak survival.
+      const survivalPercent = templateDefaults?.survivalPercent ?? (s.economic_parameters.survival_rate_percent?.min || 70);
       const speciesYield = expectedYield * (survivalPercent / 100);
       const estRevenue = speciesYield * avgPrice;
 
       // Calculate specific OPEX for this species (Feed cost varies by species FCR)
-      const feedPrice = templateDefaults?.feedPriceInrPerKg ?? 45;
+      // Rs 60/kg default reflects specialist pelleted feed; most species require
+      // 28–32% protein diets that cost Rs 55–80/kg at the farm gate in India.
+      const feedPrice = templateDefaults?.feedPriceInrPerKg ?? 60;
       const feedCost = speciesYield * avgFcr * feedPrice;
       const totalOpexMatch = opexMinusFeed + feedCost;
       const netProfit = estRevenue - totalOpexMatch - effectiveCapex;
