@@ -48,13 +48,13 @@ const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPres
   const commonName = translatedName || d.common_names?.[currentLang] || enName || d.scientific_name || 'Unknown Species';
   const category = (d.category || '').replace(/_/g, ' ') || 'Species';
 
-  const imageUri = getSpeciesImageUri(d.scientific_name, d.image_url);
+  const imageSource = getSpeciesImageUri(d.scientific_name, d.image_url);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {imageUri && !imageError ? (
+      {imageSource && !imageError ? (
         <Image
-          source={{ uri: imageUri }}
+          source={imageSource}
           style={styles.image}
           resizeMode="cover"
           onError={() => setImageError(true)}

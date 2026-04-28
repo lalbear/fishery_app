@@ -59,18 +59,17 @@ export default function FeedCatalogScreen() {
 
 function FeedCard({ item, theme, styles }: { item: any; theme: any; styles: any }) {
     const [imageError, setImageError] = useState(false);
-    // Priority: DB image_url (like equipment) → type-based fallback map
-    const imageUri = (item.image_url && !imageError)
-        ? item.image_url
+    const imageSource = (item.image_url && !imageError)
+        ? { uri: item.image_url }
         : getFeedImageUri(item.feed_type, item.brand, item.suitable_for, item.name);
     const typeColor = getFeedTypeColor(item.feed_type);
 
     return (
         <View style={styles.card}>
             {/* Feed image banner */}
-            {imageUri && !imageError ? (
+            {imageSource && !imageError ? (
                 <Image
-                    source={{ uri: imageUri }}
+                    source={imageSource}
                     style={styles.feedImage}
                     resizeMode="cover"
                     onError={() => setImageError(true)}

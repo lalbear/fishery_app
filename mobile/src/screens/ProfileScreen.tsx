@@ -81,9 +81,7 @@ export default function ProfileScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity>
           <Ionicons name="settings" size={22} color={theme.colors.textPrimary} />
@@ -221,6 +219,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: 22,
     fontWeight: '800',
+  },
+  headerSpacer: {
+    width: 22,
   },
   container: {
     flex: 1,

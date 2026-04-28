@@ -201,9 +201,7 @@ export default function EconomicsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Economics Input</Text>
         <TouchableOpacity
           onPress={() =>
@@ -586,6 +584,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: 22,
     fontWeight: '800',
+  },
+  headerSpacer: {
+    width: 22,
   },
   content: {
     paddingHorizontal: 16,

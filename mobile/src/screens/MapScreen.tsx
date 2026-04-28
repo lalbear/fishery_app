@@ -433,14 +433,6 @@ export default function MapScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.surface }]} edges={['top']}>
       <ScrollView ref={scrollViewRef} contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => (navigation as any).navigate('Main', { screen: 'Home' })}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-            <Text style={{ marginLeft: 8, fontSize: 16, color: theme.colors.primary, fontWeight: '600' }}>Home</Text>
-          </TouchableOpacity>
           <Text style={styles.title}>{t('maps.title') || 'Geo Suitability'}</Text>
           <Text style={styles.subtitle}>{t('maps.subtitle') || 'Analyze your pond environment'}</Text>
         </View>

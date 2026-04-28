@@ -108,22 +108,24 @@ export default function WaterQualityScreen({ route }: any) {
 
       setPonds(options);
 
-      if (options.length > 0) {
-        const hasSelected = options.some((pond) => pond.id === selectedPondId);
-        if (!selectedPondId || !hasSelected) {
-          setSelectedPondId(route.params?.pondId && options.some((pond) => pond.id === route.params?.pondId)
-            ? route.params.pondId
-            : options[0].id);
+      setSelectedPondId((prevId: string) => {
+        if (options.length > 0) {
+          const hasSelected = options.some((pond) => pond.id === prevId);
+          if (!prevId || !hasSelected) {
+            return route.params?.pondId && options.some((pond) => pond.id === route.params?.pondId)
+              ? route.params.pondId
+              : options[0].id;
+          }
+          return prevId;
         }
-      } else {
-        setSelectedPondId('');
-      }
+        return '';
+      });
     } catch (error) {
       console.error('Failed to load ponds for water quality', error);
     } finally {
       setIsLoadingPonds(false);
     }
-  }, [route.params?.pondId, selectedPondId]);
+  }, [route.params?.pondId]);
 
   const loadHistory = useCallback(async () => {
     if (!selectedPondId) {
@@ -168,18 +170,9 @@ export default function WaterQualityScreen({ route }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      if (route.params?.initialTab) {
-        setActiveTab(route.params.initialTab);
-      }
-      if (route.params?.pondId) {
-        setSelectedPondId(route.params.pondId);
-      }
       loadPonds();
-      if ((route.params?.initialTab || activeTab) === 'history') {
-        loadHistory();
-      }
       loadNotificationCount();
-    }, [activeTab, loadHistory, loadNotificationCount, loadPonds, route.params?.initialTab, route.params?.pondId])
+    }, [loadNotificationCount, loadPonds])
   );
 
   useEffect(() => {
