@@ -297,4 +297,70 @@ export const waterQualityService = {
     },
 };
 
+export const diseaseService = {
+    list: async (params?: {
+        category?: 'BACTERIAL' | 'VIRAL' | 'PARASITIC' | 'FUNGAL' | 'NUTRITIONAL' | 'ENVIRONMENTAL';
+        species?: string;
+        symptom?: string;
+        severity?: 'LOW' | 'MEDIUM' | 'HIGH';
+        q?: string;
+    }) => {
+        const response = await api.get('/api/v1/diseases', { params });
+        return response.data;
+    },
+    getById: async (id: string) => {
+        const response = await api.get(`/api/v1/diseases/${id}`);
+        return response.data;
+    },
+    suggest: async (data: {
+        symptoms: string[];
+        species?: string;
+        waterQuality?: {
+            dissolvedOxygen?: number;
+            ph?: number;
+            ammonia?: number;
+            temperature?: number;
+        };
+    }) => {
+        const response = await api.post('/api/v1/diseases/suggest', data);
+        return response.data;
+    },
+};
+
+export const doctorNetworkService = {
+    listDoctors: async (params?: { panchayatId?: string }) => {
+        const response = await api.get('/api/v1/doctors', { params });
+        return response.data;
+    },
+    getFarmerMapping: async (farmerId: string) => {
+        const response = await api.get(`/api/v1/doctors/mapping/${farmerId}`);
+        return response.data;
+    },
+    setFarmerMapping: async (data: { farmerId: string; doctorId: string; panchayatId: string }) => {
+        const response = await api.post('/api/v1/doctors/mapping', data);
+        return response.data;
+    },
+    listAppointments: async (params?: { farmerId?: string; doctorId?: string; status?: string }) => {
+        const response = await api.get('/api/v1/appointments', { params });
+        return response.data;
+    },
+    createAppointment: async (data: {
+        farmerId: string;
+        doctorId: string;
+        pondId?: string;
+        issueDescription: string;
+        suspectedDiseaseId?: string;
+        scheduledDate: string;
+        consultationType: 'VISIT' | 'CALL';
+        emergencyFlag?: boolean;
+    }) => {
+        const response = await api.post('/api/v1/appointments', data);
+        return response.data;
+    },
+    updateAppointmentStatus: async (id: string, data: { status: 'REQUESTED' | 'APPROVED' | 'COMPLETED' | 'CANCELLED'; paymentStatus?: 'PENDING' | 'PARTIAL' | 'PAID' }) => {
+        const response = await api.patch(`/api/v1/appointments/${id}/status`, data);
+        return response.data;
+    },
+};
+
 export default api;

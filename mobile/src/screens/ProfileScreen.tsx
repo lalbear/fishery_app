@@ -72,6 +72,8 @@ export default function ProfileScreen({ navigation }: any) {
   const menuItems = [
     { icon: 'person-outline', title: t('profile.personalInfo') || 'Personal Info', action: () => navigation.navigate('PersonalInfo') },
     { icon: 'water-outline', title: t('profile.myPonds') || 'My Ponds', action: () => navigation.navigate('PondsList') },
+    { icon: 'medkit-outline', title: 'Disease Intelligence', action: () => navigation.navigate('DiseaseList') },
+    { icon: 'people-outline', title: 'Doctor Network', action: () => navigation.navigate('DoctorNetwork') },
     { icon: 'school-outline', title: 'Learning Center', action: () => navigation.navigate('LearningCenter') },
   ];
 

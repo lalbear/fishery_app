@@ -40,6 +40,9 @@ import PondsListScreen from './src/screens/PondsListScreen';
 import AddEditPondScreen from './src/screens/AddEditPondScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import DiseaseListScreen from './src/screens/DiseaseListScreen';
+import DiseaseDetailScreen from './src/screens/DiseaseDetailScreen';
+import DoctorNetworkScreen from './src/screens/DoctorNetworkScreen';
 
 // Types
 export type RootStackParamList = {
@@ -56,6 +59,9 @@ export type RootStackParamList = {
   PondsList: undefined;
   AddEditPond: { pondId?: string };
   Notifications: undefined;
+  DiseaseList: undefined;
+  DiseaseDetail: { disease: any };
+  DoctorNetwork: undefined;
 };
 
 export type MainTabParamList = {
@@ -186,6 +192,9 @@ function MainApp() {
         <Stack.Screen name="PondsList" component={PondsListScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AddEditPond" component={AddEditPondScreen} options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DiseaseList" component={DiseaseListScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DiseaseDetail" component={DiseaseDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DoctorNetwork" component={DoctorNetworkScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
     </NavigationContainer>

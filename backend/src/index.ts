@@ -20,6 +20,11 @@ import { marketRouter } from './routes/market';
 import { waterQualityRouter } from './routes/waterQuality';
 import { authRouter } from './routes/auth';
 import { knowledgeRouter } from './routes/knowledge';
+import { diseasesRouter } from './routes/diseases';
+import { doctorsRouter } from './routes/doctors';
+import { appointmentsRouter } from './routes/appointments';
+import { treatmentsRouter } from './routes/treatments';
+import { labReportsRouter } from './routes/labReports';
 
 // Load environment variables
 dotenv.config();
@@ -104,6 +109,11 @@ app.use('/api/v1/market', marketRouter);
 app.use('/api/v1/water-quality', waterQualityRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/knowledge', knowledgeRouter);
+app.use('/api/v1/diseases', diseasesRouter);
+app.use('/api/v1/doctors', doctorsRouter);
+app.use('/api/v1/appointments', appointmentsRouter);
+app.use('/api/v1/treatments', treatmentsRouter);
+app.use('/api/v1/lab-reports', labReportsRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
