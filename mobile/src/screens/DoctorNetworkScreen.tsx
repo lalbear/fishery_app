@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
@@ -20,6 +21,7 @@ export default function DoctorNetworkScreen() {
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const [symptoms, setSymptoms] = useState<string>('');
   const [issueDescription, setIssueDescription] = useState<string>('');
+  const [photoUri, setPhotoUri] = useState<string>('');
   const [sugg, setSugg] = useState<any>(null);
 
   useEffect(() => {
@@ -62,6 +64,22 @@ export default function DoctorNetworkScreen() {
     if (res.success) setSugg(res.data);
   };
 
+  const handlePickImage = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Camera access is required to take a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
   const bookAppointment = async () => {
     if (!farmerId) {
       Alert.alert('Login required', 'Could not detect user profile. Please login again.');
@@ -90,6 +108,7 @@ export default function DoctorNetworkScreen() {
         scheduledDate: tomorrow.toISOString(),
         consultationType: 'VISIT',
         emergencyFlag: sugg?.urgency === 'CRITICAL',
+        photoUri: photoUri || undefined,
       });
 
       if (res.success) {
@@ -137,6 +156,23 @@ export default function DoctorNetworkScreen() {
                   </Text>
                 </View>
               ) : null}
+
+              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Attach Photo (Optional)</Text>
+              <Text style={styles.helper}>Take a clear picture of the affected fish or pond.</Text>
+              {photoUri ? (
+                <View style={styles.photoPreviewWrap}>
+                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                  <TouchableOpacity style={styles.photoRetakeBtn} onPress={handlePickImage}>
+                    <Text style={styles.photoRetakeText}>Retake Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.photoBtn} onPress={handlePickImage}>
+                  <Text style={styles.photoBtnText}>📷 Take Photo</Text>
+                </TouchableOpacity>
+              )}
+
+              <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 8 }]}>Select a Doctor</Text>
             </View>
           )}
           renderItem={({ item }) => (
@@ -235,4 +271,10 @@ const getStyles = (theme: any) => StyleSheet.create({
     paddingVertical: 12,
   },
   bookBtnText: { color: theme.colors.textInverse, fontWeight: '800' },
+  photoPreviewWrap: { marginTop: 10, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.border },
+  photoPreview: { width: '100%', height: 150, resizeMode: 'cover' },
+  photoRetakeBtn: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  photoRetakeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  photoBtn: { marginTop: 10, backgroundColor: theme.colors.surfaceAlt, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border, borderStyle: 'dashed' },
+  photoBtnText: { color: theme.colors.textPrimary, fontWeight: '700' },
 });

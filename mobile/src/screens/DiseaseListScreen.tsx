@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,16 @@ import ScreenHeader from '../components/ScreenHeader';
 import { diseaseService } from '../services/apiService';
 
 const CATEGORIES = ['ALL', 'BACTERIAL', 'VIRAL', 'PARASITIC', 'FUNGAL', 'ENVIRONMENTAL'] as const;
+
+const getPlaceholderImage = (category: string) => {
+  switch(category) {
+    case 'BACTERIAL': return 'https://images.unsplash.com/photo-1534043464124-3be32fe000c9?auto=format&fit=crop&q=80&w=300';
+    case 'VIRAL': return 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=300';
+    case 'PARASITIC': return 'https://images.unsplash.com/photo-1518903565074-ce441584c379?auto=format&fit=crop&q=80&w=300';
+    case 'FUNGAL': return 'https://images.unsplash.com/photo-1498654200943-1088dd4438ae?auto=format&fit=crop&q=80&w=300';
+    default: return 'https://images.unsplash.com/photo-1524704654690-b56c05c78a00?auto=format&fit=crop&q=80&w=300';
+  }
+};
 
 export default function DiseaseListScreen() {
   const navigation = useNavigation<any>();
@@ -56,18 +66,23 @@ export default function DiseaseListScreen() {
         />
       </View>
 
-      <FlatList
-        horizontal
-        data={CATEGORIES as readonly string[]}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.filterChip, category === item && styles.filterChipActive]} onPress={() => setCategory(item as any)}>
-            <Text style={[styles.filterText, category === item && styles.filterTextActive]}>{item}</Text>
-          </TouchableOpacity>
-        )}
-      />
+      <View style={{ flexGrow: 0, minHeight: 40, marginBottom: 12 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filters}
+        >
+          {CATEGORIES.map((item) => (
+            <TouchableOpacity 
+              key={item}
+              style={[styles.filterChip, category === item && styles.filterChipActive]} 
+              onPress={() => setCategory(item as any)}
+            >
+              <Text style={[styles.filterText, category === item && styles.filterTextActive]}>{item}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {loading ? (
         <View style={styles.center}>
@@ -81,19 +96,26 @@ export default function DiseaseListScreen() {
           ListEmptyComponent={<Text style={styles.emptyText}>No disease record found for this filter.</Text>}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('DiseaseDetail', { disease: item })}>
-              <View style={styles.row}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={[
-                  styles.severity,
-                  item.severity === 'HIGH' ? styles.high : item.severity === 'MEDIUM' ? styles.medium : styles.low,
-                ]}>
-                  {item.severity}
+              <Image 
+                source={{ uri: item.image_url || getPlaceholderImage(item.category) }} 
+                style={styles.cardImage} 
+              />
+              <View style={styles.cardContent}>
+                <View style={styles.row}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={[
+                    styles.severity,
+                    item.severity === 'HIGH' ? styles.high : item.severity === 'MEDIUM' ? styles.medium : styles.low,
+                  ]}>
+                    {item.severity}
+                  </Text>
+                </View>
+                <Text style={styles.meta}>{item.category}</Text>
+                <Text style={styles.species}>Affected Species: {(item.affected_species || []).join(', ') || 'Various species'}</Text>
+                <Text style={styles.preview} numberOfLines={2}>
+                  {(item.symptoms || []).slice(0, 3).join(' • ')}
                 </Text>
               </View>
-              <Text style={styles.meta}>{item.category}</Text>
-              <Text style={styles.preview} numberOfLines={2}>
-                {(item.symptoms || []).slice(0, 3).join(' • ')}
-              </Text>
             </TouchableOpacity>
           )}
         />
@@ -137,9 +159,11 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: 14,
-    padding: 14,
     marginBottom: 10,
+    overflow: 'hidden',
   },
+  cardImage: { width: '100%', height: 130, resizeMode: 'cover' },
+  cardContent: { padding: 14 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   name: { color: theme.colors.textPrimary, fontWeight: '800', fontSize: 16, flex: 1 },
   severity: { fontWeight: '800', fontSize: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
@@ -147,6 +171,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   medium: { color: theme.colors.accent, backgroundColor: `${theme.colors.accent}22` },
   low: { color: theme.colors.success, backgroundColor: `${theme.colors.success}22` },
   meta: { color: theme.colors.textSecondary, marginTop: 5, fontWeight: '700', fontSize: 12 },
+  species: { color: theme.colors.textSecondary, marginTop: 4, fontWeight: '600', fontSize: 12 },
   preview: { color: theme.colors.textSecondary, marginTop: 8, lineHeight: 20 },
   emptyText: { textAlign: 'center', color: theme.colors.textMuted, marginTop: 40 },
 });

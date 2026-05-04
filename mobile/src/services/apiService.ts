@@ -353,6 +353,7 @@ export const doctorNetworkService = {
         scheduledDate: string;
         consultationType: 'VISIT' | 'CALL';
         emergencyFlag?: boolean;
+        photoUri?: string;
     }) => {
         const response = await api.post('/api/v1/appointments', data);
         return response.data;
