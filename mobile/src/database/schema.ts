@@ -6,7 +6,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 2,
+  version: 3,
   tables: [
     tableSchema({
       name: 'species',
@@ -47,6 +47,12 @@ export default appSchema({
         { name: 'latitude', type: 'number', isOptional: true },
         { name: 'longitude', type: 'number', isOptional: true },
         { name: 'image_uri', type: 'string', isOptional: true },
+        { name: 'district_code', type: 'string', isOptional: true },
+        { name: 'block_code', type: 'string', isOptional: true },
+        { name: 'panchayat_code', type: 'string', isOptional: true },
+        { name: 'district_name', type: 'string', isOptional: true },
+        { name: 'block_name', type: 'string', isOptional: true },
+        { name: 'panchayat_name', type: 'string', isOptional: true },
         { name: 'sync_status', type: 'string' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },

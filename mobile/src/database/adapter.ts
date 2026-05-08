@@ -13,9 +13,11 @@
  */
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import schema from './schema';
+import migrations from './migrations';
 
 const adapter = new SQLiteAdapter({
     schema,
+    migrations,
     dbName: 'fishing_god_db',
     // jsi: true enables the faster JSI bridge if the native module supports it.
     // Set to false if you hit a build error — it gracefully falls back.

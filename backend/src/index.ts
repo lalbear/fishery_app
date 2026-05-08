@@ -23,6 +23,7 @@ import { knowledgeRouter } from './routes/knowledge';
 import { diseasesRouter } from './routes/diseases';
 import { doctorsRouter } from './routes/doctors';
 import { appointmentsRouter } from './routes/appointments';
+import { locationsRouter } from './routes/locations';
 import { treatmentsRouter } from './routes/treatments';
 import { labReportsRouter } from './routes/labReports';
 
@@ -114,6 +115,7 @@ app.use('/api/v1/doctors', doctorsRouter);
 app.use('/api/v1/appointments', appointmentsRouter);
 app.use('/api/v1/treatments', treatmentsRouter);
 app.use('/api/v1/lab-reports', labReportsRouter);
+app.use('/api/v1/locations', locationsRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {

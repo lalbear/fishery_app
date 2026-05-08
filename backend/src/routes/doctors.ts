@@ -74,4 +74,60 @@ router.post('/mapping', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /doctors/route?panchayatCode=BR-...
+ * Returns the single active doctor assigned to this panchayat.
+ * Falls back to block-level search if no exact match.
+ * Returns null if no doctor is assigned yet.
+ */
+router.get('/route', async (req, res, next) => {
+  try {
+    const { panchayatCode } = req.query;
+    if (!panchayatCode || typeof panchayatCode !== 'string' || panchayatCode.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'panchayatCode is required' });
+    }
+
+    const code = panchayatCode.trim();
+
+    // 1. Exact panchayat match
+    let result = await query(
+      `SELECT * FROM doctors WHERE is_active = true AND $1 = ANY(assigned_panchayats) LIMIT 1`,
+      [code]
+    );
+
+    if ((result.rowCount ?? 0) === 0) {
+      // 2. Block-level fallback: find block_code from hierarchy, then match any panchayat in same block
+      const locResult = await query(
+        `SELECT block_code FROM loc_panchayats WHERE code = $1`,
+        [code]
+      );
+
+      if ((locResult.rowCount ?? 0) > 0) {
+        const bc: string = locResult.rows[0].block_code;
+        result = await query(
+          `SELECT * FROM doctors
+           WHERE is_active = true
+             AND EXISTS (
+               SELECT 1 FROM unnest(assigned_panchayats) ap WHERE ap LIKE $1
+             )
+           LIMIT 1`,
+          [`${bc}-%`]
+        );
+      }
+    }
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No doctor has been assigned to this panchayat yet.',
+      });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export { router as doctorsRouter };

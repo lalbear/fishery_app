@@ -327,6 +327,21 @@ export const diseaseService = {
     },
 };
 
+export const locationService = {
+    getDistricts: async (stateCode: string) => {
+        const response = await api.get('/api/v1/locations/districts', { params: { stateCode } });
+        return response.data;
+    },
+    getBlocks: async (districtCode: string) => {
+        const response = await api.get('/api/v1/locations/blocks', { params: { districtCode } });
+        return response.data;
+    },
+    getPanchayats: async (blockCode: string) => {
+        const response = await api.get('/api/v1/locations/panchayats', { params: { blockCode } });
+        return response.data;
+    },
+};
+
 export const doctorNetworkService = {
     listDoctors: async (params?: { panchayatId?: string }) => {
         const response = await api.get('/api/v1/doctors', { params });
@@ -360,6 +375,10 @@ export const doctorNetworkService = {
     },
     updateAppointmentStatus: async (id: string, data: { status: 'REQUESTED' | 'APPROVED' | 'COMPLETED' | 'CANCELLED'; paymentStatus?: 'PENDING' | 'PARTIAL' | 'PAID' }) => {
         const response = await api.patch(`/api/v1/appointments/${id}/status`, data);
+        return response.data;
+    },
+    routeDoctor: async (panchayatCode: string) => {
+        const response = await api.get('/api/v1/doctors/route', { params: { panchayatCode } });
         return response.data;
     },
 };

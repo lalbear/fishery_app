@@ -19,6 +19,12 @@ export default class Pond extends Model {
   @field('latitude') latitude?: number;
   @field('longitude') longitude?: number;
   @field('image_uri') imageUri?: string;
+  @field('district_code') districtCode?: string;
+  @field('block_code') blockCode?: string;
+  @field('panchayat_code') panchayatCode?: string;
+  @field('district_name') districtName?: string;
+  @field('block_name') blockName?: string;
+  @field('panchayat_name') panchayatName?: string;
   @field('sync_status') localSyncStatus!: string;
   @readonly @date('created_at') createdAt!: Date;
   @readonly @date('updated_at') updatedAt!: Date;

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
+import LocationCascadePicker, { LocationSelection } from '../components/LocationCascadePicker';
 
 const PROFILE_KEY = '@fishing_god_profile';
 
@@ -16,6 +17,12 @@ export interface UserProfile {
     phone: string;
     farmerCategory: 'GENERAL' | 'WOMEN' | 'SC' | 'ST';
     stateCode: string;
+    districtCode?: string;
+    districtName?: string;
+    blockCode?: string;
+    blockName?: string;
+    panchayatCode?: string;
+    panchayatName?: string;
 }
 
 function generateUUID() {
@@ -45,6 +52,10 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 }
 
+export function isProfileLocationComplete(profile: UserProfile): boolean {
+    return !!(profile.stateCode && profile.districtCode && profile.blockCode && profile.panchayatCode);
+}
+
 const FARMER_CATEGORIES: UserProfile['farmerCategory'][] = ['GENERAL', 'WOMEN', 'SC', 'ST'];
 const STATES = ['AP', 'AR', 'AS', 'BR', 'GA', 'GJ', 'HR', 'HP', 'JK', 'KA', 'KL', 'MP', 'MH', 'MN', 'OR', 'PB', 'RJ', 'TN', 'TG', 'UP', 'WB'];
 
@@ -57,6 +68,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
     const [phone, setPhone] = useState('');
     const [farmerCategory, setFarmerCategory] = useState<UserProfile['farmerCategory']>('GENERAL');
     const [stateCode, setStateCode] = useState('');
+    const [location, setLocation] = useState<Partial<LocationSelection>>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -67,9 +79,23 @@ export default function PersonalInfoScreen({ navigation }: any) {
             setPhone(p.phone);
             setFarmerCategory(p.farmerCategory);
             setStateCode(p.stateCode);
+            setLocation({
+                districtCode: p.districtCode,
+                districtName: p.districtName,
+                blockCode: p.blockCode,
+                blockName: p.blockName,
+                panchayatCode: p.panchayatCode,
+                panchayatName: p.panchayatName,
+            });
             setLoading(false);
         });
     }, []);
+
+    const handleStateChange = (code: string) => {
+        setStateCode(code);
+        // Reset location cascade when state changes
+        setLocation({});
+    };
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -78,7 +104,19 @@ export default function PersonalInfoScreen({ navigation }: any) {
         }
         setSaving(true);
         try {
-            await saveProfile({ userId, name: name.trim(), phone: phone.trim(), farmerCategory, stateCode });
+            await saveProfile({
+                userId,
+                name: name.trim(),
+                phone: phone.trim(),
+                farmerCategory,
+                stateCode,
+                districtCode: location.districtCode,
+                districtName: location.districtName,
+                blockCode: location.blockCode,
+                blockName: location.blockName,
+                panchayatCode: location.panchayatCode,
+                panchayatName: location.panchayatName,
+            });
             Alert.alert('Saved', 'Your profile has been updated.', [
                 { text: 'OK', onPress: () => navigation.navigate('Main') },
             ]);
@@ -92,6 +130,8 @@ export default function PersonalInfoScreen({ navigation }: any) {
     if (loading) {
         return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
     }
+
+    const locationComplete = stateCode && location.districtCode && location.blockCode && location.panchayatCode;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -110,6 +150,15 @@ export default function PersonalInfoScreen({ navigation }: any) {
                     </View>
                     <Text style={styles.heroName}>{name || 'Your Name'}</Text>
                     <Text style={styles.heroMeta}>{phone || '+91 --'}</Text>
+                    {locationComplete ? (
+                        <Text style={[styles.heroMeta, { color: theme.colors.primary, marginTop: 4 }]}>
+                            {location.panchayatName}, {location.blockName}
+                        </Text>
+                    ) : (
+                        <Text style={[styles.heroMeta, { color: theme.colors.error || '#e74c3c', marginTop: 4 }]}>
+                            Location incomplete — required for doctor booking
+                        </Text>
+                    )}
                 </View>
 
                 <Field label="Full Name" value={name} onChangeText={setName} theme={theme} styles={styles} />
@@ -127,11 +176,30 @@ export default function PersonalInfoScreen({ navigation }: any) {
                 <Text style={styles.sectionLabel}>Home State</Text>
                 <View style={styles.stateRow}>
                     {STATES.map(code => (
-                        <TouchableOpacity key={code} style={[styles.stateChip, stateCode === code && styles.stateChipActive]} onPress={() => setStateCode(code)}>
+                        <TouchableOpacity key={code} style={[styles.stateChip, stateCode === code && styles.stateChipActive]} onPress={() => handleStateChange(code)}>
                             <Text style={[styles.stateChipText, stateCode === code && styles.stateChipTextActive]}>{code}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
+
+                {stateCode ? (
+                    <View style={styles.locationSection}>
+                        <Text style={styles.sectionLabel}>Home Location</Text>
+                        <Text style={styles.locationHint}>
+                            Your panchayat determines which doctor is assigned to you.
+                        </Text>
+                        <LocationCascadePicker
+                            stateCode={stateCode}
+                            value={location}
+                            onChange={setLocation}
+                        />
+                        {stateCode && !['BR'].includes(stateCode) && (
+                            <Text style={[styles.locationHint, { color: theme.colors.textMuted, marginTop: 4 }]}>
+                                District/block/panchayat data for {stateCode} coming soon.
+                            </Text>
+                        )}
+                    </View>
+                ) : null}
 
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
                     {saving ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.saveButtonText}>Save Profile</Text>}
@@ -221,6 +289,8 @@ const getStyles = (theme: any) => StyleSheet.create({
     stateChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     stateChipText: { color: theme.colors.textSecondary, fontWeight: '700' },
     stateChipTextActive: { color: theme.colors.textInverse },
+    locationSection: { marginTop: 16 },
+    locationHint: { color: theme.colors.textSecondary, fontSize: 13, marginBottom: 12, lineHeight: 19 },
     saveButton: {
         height: 54,
         borderRadius: 18,

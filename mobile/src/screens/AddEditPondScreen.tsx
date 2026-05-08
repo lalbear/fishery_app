@@ -10,6 +10,8 @@ import * as Location from 'expo-location';
 import { v4 as uuidv4 } from 'uuid';
 import { speciesService } from '../services/apiService';
 import { getSpeciesDisplay } from '../utils/speciesLookup';
+import LocationCascadePicker, { LocationSelection } from '../components/LocationCascadePicker';
+import { loadProfile } from './PersonalInfoScreen';
 
 const WATER_SOURCES = ['BOREWELL', 'OPEN_WELL', 'CANAL', 'RIVER', 'TANK'];
 const SYSTEMS = ['EARTHEN', 'BIOFLOC', 'RAS', 'CAGES', 'PENS'];
@@ -109,6 +111,8 @@ export default function AddEditPondScreen({ route }: any) {
     const [isLoadingSpecies, setIsLoadingSpecies] = useState(false);
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [pondStateCode, setPondStateCode] = useState('');
+    const [pondLocation, setPondLocation] = useState<Partial<LocationSelection>>({});
     const selectedSpecies = getSpeciesDisplay(
         speciesId,
         Object.fromEntries(
@@ -121,11 +125,29 @@ export default function AddEditPondScreen({ route }: any) {
 
     React.useEffect(() => {
         if (existingPondId) loadPond();
+        else prefillLocationFromProfile();
     }, [existingPondId]);
 
     React.useEffect(() => {
         loadSpecies();
     }, []);
+
+    const prefillLocationFromProfile = async () => {
+        try {
+            const profile = await loadProfile();
+            if (profile.stateCode) setPondStateCode(profile.stateCode);
+            if (profile.panchayatCode) {
+                setPondLocation({
+                    districtCode: profile.districtCode,
+                    districtName: profile.districtName,
+                    blockCode: profile.blockCode,
+                    blockName: profile.blockName,
+                    panchayatCode: profile.panchayatCode,
+                    panchayatName: profile.panchayatName,
+                });
+            }
+        } catch { }
+    };
 
     React.useEffect(() => {
         const parsed = parseDateInput(stockingDate);
@@ -172,6 +194,17 @@ export default function AddEditPondScreen({ route }: any) {
             setStockingDate(formatDateInput(pond.stockingDate));
             if (pond.latitude) setLat(pond.latitude.toString());
             if (pond.longitude) setLng(pond.longitude.toString());
+            if (pond.districtCode) {
+                setPondStateCode('BR'); // all current location data is Bihar
+                setPondLocation({
+                    districtCode: pond.districtCode,
+                    districtName: pond.districtName,
+                    blockCode: pond.blockCode,
+                    blockName: pond.blockName,
+                    panchayatCode: pond.panchayatCode,
+                    panchayatName: pond.panchayatName,
+                });
+            }
         } catch {
             Alert.alert('Error', 'Could not load pond details.');
             navigation.goBack();
@@ -229,6 +262,12 @@ export default function AddEditPondScreen({ route }: any) {
                         p.stockingDate = parsedStockingDate ? parsedStockingDate.getTime() : undefined;
                         p.latitude = lat ? Number(lat) : undefined;
                         p.longitude = lng ? Number(lng) : undefined;
+                        p.districtCode = pondLocation.districtCode || undefined;
+                        p.districtName = pondLocation.districtName || undefined;
+                        p.blockCode = pondLocation.blockCode || undefined;
+                        p.blockName = pondLocation.blockName || undefined;
+                        p.panchayatCode = pondLocation.panchayatCode || undefined;
+                        p.panchayatName = pondLocation.panchayatName || undefined;
                         p.localSyncStatus = 'PENDING';
                     });
                 } else {
@@ -244,6 +283,12 @@ export default function AddEditPondScreen({ route }: any) {
                         p.stockingDate = parsedStockingDate ? parsedStockingDate.getTime() : undefined;
                         p.latitude = lat ? Number(lat) : undefined;
                         p.longitude = lng ? Number(lng) : undefined;
+                        p.districtCode = pondLocation.districtCode || undefined;
+                        p.districtName = pondLocation.districtName || undefined;
+                        p.blockCode = pondLocation.blockCode || undefined;
+                        p.blockName = pondLocation.blockName || undefined;
+                        p.panchayatCode = pondLocation.panchayatCode || undefined;
+                        p.panchayatName = pondLocation.panchayatName || undefined;
                         p.localSyncStatus = 'NEW';
                     });
                 }
@@ -355,8 +400,19 @@ export default function AddEditPondScreen({ route }: any) {
                         Active ponds should include species and stocking date so harvest progress and alerts can work correctly.
                     </Text>
 
+                    <Text style={styles.sectionLabel}>Pond Panchayat</Text>
+                    <Text style={styles.helperText}>
+                        If this pond is in a different location than your home, set its panchayat here.
+                        The doctor assigned to this panchayat will handle this pond.
+                    </Text>
+                    <LocationCascadePicker
+                        stateCode={pondStateCode || 'BR'}
+                        value={pondLocation}
+                        onChange={setPondLocation}
+                    />
+
                     <View style={styles.locationHeader}>
-                        <Text style={styles.sectionLabel}>Location</Text>
+                        <Text style={styles.sectionLabel}>GPS Coordinates</Text>
                         <TouchableOpacity onPress={handleGetLocation}>
                             <Text style={styles.autoLocate}>{isGettingLocation ? 'Getting...' : 'Auto-Locate'}</Text>
                         </TouchableOpacity>
