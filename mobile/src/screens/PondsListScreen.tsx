@@ -213,7 +213,7 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
 const EnhancedPondsList = withObservables([], () => ({
     ponds: database.collections
         .get<Pond>('ponds')
-        .query(Q.where('local_sync_status', Q.notEq('DELETED')))
+        .query(Q.where('sync_status', Q.notEq('DELETED')))
         .observe(),
 }))(PondsList);
 
