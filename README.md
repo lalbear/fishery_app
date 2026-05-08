@@ -1,102 +1,159 @@
 # Fishing God
 
-Fishing God is an offline-first aquaculture decision-support app for Indian fish and shrimp farmers.
-It combines farm planning, policy-aware subsidy guidance, water quality tracking, and market intelligence in one mobile workflow.
+**Fishing God** is an offline-first mobile app built specifically for Indian fish and shrimp farmers. It empowers them to make better decisions about what to farm, how to manage their ponds, access government subsidies, and stay informed about market prices—all without requiring constant internet connectivity.
 
-## Core Features
+## Why Fishing God?
 
-- Species intelligence with searchable species profiles and suitability context
-- Economics and ROI simulator with CAPEX/OPEX, BCR, breakeven, and scenario guidance
-- Policy-backed subsidy preview using seeded institutional/government rules
-- Geo suitability and location-aware advisory inputs
-- Pond management foundation (pond records, lifecycle tracking hooks)
-- Water quality logging and trend history
-- Market price module for fishery price visibility
-- Equipment and feed catalogs
-- Beginner learning center for key aquaculture/business terms
-- Multi-language UI support (in progress across Indian languages)
+Many Indian aquaculture farmers operate in remote areas with limited internet access. They need practical tools that work offline while still providing expert guidance. Fishing God addresses this by:
 
-## Tech Stack
+- **Accessible Offline:** Farm planning and pond management works even without internet. Data syncs when connection returns.
+- **Local Intelligence:** Recommendations consider your specific location, crop season, and farmer category (general, women-owned, SC/ST) to qualify for relevant subsidies.
+- **Economics at Your Fingertips:** Run ROI calculations for fish/shrimp species before investing—see CAPEX, OPEX, break-even periods, and profitability scenarios.
+- **Real-Time Market Data:** Track fish and shrimp prices in your region to time sales and purchases better.
+- **Doctor Network:** Direct access to certified aquaculture experts based on your location for on-demand consultations and disease diagnosis.
+- **Water Quality Tracking:** Log and monitor your pond's water parameters over time to catch issues early.
 
-- Mobile: React Native (Expo)
-- Backend: Node.js + Express + TypeScript
-- Database: PostgreSQL
-- Mobile local/offline: WatermelonDB
-- Caching/worker utilities: Redis + background jobs
+## How It Works
 
-## Repository Structure
+### Getting Started: Set Up Your Profile
+When you first open the app, you enter your basic information: name, phone number, farmer category, and home location (state, district, block, panchayat). This location data is critical—it determines which government subsidies you're eligible for and which local aquaculture doctor is assigned to help you.
 
-- `mobile/` React Native app
-- `backend/` API, business logic, migrations, seed data
-- `docker-compose.yml` local infrastructure services
+### Planning Your Pond
+Select a fish or shrimp species and enter expected pond specifications. The app instantly shows you:
+- **Suitability:** Can you farm this species in your area?
+- **Profitability:** What's your expected break-even period? How much profit if everything goes well?
+- **Subsidy Eligibility:** What government schemes can help fund your startup costs?
 
-## Local Development
+You can run multiple scenarios (different stocking densities, feed costs) to find the most profitable approach for your situation.
 
-### Prerequisites
+### Managing Active Ponds
+Once your pond is operational:
+- **Log water quality metrics** (pH, dissolved oxygen, ammonia, etc.) to maintain optimal growing conditions
+- **Track the pond lifecycle** with notes and observations
+- **Get alerts** when water parameters drift outside healthy ranges
+- **Access your assigned doctor** anytime you notice signs of disease or stress
 
-- Node.js 18+
-- Docker Desktop (recommended)
-- npm
+### Staying Informed
+The app provides:
+- **Market prices** for fish and shrimp in your state—track trends and time your harvests for better prices
+- **Learning center** with beginner-friendly explanations of aquaculture and business terms
+- **Equipment and feed catalogs** with local sourcing information
 
-### 1. Start Infrastructure
+---
+
+## Features in Detail
+
+### 🐟 Species Intelligence
+Search from a comprehensive database of fish and shrimp species. Each profile includes:
+- Growth rates, survival rates, and feed conversion ratios
+- Water quality requirements (temperature, pH, dissolved oxygen ranges)
+- Stocking density recommendations for your region
+- Suitability for your area based on climate and policy support
+
+### 💰 Economics & ROI Simulator
+Plan your investment with real numbers:
+- Input your capital costs (pond construction, equipment) and operating costs (feed, electricity, labor)
+- Instantly calculate break-even production and profit margins
+- Run "what-if" scenarios: What if feed costs rise 10%? What if yield drops?
+- Benefit-Cost Ratio (BCR) shows if the venture is economically viable
+
+### 🏛️ Government Subsidies & Policy
+India offers numerous subsidy schemes for aquaculture farmers. Fishing God tracks these by farmer category and location:
+- See subsidies you qualify for based on your location and farmer type (general, women, SC/ST)
+- Understand what each subsidy covers (land prep, pond liner, equipment, stocking)
+- Plan your investment knowing what portion the government will fund
+
+### 🌍 Location-Aware Advisory
+Because aquaculture is highly location-dependent, the app delivers location-specific guidance:
+- Seasonal advisory tied to your district's climate
+- Water sourcing recommendations for your area
+- Connectivity to block-level agricultural officers and specialists
+- Your assigned aquaculture doctor based on your panchayat
+
+### 📍 Doctor Network
+Every farmer is assigned a certified aquaculture specialist based on their home location (panchayat). You can:
+- View your assigned doctor's details and contact information
+- Request on-demand consultations for disease diagnosis, pond emergencies, or technical advice
+- Share pond photos and water quality data with your doctor
+- Book paid consultations for specialized guidance
+
+The doctor routing system works hierarchically: if no doctor covers your specific panchayat, you're routed to a doctor covering your block.
+
+### 💧 Water Quality Monitoring
+Log water parameters regularly to catch problems before they become costly:
+- Record dissolved oxygen, pH, ammonia, temperature, turbidity
+- View trends over time in a simple graph
+- Get alerts if parameters drift outside safe ranges
+- Share logs with your assigned doctor for remote diagnosis
+
+### 💹 Market Intelligence
+Access real-time and historical price data for fish and shrimp:
+- Track price trends in your state
+- Identify seasonal high/low periods
+- Make informed decisions about timing harvests
+- Adjust stocking plans based on market demand
+
+### 📚 Learning Center
+Glossary and beginner guides covering:
+- Aquaculture fundamentals (stocking, feeding, disease prevention)
+- Business concepts (BCR, profitability, subsidy navigation)
+- Water quality management essentials
+- Equipment and feed selection
+
+### 🛒 Equipment & Feed Catalogs
+Browse suppliers and products with pricing:
+- Locally-sourced feed recommendations
+- Aeration equipment, nets, and tools
+- Pond construction materials
+- Supplier contact information
+
+### 🌐 Multi-Language Support
+The interface supports multiple Indian languages to ensure farmers in their native region can use the app comfortably.
+
+---
+
+## How It's Built
+
+Fishing God is built with modern, reliable technology:
+
+- **Mobile App:** React Native with Expo, enabling fast deployment to iOS and Android
+- **Local Storage:** WatermelonDB for offline-first data syncing
+- **Backend API:** Node.js/Express with TypeScript for reliability and developer experience
+- **Data:** PostgreSQL for robust, queryable data storage
+- **Infrastructure:** Docker for consistent local and production environments
+
+The offline-first architecture means farmers can plan, log, and browse while offline. When internet returns, all data automatically syncs to the backend, ensuring no information is lost.
+
+---
+
+## For Developers
+
+If you're contributing to Fishing God or setting up a local development environment:
+
+- **`DEVELOPER_README.md`** — development status, known gaps, and roadmap
+- **`mobile/TESTFLIGHT_SETUP.md`** — iOS build and TestFlight release workflow
+- **`backend/MARKET_DATA_STRATEGY.md`** — market data pipeline and sourcing details
+- **`ECONOMICS_MATH.md`** — economic formulas, assumptions, and BCR calculations
+
+### Quick Local Setup
 
 ```bash
-cd /Users/pranjalupadhyay/Desktop/projects/fishery_app
+# Start infrastructure
 docker compose up -d postgres redis
-```
 
-### 2. Backend
+# Backend
+cd backend && npm install
+npm run build && npm run migrate
+npm run dev
 
-```bash
-cd /Users/pranjalupadhyay/Desktop/projects/fishery_app/backend
-../node_modules/.bin/tsc
-node dist/scripts/migrate.js
-node dist/scripts/seed_knowledge.js
-HOST=127.0.0.1 PORT=3000 ../node_modules/.bin/nodemon --watch 'src/**/*.ts' --exec '../node_modules/.bin/ts-node' src/index.ts
-```
-
-### 3. Mobile App (Expo)
-
-```bash
-cd /Users/pranjalupadhyay/Desktop/projects/fishery_app/mobile
-npm install
+# Mobile (in separate terminal)
+cd mobile && npm install
 npx expo start
 ```
 
-Then run on iOS simulator from Expo (`i`) or open with Expo Go.
+For detailed instructions, see `DEVELOPER_README.md`.
 
-## Deployment
-
-### Backend Deployment
-
-Deploy `backend/` as a Node web service with a managed PostgreSQL database.
-Recommended platforms: Render, Railway, Fly.io, or AWS.
-
-Required environment variables (backend):
-
-- `NODE_ENV=production`
-- `PORT` (platform-provided)
-- `DATABASE_URL` (managed Postgres connection string)
-- `JWT_SECRET` (long random secret)
-- `REDIS_URL` (if Redis-enabled in your deployment)
-
-### Mobile (TestFlight / Play Store)
-
-The mobile app uses Expo EAS builds.
-
-- Configure `mobile/app.json` bundle identifiers and versioning
-- Configure `mobile/eas.json` build profiles
-- Set `EXPO_PUBLIC_BACKEND_URL` to your deployed backend URL (not localhost)
-- Build and submit using EAS
-
-Detailed iOS flow is in `mobile/TESTFLIGHT_SETUP.md`.
-
-## Documentation Map
-
-- `DEVELOPER_README.md` internal development status and known gaps
-- `mobile/TESTFLIGHT_SETUP.md` iOS/TestFlight release setup
-- `backend/MARKET_DATA_STRATEGY.md` market data pipeline notes
-- `ECONOMICS_MATH.md` economics formulas and assumptions
+---
 
 ## License
 
