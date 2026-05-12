@@ -519,14 +519,13 @@ const getStyles = (theme: any) => {
             marginLeft: 4,
         },
 
-        // Fields card
+        // Fields card — NO overflow:'hidden': it blocks TextInput touch events on iOS
         fieldsCard: {
             backgroundColor: c.surface,
             borderRadius: r.lg,
             borderWidth: 1,
             borderColor: c.border,
             marginBottom: 20,
-            overflow: 'hidden',
         },
         fieldDivider: {
             height: 1,

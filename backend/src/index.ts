@@ -57,10 +57,27 @@ app.use((req, res, next) => {
 
 // Security middleware
 app.use(helmet());
+// CORS: allow mobile app (no origin header) + explicit web origins.
+// Native mobile apps don't send Origin headers, so '*' is safe for them.
+// Restricting to specific origins only matters for browser clients.
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:19006',
+  'http://10.0.2.2:3000',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+];
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // In dev, allow all; in prod, block unknown web origins
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
 // Rate limiting — generous limits for a mobile app whose users may share
@@ -79,9 +96,19 @@ const writeLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests. Please wait a moment and try again.' },
 });
+// Auth-specific limiter: strict brute-force protection.
+// 20 attempts per 15 minutes per IP (prevents password guessing at scale).
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many login attempts. Please wait 15 minutes and try again.' },
+  skipSuccessfulRequests: true, // only count failed/non-2xx responses toward the cap
+});
 
 // Apply per-route-type limiters instead of a single global cap
-app.use('/api/v1/auth', writeLimiter as any);
+app.use('/api/v1/auth', authLimiter as any); // strict brute-force guard
 app.use('/api/v1/sync', writeLimiter as any);
 app.use('/api/v1/water-quality', writeLimiter as any);
 app.use(readLimiter as any); // everything else (species, market, geo, economics, equipment)

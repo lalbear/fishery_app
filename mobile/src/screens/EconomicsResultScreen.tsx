@@ -107,7 +107,7 @@ export default function EconomicsResultScreen() {
         <View style={styles.bentoGrid}>
           <BentoCard
             label="EST. REVENUE"
-            value={formatCurrency(simulationData.totalCapitalExpenditureInr)}
+            value={formatCurrency(simulationData.projectedGrossRevenueInr ?? simulationData.firstCycleRevenueInr ?? 0)}
             icon="trending-up-outline"
             valueColor={theme.colors.primary}
             theme={theme}
@@ -256,63 +256,81 @@ export default function EconomicsResultScreen() {
         {/* ── Recommended Species ── */}
         {simulationData.recommendedSpecies?.length ? (
           <>
-            <SectionHeader label="RECOMMENDED SPECIES" theme={theme} />
-            {simulationData.recommendedSpecies.map((species: any, idx: number) => {
-              const key = species.speciesId || species.scientificName || String(idx);
-              const score = species.compatibilityScore || species.score || 0;
-              const isExpanded = expandedSpecies[key];
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  activeOpacity={0.88}
-                  style={[styles.speciesCard, getCompatibilityCardStyle(score, theme)]}
-                  onPress={() =>
-                    setExpandedSpecies(cur => ({ ...cur, [key]: !cur[key] }))
-                  }
-                >
-                  <View style={styles.speciesTopRow}>
-                    <View style={styles.speciesTextWrap}>
-                      <Text style={styles.speciesName}>
-                        {species.commonName || species.speciesName || species.scientificName || 'Recommended species'}
-                      </Text>
-                      <Text style={styles.speciesMeta}>
-                        {species.scientificName && species.scientificName !== species.commonName
-                          ? `${species.scientificName} • `
-                          : ''}
-                        Compatibility {score}%
-                      </Text>
-                    </View>
-                    <View style={[styles.speciesBadge, getCompatibilityBadgeStyle(score, theme)]}>
-                      <Text style={[styles.speciesBadgeText, { color: getCompatibilityColor(score, theme) }]}>
-                        {getCompatibilityLabel(score)}
-                      </Text>
-                    </View>
-                  </View>
+            <SectionHeader label="SPECIES RANKING — BEST TO WORST" theme={theme} />
+            {[...simulationData.recommendedSpecies]
+              .sort((a: any, b: any) => (b.compatibilityScore || b.score || 0) - (a.compatibilityScore || a.score || 0))
+              .map((species: any, idx: number, arr: any[]) => {
+                const key = species.speciesId || species.scientificName || String(idx);
+                const score = species.compatibilityScore || species.score || 0;
+                const isExpanded = expandedSpecies[key];
+                const isBest = idx === 0;
+                const isWorst = idx === arr.length - 1 && arr.length > 1;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    activeOpacity={0.88}
+                    style={[styles.speciesCard, getCompatibilityCardStyle(score, theme)]}
+                    onPress={() =>
+                      setExpandedSpecies(cur => ({ ...cur, [key]: !cur[key] }))
+                    }
+                  >
+                    {/* Best / Worst banner */}
+                    {isBest && (
+                      <View style={[styles.speciesRankBanner, { backgroundColor: theme.colors.secondaryLight }]}>
+                        <Ionicons name="trophy" size={12} color={theme.colors.secondary} />
+                        <Text style={[styles.speciesRankText, { color: theme.colors.secondary }]}>BEST PICK FOR YOUR FARM</Text>
+                      </View>
+                    )}
+                    {isWorst && (
+                      <View style={[styles.speciesRankBanner, { backgroundColor: theme.colors.errorSoft }]}>
+                        <Ionicons name="alert-circle-outline" size={12} color={theme.colors.error} />
+                        <Text style={[styles.speciesRankText, { color: theme.colors.error }]}>LOWEST MATCH — CONSIDER CAREFULLY</Text>
+                      </View>
+                    )}
 
-                  <View style={styles.speciesExpandHint}>
-                    <Text style={styles.speciesHintText}>
-                      {isExpanded ? 'Tap to collapse' : 'Tap to see why this species matches your profile'}
-                    </Text>
-                    <Ionicons
-                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={14}
-                      color={theme.colors.textMuted}
-                    />
-                  </View>
-
-                  {isExpanded ? (
-                    <View style={styles.speciesReasonBox}>
-                      {(species.compatibilityReasons || []).map((reason: string, reasonIdx: number) => (
-                        <Text key={reasonIdx} style={styles.speciesReason}>• {reason}</Text>
-                      ))}
-                      <Text style={styles.speciesSummary}>
-                        {buildCompatibilitySummary(species)}
-                      </Text>
+                    <View style={styles.speciesTopRow}>
+                      <View style={styles.speciesTextWrap}>
+                        <Text style={styles.speciesName}>
+                          {species.commonName || species.speciesName || species.scientificName || 'Recommended species'}
+                        </Text>
+                        <Text style={styles.speciesMeta}>
+                          {species.scientificName && species.scientificName !== species.commonName
+                            ? `${species.scientificName} • `
+                            : ''}
+                          Compatibility {score}%
+                        </Text>
+                      </View>
+                      <View style={[styles.speciesBadge, getCompatibilityBadgeStyle(score, theme)]}>
+                        <Text style={[styles.speciesBadgeText, { color: getCompatibilityColor(score, theme) }]}>
+                          {getCompatibilityLabel(score)}
+                        </Text>
+                      </View>
                     </View>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
+
+                    <View style={styles.speciesExpandHint}>
+                      <Text style={styles.speciesHintText}>
+                        {isExpanded ? 'Tap to collapse' : 'Tap to see why this species matches your profile'}
+                      </Text>
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={theme.colors.textMuted}
+                      />
+                    </View>
+
+                    {isExpanded ? (
+                      <View style={styles.speciesReasonBox}>
+                        {(species.compatibilityReasons || []).map((reason: string, reasonIdx: number) => (
+                          <Text key={reasonIdx} style={styles.speciesReason}>• {reason}</Text>
+                        ))}
+                        <Text style={styles.speciesSummary}>
+                          {buildCompatibilitySummary(species)}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
           </>
         ) : null}
 
@@ -809,6 +827,22 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
     padding: 14,
     marginBottom: 10,
+    overflow: 'hidden',
+  },
+  speciesRankBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  speciesRankText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   speciesTopRow: {
     flexDirection: 'row',

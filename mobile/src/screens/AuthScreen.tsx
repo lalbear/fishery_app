@@ -183,6 +183,8 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                         placeholder="e.g. Bihar or BR"
                                         value={stateCode}
                                         onChangeText={setStateCode}
+                                        autoCorrect={false}
+                                        autoCapitalize="words"
                                         fieldKey="state"
                                         focusedField={focusedField}
                                         setFocusedField={setFocusedField}
@@ -199,6 +201,8 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                 value={phone}
                                 onChangeText={setPhone}
                                 keyboardType="phone-pad"
+                                autoCorrect={false}
+                                autoCapitalize="none"
                                 fieldKey="phone"
                                 focusedField={focusedField}
                                 setFocusedField={setFocusedField}
@@ -213,6 +217,8 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
+                                autoCorrect={false}
+                                autoCapitalize="none"
                                 fieldKey="password"
                                 focusedField={focusedField}
                                 setFocusedField={setFocusedField}
@@ -381,13 +387,12 @@ const getStyles = (theme: any) => {
             marginTop: 4,
             letterSpacing: 0.3,
         },
-        // Glass card
+        // Glass card — NO overflow:'hidden' here: it blocks TextInput touch events on iOS
         card: {
             backgroundColor: theme.isDark ? c.glass : c.surface,
             borderRadius: r.xl,
             borderWidth: 1,
             borderColor: theme.isDark ? c.borderGlass : c.border,
-            overflow: 'hidden',
             ...(theme.isDark
                 ? {
                     shadowColor: '#000',

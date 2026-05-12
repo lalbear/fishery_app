@@ -727,9 +727,11 @@ const ghostStyles = (theme: any) => ({
   },
   input: {
     flex: 1,
+    height: 52,
     color: theme.colors.textPrimary,
     fontSize: 15,
     fontWeight: '600' as const,
+    paddingVertical: 0,
   },
   unit: {
     color: theme.colors.textMuted,

@@ -5,20 +5,26 @@ import jwt from 'jsonwebtoken';
 import { query } from '../db';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development';
+
+// JWT_SECRET MUST be set via environment variable in production.
+// Render.com: set it in the service's Environment tab.
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set. Set it in your production environment before deploying.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_fallback_not_for_production';
 
 const signupSchema = z.object({
-    phone: z.string().min(10),
-    password: z.string().min(6),
-    name: z.string().min(2),
+    phone: z.string().min(10).max(15),
+    password: z.string().min(8).max(128),   // increased minimum to 8 chars
+    name: z.string().min(2).max(100).trim(),
     farmerCategory: z.enum(['GENERAL', 'WOMEN', 'SC', 'ST']).default('GENERAL'),
     stateCode: z.string().length(2),
     districtCode: z.string().max(50).optional().default(''),
 });
 
 const loginSchema = z.object({
-    phone: z.string().min(10),
-    password: z.string().min(6),
+    phone: z.string().min(10).max(15),
+    password: z.string().min(1).max(128),
 });
 
 async function ensureAuthRuntimeSchema(): Promise<void> {
