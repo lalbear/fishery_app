@@ -51,7 +51,8 @@ export default function DoctorNetworkScreen() {
 
   const [symptoms, setSymptoms] = useState('');
   const [issueDescription, setIssueDescription] = useState('');
-  const [photoUri, setPhotoUri] = useState('');
+  const [photoPreviewUri, setPhotoPreviewUri] = useState('');
+  const [photoUploadValue, setPhotoUploadValue] = useState('');
   const [sugg, setSugg] = useState<any>(null);
   const [symptomsInputFocused, setSymptomsInputFocused] = useState(false);
   const [issueInputFocused, setIssueInputFocused] = useState(false);
@@ -86,6 +87,8 @@ export default function DoctorNetworkScreen() {
       if (pondRecords.length === 1) setSelectedPondId(pondRecords[0].id);
 
       await resolveDoctor(p, pondRecords.length === 1 ? pondRecords[0] : null);
+    } catch {
+      Alert.alert('Error', 'Could not load doctor booking right now. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -141,8 +144,21 @@ export default function DoctorNetworkScreen() {
       Alert.alert('Enter symptoms', 'Add at least one symptom to run disease suggestion.');
       return;
     }
-    const res = await diseaseService.suggest({ symptoms: selectedSymptoms });
-    if (res.success) setSugg(res.data);
+    try {
+      const res = await diseaseService.suggest({ symptoms: selectedSymptoms });
+      if (res.success) {
+        setSugg(res.data);
+      } else {
+        Alert.alert('Suggestion unavailable', res.error || 'Could not analyze symptoms right now.');
+      }
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Could not analyze symptoms right now.';
+      Alert.alert('Suggestion unavailable', message);
+    }
   };
 
   const handlePickImage = async () => {
@@ -154,10 +170,17 @@ export default function DoctorNetworkScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
+      base64: true,
       quality: 0.7,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      setPhotoUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      setPhotoPreviewUri(asset.uri);
+      setPhotoUploadValue(
+        asset.base64
+          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri
+      );
     }
   };
 
@@ -195,7 +218,7 @@ export default function DoctorNetworkScreen() {
         scheduledDate: tomorrow.toISOString(),
         consultationType: 'VISIT',
         emergencyFlag: sugg?.urgency === 'CRITICAL',
-        photoUri: photoUri || undefined,
+        photoUri: photoUploadValue || undefined,
       });
 
       if (res.success) {
@@ -205,7 +228,8 @@ export default function DoctorNetworkScreen() {
         );
         setIssueDescription('');
         setSugg(null);
-        setPhotoUri('');
+        setPhotoPreviewUri('');
+        setPhotoUploadValue('');
       } else {
         Alert.alert('Failed', res.error || 'Could not book appointment.');
       }
@@ -380,9 +404,9 @@ export default function DoctorNetworkScreen() {
           <Text style={styles.sectionHeader}>ATTACH PHOTO (OPTIONAL)</Text>
           <View style={styles.card}>
             <Text style={styles.helper}>Take a clear picture of the affected fish or pond.</Text>
-            {photoUri ? (
+            {photoPreviewUri ? (
               <View style={styles.photoPreviewWrap}>
-                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                <Image source={{ uri: photoPreviewUri }} style={styles.photoPreview} />
                 <TouchableOpacity style={styles.photoRetakeBtn} onPress={handlePickImage}>
                   <Ionicons name="camera-outline" size={14} color="#fff" />
                   <Text style={styles.photoRetakeText}>Retake</Text>

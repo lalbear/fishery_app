@@ -70,9 +70,16 @@ export default function DoctorAppointmentDetailScreen() {
 
   const saveQuickNote = async () => {
     if (!quickNote.trim()) return;
-    await addDoctorNote(appointmentId, quickNote);
-    setQuickNote('');
-    await loadAppointment();
+    try {
+      await addDoctorNote(appointmentId, quickNote);
+      setQuickNote('');
+      await loadAppointment();
+    } catch (error: any) {
+      Alert.alert(
+        'Note not saved',
+        error?.message || 'Could not save the doctor note right now.'
+      );
+    }
   };
 
   const markCompleted = async () => {
@@ -95,19 +102,33 @@ export default function DoctorAppointmentDetailScreen() {
       },
     };
 
-    await updateDoctorAppointmentStatus(appointment.id, 'COMPLETED', report);
-    await loadAppointment();
-    Alert.alert('Visit completed', 'The appointment was marked complete and the progress report has been updated.');
+    try {
+      await updateDoctorAppointmentStatus(appointment.id, 'COMPLETED', report);
+      await loadAppointment();
+      Alert.alert('Visit completed', 'The appointment was marked complete and the progress report has been updated.');
+    } catch (error: any) {
+      Alert.alert(
+        'Update failed',
+        error?.message || 'Could not complete the appointment right now.'
+      );
+    }
   };
 
   const handleStatusProgress = async () => {
     if (!appointment) return;
-    if (appointment.derivedStatus === 'NEW') {
-      await updateDoctorAppointmentStatus(appointment.id, 'ACKNOWLEDGED');
-    } else if (appointment.derivedStatus === 'ACKNOWLEDGED') {
-      await updateDoctorAppointmentStatus(appointment.id, 'IN_PROGRESS');
+    try {
+      if (appointment.derivedStatus === 'NEW') {
+        await updateDoctorAppointmentStatus(appointment.id, 'ACKNOWLEDGED');
+      } else if (appointment.derivedStatus === 'ACKNOWLEDGED') {
+        await updateDoctorAppointmentStatus(appointment.id, 'IN_PROGRESS');
+      }
+      await loadAppointment();
+    } catch (error: any) {
+      Alert.alert(
+        'Status update failed',
+        error?.message || 'Could not update the appointment status right now.'
+      );
     }
-    await loadAppointment();
   };
 
   if (isLoading || !appointment) {
