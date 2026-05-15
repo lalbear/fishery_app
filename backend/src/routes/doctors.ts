@@ -15,7 +15,23 @@ router.get('/', async (req, res, next) => {
     const { panchayatId } = req.query;
     if (typeof panchayatId === 'string' && panchayatId.trim().length > 0) {
       const result = await query(`
-        SELECT *
+        SELECT
+          id,
+          user_id,
+          name,
+          phone,
+          district_code,
+          district_name,
+          block_code,
+          block_name,
+          panchayat_code,
+          panchayat_name,
+          assigned_panchayats,
+          specialization[1] AS specialization,
+          availability_schedule,
+          is_active,
+          created_at,
+          updated_at
         FROM doctors
         WHERE is_active = true
           AND $1 = ANY(assigned_panchayats)
@@ -25,12 +41,63 @@ router.get('/', async (req, res, next) => {
     }
 
     const result = await query(`
-      SELECT *
+      SELECT
+        id,
+        user_id,
+        name,
+        phone,
+        district_code,
+        district_name,
+        block_code,
+        block_name,
+        panchayat_code,
+        panchayat_name,
+        assigned_panchayats,
+        specialization[1] AS specialization,
+        availability_schedule,
+        is_active,
+        created_at,
+        updated_at
       FROM doctors
       WHERE is_active = true
       ORDER BY name
     `);
     res.json({ success: true, count: result.rowCount, data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/by-user/:userId', async (req, res, next) => {
+  try {
+    const result = await query(`
+      SELECT
+        id,
+        user_id,
+        name,
+        phone,
+        district_code,
+        district_name,
+        block_code,
+        block_name,
+        panchayat_code,
+        panchayat_name,
+        assigned_panchayats,
+        specialization,
+        availability_schedule,
+        is_active,
+        created_at,
+        updated_at
+      FROM doctors
+      WHERE user_id = $1
+      LIMIT 1
+    `, [req.params.userId]);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(404).json({ success: false, error: 'Doctor profile not found for this user' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     next(error);
   }
@@ -91,7 +158,26 @@ router.get('/route', async (req, res, next) => {
 
     // 1. Exact panchayat match
     let result = await query(
-      `SELECT * FROM doctors WHERE is_active = true AND $1 = ANY(assigned_panchayats) LIMIT 1`,
+      `SELECT
+          id,
+          user_id,
+          name,
+          phone,
+          district_code,
+          district_name,
+          block_code,
+          block_name,
+          panchayat_code,
+          panchayat_name,
+          assigned_panchayats,
+          specialization[1] AS specialization,
+          availability_schedule,
+          is_active,
+          created_at,
+          updated_at
+        FROM doctors
+        WHERE is_active = true AND $1 = ANY(assigned_panchayats)
+        LIMIT 1`,
       [code]
     );
 
@@ -105,7 +191,24 @@ router.get('/route', async (req, res, next) => {
       if ((locResult.rowCount ?? 0) > 0) {
         const bc: string = locResult.rows[0].block_code;
         result = await query(
-          `SELECT * FROM doctors
+          `SELECT
+             id,
+             user_id,
+             name,
+             phone,
+             district_code,
+             district_name,
+             block_code,
+             block_name,
+             panchayat_code,
+             panchayat_name,
+             assigned_panchayats,
+             specialization[1] AS specialization,
+             availability_schedule,
+             is_active,
+             created_at,
+             updated_at
+           FROM doctors
            WHERE is_active = true
              AND EXISTS (
                SELECT 1 FROM unnest(assigned_panchayats) ap WHERE ap LIKE $1

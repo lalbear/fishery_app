@@ -21,7 +21,7 @@ import database from './src/database';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { AuthProvider, useAuth } from './src/AuthContext';
 
-// Screens
+// Farmer screens
 import HomeScreen from './src/screens/HomeScreen';
 import SpeciesScreen from './src/screens/SpeciesScreen';
 import SpeciesDetailScreen from './src/screens/SpeciesDetailScreen';
@@ -44,7 +44,14 @@ import DiseaseListScreen from './src/screens/DiseaseListScreen';
 import DiseaseDetailScreen from './src/screens/DiseaseDetailScreen';
 import DoctorNetworkScreen from './src/screens/DoctorNetworkScreen';
 
-// Types
+// Doctor screens
+import DoctorDashboardScreen from './src/screens/DoctorDashboardScreen';
+import DoctorAppointmentsScreen from './src/screens/DoctorAppointmentsScreen';
+import DoctorAlertsScreen from './src/screens/DoctorAlertsScreen';
+import DoctorReportsScreen from './src/screens/DoctorReportsScreen';
+import DoctorProfileScreen from './src/screens/DoctorProfileScreen';
+import DoctorAppointmentDetailScreen from './src/screens/DoctorAppointmentDetailScreen';
+
 export type RootStackParamList = {
   Main: undefined;
   SpeciesDetail: { speciesId: string };
@@ -72,8 +79,23 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
+export type DoctorRootStackParamList = {
+  DoctorMain: undefined;
+  DoctorAppointmentDetail: { appointmentId: string };
+};
+
+export type DoctorTabParamList = {
+  DoctorDashboard: undefined;
+  DoctorVisits: undefined;
+  DoctorAlerts: undefined;
+  DoctorReports: undefined;
+  DoctorProfile: undefined;
+};
+
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
+const DoctorTab = createBottomTabNavigator<DoctorTabParamList>();
+const DoctorStack = createStackNavigator<DoctorRootStackParamList>();
 
 function MainTabs() {
   const { t } = useTranslation();
@@ -162,13 +184,60 @@ function MainTabs() {
   );
 }
 
-function MainApp() {
-  const { isAuthenticated, login } = useAuth();
-  const { theme, mode } = useTheme();
+function DoctorTabs() {
+  const { theme } = useTheme();
 
-  if (!isAuthenticated) {
-    return <AuthScreen onLoginSuccess={login} />;
-  }
+  return (
+    <DoctorTab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          const iconByRoute: Record<keyof DoctorTabParamList, keyof typeof Ionicons.glyphMap> = {
+            DoctorDashboard: focused ? 'speedometer' : 'speedometer-outline',
+            DoctorVisits: focused ? 'medical' : 'medical-outline',
+            DoctorAlerts: focused ? 'notifications' : 'notifications-outline',
+            DoctorReports: focused ? 'bar-chart' : 'bar-chart-outline',
+            DoctorProfile: focused ? 'person-circle' : 'person-circle-outline',
+          };
+
+          return <Ionicons name={iconByRoute[route.name as keyof DoctorTabParamList]} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '700',
+          marginBottom: 2,
+          textTransform: 'uppercase',
+        },
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+          elevation: 0,
+          height: 74,
+          paddingTop: 8,
+          paddingBottom: 10,
+        },
+        headerShown: false,
+        tabBarItemStyle: {
+          borderRadius: 16,
+          marginHorizontal: 2,
+        },
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderTopWidth: 1, borderTopColor: theme.colors.border }} />
+        ),
+      })}
+    >
+      <DoctorTab.Screen name="DoctorDashboard" component={DoctorDashboardScreen} options={{ title: 'Overview' }} />
+      <DoctorTab.Screen name="DoctorVisits" component={DoctorAppointmentsScreen} options={{ title: 'Visits' }} />
+      <DoctorTab.Screen name="DoctorAlerts" component={DoctorAlertsScreen} options={{ title: 'Alerts' }} />
+      <DoctorTab.Screen name="DoctorReports" component={DoctorReportsScreen} options={{ title: 'Reports' }} />
+      <DoctorTab.Screen name="DoctorProfile" component={DoctorProfileScreen} options={{ title: 'Profile' }} />
+    </DoctorTab.Navigator>
+  );
+}
+
+function FarmerNavigator() {
+  const { theme } = useTheme();
 
   return (
     <NavigationContainer>
@@ -196,8 +265,42 @@ function MainApp() {
         <Stack.Screen name="DiseaseDetail" component={DiseaseDetailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="DoctorNetwork" component={DoctorNetworkScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
-      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
     </NavigationContainer>
+  );
+}
+
+function DoctorNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <NavigationContainer>
+      <DoctorStack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.primary,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      >
+        <DoctorStack.Screen name="DoctorMain" component={DoctorTabs} options={{ headerShown: false }} />
+        <DoctorStack.Screen name="DoctorAppointmentDetail" component={DoctorAppointmentDetailScreen} options={{ headerShown: false }} />
+      </DoctorStack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+function MainApp() {
+  const { isAuthenticated, authRole, establishSession } = useAuth();
+  const { mode } = useTheme();
+
+  if (!isAuthenticated) {
+    return <AuthScreen onLoginSuccess={establishSession} />;
+  }
+
+  return (
+    <>
+      {authRole === 'doctor' ? <DoctorNavigator /> : <FarmerNavigator />}
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+    </>
   );
 }
 

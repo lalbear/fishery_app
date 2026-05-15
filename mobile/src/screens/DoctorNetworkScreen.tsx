@@ -172,12 +172,13 @@ export default function DoctorNetworkScreen() {
       return;
     }
 
+    const suspected = sugg?.recommendations?.[0]?.id;
+
     setSubmitting(true);
     try {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const suspected = sugg?.recommendations?.[0]?.id;
       const res = await doctorNetworkService.createAppointment({
         farmerId: profile.userId,
         doctorId: assignedDoctor.id,

@@ -5,12 +5,16 @@ const LOCAL_BACKEND_URL =
     Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 
 const MISSING_PRODUCTION_BACKEND_URL = 'https://fishery-app.onrender.com';
+const DEV_BACKEND_OVERRIDE = process.env.EXPO_PUBLIC_DEV_BACKEND_URL;
+const PRODUCTION_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-const BACKEND_URL =
-    process.env.EXPO_PUBLIC_BACKEND_URL ||
-    (__DEV__ ? LOCAL_BACKEND_URL : MISSING_PRODUCTION_BACKEND_URL);
+const BACKEND_URL = __DEV__
+    ? DEV_BACKEND_OVERRIDE || LOCAL_BACKEND_URL
+    : PRODUCTION_BACKEND_URL || MISSING_PRODUCTION_BACKEND_URL;
 
-if (!__DEV__ && !process.env.EXPO_PUBLIC_BACKEND_URL) {
+export const resolvedBackendUrl = BACKEND_URL;
+
+if (!__DEV__ && !PRODUCTION_BACKEND_URL) {
     console.warn(
         'EXPO_PUBLIC_BACKEND_URL is not set. Production builds must point to a deployed backend before release or TestFlight.'
     );
@@ -347,6 +351,10 @@ export const doctorNetworkService = {
         const response = await api.get('/api/v1/doctors', { params });
         return response.data;
     },
+    getDoctorByUser: async (userId: string) => {
+        const response = await api.get(`/api/v1/doctors/by-user/${userId}`);
+        return response.data;
+    },
     getFarmerMapping: async (farmerId: string) => {
         const response = await api.get(`/api/v1/doctors/mapping/${farmerId}`);
         return response.data;
@@ -357,6 +365,10 @@ export const doctorNetworkService = {
     },
     listAppointments: async (params?: { farmerId?: string; doctorId?: string; status?: string }) => {
         const response = await api.get('/api/v1/appointments', { params });
+        return response.data;
+    },
+    getAppointmentById: async (appointmentId: string) => {
+        const response = await api.get(`/api/v1/appointments/${appointmentId}`);
         return response.data;
     },
     createAppointment: async (data: {
@@ -373,7 +385,26 @@ export const doctorNetworkService = {
         const response = await api.post('/api/v1/appointments', data);
         return response.data;
     },
-    updateAppointmentStatus: async (id: string, data: { status: 'REQUESTED' | 'APPROVED' | 'COMPLETED' | 'CANCELLED'; paymentStatus?: 'PENDING' | 'PARTIAL' | 'PAID' }) => {
+    addAppointmentNote: async (id: string, data: { authorName: string; text: string }) => {
+        const response = await api.post(`/api/v1/appointments/${id}/notes`, data);
+        return response.data;
+    },
+    updateAppointmentStatus: async (id: string, data: {
+        status: 'REQUESTED' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+        paymentStatus?: 'PENDING' | 'PARTIAL' | 'PAID';
+        report?: {
+            diagnosis: string;
+            treatmentPlan: string;
+            notes?: string;
+            followUpRequired?: boolean;
+            followUpDate?: string;
+            completionChecklist: {
+                pondInspected: boolean;
+                fishObserved: boolean;
+                farmerCounseled: boolean;
+            };
+        };
+    }) => {
         const response = await api.patch(`/api/v1/appointments/${id}/status`, data);
         return response.data;
     },

@@ -1,41 +1,84 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { authService } from './services/authService';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authService, type AuthUser } from './services/authService';
 
-export const AuthContext = createContext({
-    isAuthenticated: false,
-    login: () => { },
-    logout: () => { },
+export type AuthRole = 'farmer' | 'doctor';
+
+interface AuthContextValue {
+  isAuthenticated: boolean;
+  authRole: AuthRole | null;
+  currentUser: AuthUser | null;
+  refreshSession: () => Promise<void>;
+  establishSession: (user: AuthUser) => void;
+  logout: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextValue>({
+  isAuthenticated: false,
+  authRole: null,
+  currentUser: null,
+  refreshSession: async () => {},
+  establishSession: () => {},
+  logout: async () => {},
 });
 
-// ── DEV MODE: set to true to skip login during UI review ──────────────────
-const DEV_SKIP_AUTH = false;
+function mapRole(user: AuthUser | null): AuthRole | null {
+  if (!user) return null;
+  return user.role === 'DOCTOR' ? 'doctor' : 'farmer';
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(DEV_SKIP_AUTH);
-    const [loading, setLoading] = useState(!DEV_SKIP_AUTH);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authRole, setAuthRole] = useState<AuthRole | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (DEV_SKIP_AUTH) return;
-        authService.isAuthenticated().then((auth) => {
-            setIsAuthenticated(auth);
-            setLoading(false);
-        });
-    }, []);
+  const refreshSession = async () => {
+    const authenticated = await authService.isAuthenticated();
+    if (!authenticated) {
+      setIsAuthenticated(false);
+      setAuthRole(null);
+      setCurrentUser(null);
+      return;
+    }
 
-    const login = () => setIsAuthenticated(true);
+    const user = await authService.getCurrentUser();
+    setCurrentUser(user);
+    setIsAuthenticated(Boolean(user));
+    setAuthRole(mapRole(user));
+  };
 
-    const logout = async () => {
-        await authService.logout();
-        setIsAuthenticated(false);
+  const establishSession = (user: AuthUser) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setAuthRole(mapRole(user));
+  };
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        await refreshSession();
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (loading) return null; // Or a splash screen
+    void bootstrap();
+  }, []);
 
-    return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const logout = async () => {
+    await authService.logout();
+    setIsAuthenticated(false);
+    setAuthRole(null);
+    setCurrentUser(null);
+  };
+
+  if (loading) return null;
+
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, authRole, currentUser, refreshSession, establishSession, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => useContext(AuthContext);

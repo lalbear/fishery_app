@@ -2,28 +2,42 @@ import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { query } from '../db';
+import { query, transaction } from '../db';
 
 const router = Router();
 
-// JWT_SECRET MUST be set via environment variable in production.
-// Render.com: set it in the service's Environment tab.
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
     throw new Error('FATAL: JWT_SECRET environment variable is not set. Set it in your production environment before deploying.');
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_fallback_not_for_production';
 
-const signupSchema = z.object({
-    phone: z.string().min(10).max(15),
-    password: z.string().min(8).max(128),   // increased minimum to 8 chars
+const farmerSignupSchema = z.object({
+    role: z.literal('FARMER'),
+    phone: z.string().min(10).max(20),
+    password: z.string().min(8).max(128),
     name: z.string().min(2).max(100).trim(),
     farmerCategory: z.enum(['GENERAL', 'WOMEN', 'SC', 'ST']).default('GENERAL'),
     stateCode: z.string().length(2),
-    districtCode: z.string().max(50).optional().default(''),
 });
 
+const doctorSignupSchema = z.object({
+    role: z.literal('DOCTOR'),
+    phone: z.string().min(10).max(20),
+    password: z.string().min(8).max(128),
+    name: z.string().min(2).max(100).trim(),
+    stateCode: z.string().length(2),
+    districtCode: z.string().min(2).max(120),
+    districtName: z.string().min(2).max(120),
+    blockCode: z.string().min(2).max(160),
+    blockName: z.string().min(2).max(120),
+    panchayatCode: z.string().min(2).max(200),
+    panchayatName: z.string().min(2).max(120),
+});
+
+const signupSchema = z.discriminatedUnion('role', [farmerSignupSchema, doctorSignupSchema]);
+
 const loginSchema = z.object({
-    phone: z.string().min(10).max(15),
+    phone: z.string().min(10).max(20),
     password: z.string().min(1).max(128),
 });
 
@@ -35,6 +49,21 @@ async function ensureAuthRuntimeSchema(): Promise<void> {
 
     await query(`
         ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role VARCHAR(20)
+    `);
+
+    await query(`
+        UPDATE users
+        SET role = COALESCE(role, 'FARMER')
+    `);
+
+    await query(`
+        ALTER TABLE users
+        ALTER COLUMN role SET DEFAULT 'FARMER'
+    `);
+
+    await query(`
+        ALTER TABLE users
         ALTER COLUMN district_code DROP NOT NULL
     `);
 
@@ -42,38 +71,170 @@ async function ensureAuthRuntimeSchema(): Promise<void> {
         ALTER TABLE users
         ALTER COLUMN state_code TYPE VARCHAR(100)
     `);
+
+    await query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS block_code VARCHAR(160),
+        ADD COLUMN IF NOT EXISTS panchayat_code VARCHAR(200)
+    `);
+
+    await query(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'users_role_check'
+            ) THEN
+                ALTER TABLE users
+                ADD CONSTRAINT users_role_check CHECK (role IN ('FARMER', 'DOCTOR', 'ADMIN'));
+            END IF;
+        END $$;
+    `);
+
+    await query(`
+        ALTER TABLE doctors
+        ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        ADD COLUMN IF NOT EXISTS district_code VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS district_name VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS block_code VARCHAR(160),
+        ADD COLUMN IF NOT EXISTS block_name VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS panchayat_code VARCHAR(200),
+        ADD COLUMN IF NOT EXISTS panchayat_name VARCHAR(120)
+    `);
+
+    await query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id_unique
+        ON doctors(user_id)
+        WHERE user_id IS NOT NULL
+    `);
 }
 
-// SIGNUP
+async function fetchAuthenticatedUser(phone: string) {
+    const result = await query(`
+      SELECT
+        u.id,
+        u.phone_number AS phone,
+        u.password_hash,
+        u.name,
+        u.role,
+        u.farmer_category AS "farmerCategory",
+        u.state_code AS "stateCode",
+        u.district_code AS "districtCode",
+        u.block_code AS "blockCode",
+        u.panchayat_code AS "panchayatCode",
+        d.id AS "doctorId",
+        d.specialization[1] AS "doctorSpecialization",
+        d.district_name AS "districtName",
+        d.block_name AS "blockName",
+        d.panchayat_name AS "panchayatName"
+      FROM users u
+      LEFT JOIN doctors d ON d.user_id = u.id
+      WHERE u.phone_number = $1
+      LIMIT 1
+    `, [phone]);
+
+    return result.rows[0];
+}
+
 router.post('/signup', async (req, res) => {
     try {
         await ensureAuthRuntimeSchema();
         const data = signupSchema.parse(req.body);
 
-        // Check existing
         const existing = await query('SELECT id FROM users WHERE phone_number = $1', [data.phone]);
-        if (existing.rowCount && existing.rowCount > 0) {
+        if ((existing.rowCount ?? 0) > 0) {
             return res.status(400).json({ success: false, error: 'Phone number already registered' });
         }
 
         const hashed = await bcrypt.hash(data.password, 10);
 
-        const result = await query(`
-      INSERT INTO users (phone_number, password_hash, name, farmer_category, state_code, district_code)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING
-        id,
-        phone_number AS phone,
-        name,
-        farmer_category AS "farmerCategory",
-        state_code AS "stateCode",
-        district_code AS "districtCode"
-    `, [data.phone, hashed, data.name, data.farmerCategory, data.stateCode, data.districtCode]);
+        const createdPhone = await transaction(async (client) => {
+            if (data.role === 'DOCTOR') {
+                const userResult = await client.query(`
+                    INSERT INTO users (
+                        phone_number,
+                        password_hash,
+                        name,
+                        role,
+                        farmer_category,
+                        state_code,
+                        district_code,
+                        block_code,
+                        panchayat_code
+                    )
+                    VALUES ($1, $2, $3, 'DOCTOR', 'GENERAL', $4, $5, $6, $7)
+                    RETURNING id
+                `, [
+                    data.phone,
+                    hashed,
+                    data.name,
+                    data.stateCode,
+                    data.districtCode,
+                    data.blockCode,
+                    data.panchayatCode,
+                ]);
 
-        const user = result.rows[0];
-        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+                const userId = userResult.rows[0].id;
 
-        res.json({ success: true, token, user });
+                await client.query(`
+                    INSERT INTO doctors (
+                        user_id,
+                        name,
+                        phone,
+                        district_code,
+                        district_name,
+                        block_code,
+                        block_name,
+                        panchayat_code,
+                        panchayat_name,
+                        assigned_panchayats,
+                        specialization,
+                        availability_schedule,
+                        is_active
+                    )
+                    VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                        ARRAY[$10]::text[],
+                        ARRAY['Aquaculture Field Visit', 'Disease Triage']::text[],
+                        jsonb_build_object('slot', '48_hour_response'),
+                        true
+                    )
+                `, [
+                    userId,
+                    data.name,
+                    data.phone,
+                    data.districtCode,
+                    data.districtName,
+                    data.blockCode,
+                    data.blockName,
+                    data.panchayatCode,
+                    data.panchayatName,
+                    data.panchayatCode,
+                ]);
+
+                return data.phone;
+            }
+
+            await client.query(`
+                INSERT INTO users (
+                    phone_number,
+                    password_hash,
+                    name,
+                    role,
+                    farmer_category,
+                    state_code
+                )
+                VALUES ($1, $2, $3, 'FARMER', $4, $5)
+            `, [data.phone, hashed, data.name, data.farmerCategory, data.stateCode]);
+
+            return data.phone;
+        });
+
+        const resolvedUser = await fetchAuthenticatedUser(createdPhone);
+        const token = jwt.sign({ userId: resolvedUser?.id, role: resolvedUser?.role }, JWT_SECRET, { expiresIn: '30d' });
+
+        res.json({ success: true, token, user: resolvedUser });
     } catch (error: any) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ success: false, error: 'Validation Error', details: error.issues });
@@ -86,27 +247,13 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-// LOGIN
 router.post('/login', async (req, res) => {
     try {
         await ensureAuthRuntimeSchema();
         const data = loginSchema.parse(req.body);
 
-        const result = await query(`
-      SELECT
-        id,
-        phone_number AS phone,
-        password_hash,
-        name,
-        farmer_category AS "farmerCategory",
-        state_code AS "stateCode",
-        district_code AS "districtCode"
-      FROM users
-      WHERE phone_number = $1
-    `, [data.phone]);
-        const user = result.rows[0];
-
-        if (!user) {
+        const user = await fetchAuthenticatedUser(data.phone);
+        if (!user || !user.password_hash) {
             return res.status(401).json({ success: false, error: 'Invalid phone or password' });
         }
 
@@ -116,7 +263,7 @@ router.post('/login', async (req, res) => {
         }
 
         delete user.password_hash;
-        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
 
         res.json({ success: true, token, user });
     } catch (error: any) {

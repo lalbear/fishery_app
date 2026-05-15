@@ -1,28 +1,114 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './apiService';
-import { UserProfile, saveProfile, loadProfile } from '../screens/PersonalInfoScreen';
+import { type LocationSelection } from '../components/LocationCascadePicker';
+import { type UserProfile, saveProfile, loadProfile } from '../screens/PersonalInfoScreen';
 
 const TOKEN_KEY = '@fishing_god_token';
+const AUTH_USER_KEY = '@fishing_god_auth_user';
+
+export type BackendUserRole = 'FARMER' | 'DOCTOR' | 'ADMIN';
+
+export interface AuthUser {
+    id: string;
+    role: BackendUserRole;
+    name: string;
+    phone: string;
+    farmerCategory?: UserProfile['farmerCategory'];
+    stateCode?: string;
+    districtCode?: string;
+    districtName?: string;
+    blockCode?: string;
+    blockName?: string;
+    panchayatCode?: string;
+    panchayatName?: string;
+    doctorId?: string;
+    doctorSpecialization?: string;
+}
+
+interface AuthResponse {
+    success: boolean;
+    error?: string;
+    user?: AuthUser;
+}
+
+interface FarmerSignupPayload {
+    role: 'FARMER';
+    phone: string;
+    password: string;
+    name: string;
+    stateCode: string;
+    farmerCategory: UserProfile['farmerCategory'];
+}
+
+interface DoctorSignupPayload {
+    role: 'DOCTOR';
+    phone: string;
+    password: string;
+    name: string;
+    stateCode: string;
+    districtCode: string;
+    districtName: string;
+    blockCode: string;
+    blockName: string;
+    panchayatCode: string;
+    panchayatName: string;
+}
+
+export type SignupPayload = FarmerSignupPayload | DoctorSignupPayload;
+
+async function persistAuthSuccess(user: AuthUser) {
+    await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+
+    if (user.role === 'FARMER') {
+        const existing = await loadProfile();
+        await saveProfile({
+            ...existing,
+            userId: user.id,
+            name: user.name,
+            phone: user.phone,
+            farmerCategory: user.farmerCategory || existing.farmerCategory || 'GENERAL',
+            stateCode: user.stateCode || existing.stateCode || '',
+            districtCode: user.districtCode || existing.districtCode,
+            districtName: user.districtName || existing.districtName,
+            blockCode: user.blockCode || existing.blockCode,
+            blockName: user.blockName || existing.blockName,
+            panchayatCode: user.panchayatCode || existing.panchayatCode,
+            panchayatName: user.panchayatName || existing.panchayatName,
+        });
+    }
+}
+
+function normalizeAuthUser(raw: any): AuthUser {
+    return {
+        id: raw.id,
+        role: raw.role,
+        name: raw.name,
+        phone: raw.phone || raw.phone_number,
+        farmerCategory: raw.farmerCategory,
+        stateCode: raw.stateCode,
+        districtCode: raw.districtCode,
+        districtName: raw.districtName,
+        blockCode: raw.blockCode,
+        blockName: raw.blockName,
+        panchayatCode: raw.panchayatCode,
+        panchayatName: raw.panchayatName,
+        doctorId: raw.doctorId,
+        doctorSpecialization: raw.doctorSpecialization,
+    };
+}
 
 export const authService = {
-    login: async (phone: string, password: string): Promise<{ success: boolean; error?: string; user?: any }> => {
+    login: async (phone: string, password: string): Promise<AuthResponse> => {
         try {
             const res = await api.post('/api/v1/auth/login', { phone, password });
-            if (res.data.success) {
-                await AsyncStorage.setItem(TOKEN_KEY, res.data.token);
-                const user = res.data.user;
-                const existing = await loadProfile();
-                await saveProfile({
-                    ...existing,
-                    name: user.name,
-                    phone: user.phone || user.phone_number,
-                    farmerCategory: user.farmerCategory || 'GENERAL',
-                    stateCode: user.stateCode || '',
-                    userId: user.id
-                });
-                return { success: true, user: res.data.user };
+            if (!res.data.success) {
+                return { success: false, error: res.data.error || 'Login failed' };
             }
-            return { success: false, error: 'Login failed' };
+
+            await AsyncStorage.setItem(TOKEN_KEY, res.data.token);
+            const user = normalizeAuthUser(res.data.user);
+            await persistAuthSuccess(user);
+            return { success: true, user };
         } catch (error: any) {
             const fallbackMessage =
                 error.code === 'ECONNABORTED'
@@ -32,21 +118,17 @@ export const authService = {
         }
     },
 
-    signup: async (phone: string, password: string, name: string, stateCode: string, farmerCategory: string): Promise<{ success: boolean; error?: string; user?: any }> => {
+    signup: async (payload: SignupPayload): Promise<AuthResponse> => {
         try {
-            const res = await api.post('/api/v1/auth/signup', { phone, password, name, stateCode, farmerCategory });
-            if (res.data.success) {
-                await AsyncStorage.setItem(TOKEN_KEY, res.data.token);
-                await saveProfile({
-                    userId: res.data.user.id,
-                    name,
-                    phone,
-                    stateCode,
-                    farmerCategory: farmerCategory as any
-                });
-                return { success: true, user: res.data.user };
+            const res = await api.post('/api/v1/auth/signup', payload);
+            if (!res.data.success) {
+                return { success: false, error: res.data.error || 'Signup failed' };
             }
-            return { success: false, error: 'Signup failed' };
+
+            await AsyncStorage.setItem(TOKEN_KEY, res.data.token);
+            const user = normalizeAuthUser(res.data.user);
+            await persistAuthSuccess(user);
+            return { success: true, user };
         } catch (error: any) {
             const fallbackMessage =
                 error.code === 'ECONNABORTED'
@@ -58,16 +140,21 @@ export const authService = {
 
     logout: async () => {
         await AsyncStorage.removeItem(TOKEN_KEY);
-        // Clear personal info too, or just user ID
-        await AsyncStorage.removeItem('@fishing_god_profile');
+        await AsyncStorage.removeItem(AUTH_USER_KEY);
     },
 
     getToken: async () => {
-        return await AsyncStorage.getItem(TOKEN_KEY);
+        return AsyncStorage.getItem(TOKEN_KEY);
+    },
+
+    getCurrentUser: async (): Promise<AuthUser | null> => {
+        const raw = await AsyncStorage.getItem(AUTH_USER_KEY);
+        return raw ? (JSON.parse(raw) as AuthUser) : null;
     },
 
     isAuthenticated: async () => {
         const token = await AsyncStorage.getItem(TOKEN_KEY);
-        return !!token;
-    }
+        const user = await AsyncStorage.getItem(AUTH_USER_KEY);
+        return Boolean(token && user);
+    },
 };
