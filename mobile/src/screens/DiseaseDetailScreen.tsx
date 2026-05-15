@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
+import { getDiseaseEducationContent } from '../utils/diseaseContent';
 import { resolveDiseaseImage } from '../utils/diseaseImages';
 
 function Section({ title, items, theme, styles }: any) {
@@ -41,6 +42,7 @@ export default function DiseaseDetailScreen() {
     category: disease.category,
     image_url: disease.image_url,
   });
+  const education = getDiseaseEducationContent(disease.slug);
 
   const severityColor =
     disease.severity === 'HIGH' ? theme.colors.error
@@ -55,7 +57,7 @@ export default function DiseaseDetailScreen() {
         {/* Hero Image */}
         {imgUri && !imageError ? (
           <Image
-            source={{ uri: imgUri }}
+            source={imgUri}
             style={styles.heroImage}
             resizeMode="cover"
             onError={() => setImageError(true)}
@@ -93,10 +95,20 @@ export default function DiseaseDetailScreen() {
           )}
         </View>
 
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>What this means on the farm</Text>
+          <Text style={styles.summaryText}>{education.overview}</Text>
+          <Text style={styles.summaryTitle}>Why it usually shows up</Text>
+          <Text style={styles.summaryText}>{education.whyItHappens}</Text>
+        </View>
+
         <Section title="Symptoms" items={disease.symptoms} theme={theme} styles={styles} />
         <Section title="Causes" items={disease.causes} theme={theme} styles={styles} />
         <Section title="Prevention" items={disease.prevention} theme={theme} styles={styles} />
         <Section title="Treatment" items={disease.treatment} theme={theme} styles={styles} />
+        <Section title="First response" items={education.firstResponse} theme={theme} styles={styles} />
+        <Section title="Farmer checklist" items={education.farmerChecklist} theme={theme} styles={styles} />
+        <Section title="Call a doctor urgently if" items={education.callDoctorNow} theme={theme} styles={styles} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -167,6 +179,25 @@ const getStyles = (theme: any) => StyleSheet.create({
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
     padding: 14,
+  },
+  summaryCard: {
+    marginHorizontal: 16,
+    marginTop: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceLow,
+    padding: 14,
+    gap: 8,
+  },
+  summaryTitle: {
+    color: theme.colors.textPrimary,
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  summaryText: {
+    color: theme.colors.textSecondary,
+    lineHeight: 21,
   },
   sectionTitle: { color: theme.colors.textPrimary, fontWeight: '800', fontSize: 16, marginBottom: 8 },
   bullet: { color: theme.colors.textSecondary, lineHeight: 22, marginBottom: 4 },

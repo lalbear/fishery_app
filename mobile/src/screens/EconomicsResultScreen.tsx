@@ -26,6 +26,8 @@ export default function EconomicsResultScreen() {
   }
 
   const formatCurrency = (amount: number) => `Rs ${amount.toLocaleString('en-IN')}`;
+  const formatRatio = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '0.00';
   const knowledgeInsights = simulationData.knowledgeInsights;
 
   const openPolicyGuidance = () =>
@@ -87,7 +89,7 @@ export default function EconomicsResultScreen() {
           {/* BCR + Breakeven as a mini bento row */}
           <View style={styles.heroBentoRow}>
             <View style={styles.heroBentoItem}>
-              <Text style={styles.heroBentoValue}>{simulationData.benefitCostRatio}</Text>
+              <Text style={styles.heroBentoValue}>{formatRatio(simulationData.benefitCostRatio)}</Text>
               <Text style={styles.heroBentoLabel}>BCR</Text>
             </View>
             <View style={styles.heroBentoDivider} />

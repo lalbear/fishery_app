@@ -1,33 +1,22 @@
-const DISEASE_IMAGE_BY_SLUG: Record<string, string> = {
-  columnaris:
-    'https://upload.wikimedia.org/wikipedia/commons/3/32/Columnaris_disease.jpg',
-  'aeromonas-septicemia':
-    'https://upload.wikimedia.org/wikipedia/commons/0/0f/EUS_red_spot_disease_in_fish.jpg',
-  'white-spot-syndrome':
-    'https://upload.wikimedia.org/wikipedia/commons/8/83/White_spot_syndrome_virus.jpg',
-  'ich-white-spot':
-    'https://upload.wikimedia.org/wikipedia/commons/6/62/White_Spot_disease_causing_Ichthyophthirius_multifiliis.jpg',
-  saprolegniasis:
-    'https://upload.wikimedia.org/wikipedia/commons/1/1b/Saprolegnia_on_fish_eggs.jpg',
-  'oxygen-depletion':
-    'https://upload.wikimedia.org/wikipedia/commons/1/19/Aerator_in_fish_pond%2C_Thailand.jpg',
-  'ammonia-toxicity':
-    'https://upload.wikimedia.org/wikipedia/commons/b/b5/YSI_multiparameter_water_quality_sonde.jpg',
+import { type ImageSourcePropType } from 'react-native';
+
+const DISEASE_IMAGE_BY_SLUG: Record<string, ImageSourcePropType> = {
+  columnaris: require('../../assets/images/diseases/columnaris.jpg'),
+  'aeromonas-septicemia': require('../../assets/images/diseases/aeromonas-septicemia.jpg'),
+  'white-spot-syndrome': require('../../assets/images/diseases/white-spot-syndrome.jpg'),
+  'ich-white-spot': require('../../assets/images/diseases/ich-white-spot.jpg'),
+  saprolegniasis: require('../../assets/images/diseases/saprolegniasis.jpg'),
+  'oxygen-depletion': require('../../assets/images/diseases/oxygen-depletion.jpg'),
+  'ammonia-toxicity': require('../../assets/images/diseases/ammonia-toxicity.png'),
 };
 
-const CATEGORY_FALLBACK_IMAGE: Record<string, string> = {
-  BACTERIAL:
-    'https://upload.wikimedia.org/wikipedia/commons/3/32/Columnaris_disease.jpg',
-  VIRAL:
-    'https://upload.wikimedia.org/wikipedia/commons/8/83/White_spot_syndrome_virus.jpg',
-  PARASITIC:
-    'https://upload.wikimedia.org/wikipedia/commons/6/62/White_Spot_disease_causing_Ichthyophthirius_multifiliis.jpg',
-  FUNGAL:
-    'https://upload.wikimedia.org/wikipedia/commons/1/1b/Saprolegnia_on_fish_eggs.jpg',
-  ENVIRONMENTAL:
-    'https://upload.wikimedia.org/wikipedia/commons/b/b5/YSI_multiparameter_water_quality_sonde.jpg',
-  NUTRITIONAL:
-    'https://upload.wikimedia.org/wikipedia/commons/b/b5/YSI_multiparameter_water_quality_sonde.jpg',
+const CATEGORY_FALLBACK_IMAGE: Record<string, ImageSourcePropType> = {
+  BACTERIAL: DISEASE_IMAGE_BY_SLUG.columnaris,
+  VIRAL: DISEASE_IMAGE_BY_SLUG['white-spot-syndrome'],
+  PARASITIC: DISEASE_IMAGE_BY_SLUG['ich-white-spot'],
+  FUNGAL: DISEASE_IMAGE_BY_SLUG.saprolegniasis,
+  ENVIRONMENTAL: DISEASE_IMAGE_BY_SLUG['oxygen-depletion'],
+  NUTRITIONAL: DISEASE_IMAGE_BY_SLUG['ammonia-toxicity'],
 };
 
 const sanitizeUrl = (url?: string) => {
@@ -42,7 +31,7 @@ export function resolveDiseaseImage(disease: {
   slug?: string;
   category?: string;
   image_url?: string;
-}) {
+}): ImageSourcePropType {
   const slug = disease.slug?.toLowerCase().trim() ?? '';
   if (slug && DISEASE_IMAGE_BY_SLUG[slug]) {
     return DISEASE_IMAGE_BY_SLUG[slug];
@@ -50,7 +39,7 @@ export function resolveDiseaseImage(disease: {
 
   const safeBackendImage = sanitizeUrl(disease.image_url);
   if (safeBackendImage) {
-    return safeBackendImage;
+    return { uri: safeBackendImage };
   }
 
   const category = disease.category?.toUpperCase().trim() ?? '';

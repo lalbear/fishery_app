@@ -38,7 +38,7 @@ const DiseaseCard = ({
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
       {imgUri && !imageError ? (
         <Image
-          source={{ uri: imgUri }}
+          source={imgUri}
           style={styles.cardImage}
           resizeMode="cover"
           onError={() => setImageError(true)}

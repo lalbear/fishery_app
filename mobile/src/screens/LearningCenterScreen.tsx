@@ -58,6 +58,14 @@ export default function LearningCenterScreen() {
   const farmerCategory = route.params?.farmerCategory;
 
   const [activeCategory, setActiveCategory] = useState('all');
+  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({});
+
+  const toggleLesson = (lessonId: string) => {
+    setExpandedLessons((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
+    }));
+  };
 
   const subsidyText =
     knowledgeInsights?.beneficiarySubsidyPercent != null
@@ -122,6 +130,160 @@ export default function LearningCenterScreen() {
     activeCategory === 'all'
       ? LESSONS
       : LESSONS.filter(l => l.category === activeCategory);
+
+  const renderLessonDetails = (lesson: LessonItem) => {
+    switch (lesson.id) {
+      case 'l1':
+        return (
+          <>
+            <Text style={styles.bodyText}>
+              Most new farmers lose money in the first crop because they skip planning and start spending too early.
+              Use these five steps as your pre-investment checklist.
+            </Text>
+            {roadmap.map((item, idx) => (
+              <BulletItem key={item} index={idx + 1} text={item} styles={styles} theme={theme} />
+            ))}
+            <View style={styles.ytSection}>
+              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              {ytBasics.map((link) => <YouTubeCard key={link.title} item={link} />)}
+            </View>
+          </>
+        );
+      case 'l2':
+        return (
+          <>
+            <InfoCard
+              title="Land or space"
+              icon="map-outline"
+              body="Earthen ponds need more area, while tank-based systems like RAS can fit in tighter spaces. More land lowers crowding pressure, but also raises exposure to flood, seepage, and construction mistakes."
+              styles={styles}
+              theme={theme}
+            />
+            <Text style={styles.bodyText}>
+              Match the system to the land you actually control, the water you can reliably access, and the daily labor you can manage.
+            </Text>
+            <View style={styles.ytSection}>
+              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              {ytSystems.slice(0, 1).map((link) => <YouTubeCard key={link.title} item={link} />)}
+            </View>
+          </>
+        );
+      case 'l3':
+        return (
+          <>
+            <InfoCard
+              title="Water quality fundamentals"
+              icon="water-outline"
+              body="Water is the operating environment for the entire business. If dissolved oxygen, pH, temperature, salinity, or ammonia move out of range, even a good species and good feed plan will underperform."
+              styles={styles}
+              theme={theme}
+            />
+            <BulletItem text="Check dissolved oxygen early morning, not only during the day." styles={styles} theme={theme} />
+            <BulletItem text="Keep a simple water log before each major stocking or feed increase." styles={styles} theme={theme} />
+            <View style={styles.ytSection}>
+              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              {ytSystems.slice(1).map((link) => <YouTubeCard key={link.title} item={link} />)}
+            </View>
+          </>
+        );
+      case 'l4':
+        return (
+          <>
+            <InfoCard
+              title="Capital and setup cost"
+              icon="cash-outline"
+              body="Setup cost is your CAPEX: pond excavation, liners, tanks, pumps, aerators, sheds, electricity work, plumbing, and starter equipment. Farmers usually underestimate this part, so keep a buffer instead of using the lowest quote."
+              styles={styles}
+              theme={theme}
+            />
+            <BulletItem text="Treat every equipment list as a working estimate, not a final invoice." styles={styles} theme={theme} />
+            <BulletItem text="Keep a contingency buffer because startup bills usually expand during execution." styles={styles} theme={theme} />
+          </>
+        );
+      case 'l5':
+        return (
+          <>
+            <InfoCard
+              title="Working capital during the crop"
+              icon="wallet-outline"
+              body="Running cost is your OPEX: feed, seed, medicines, electricity, labor, repairs, and pond upkeep. A farm that survives setup can still fail later if working capital runs short halfway through the crop."
+              styles={styles}
+              theme={theme}
+            />
+            <BulletItem text="Feed is often the largest running cost, so plan cash for the full crop cycle." styles={styles} theme={theme} />
+            <BulletItem text="Do not assume subsidy money will arrive in time to solve short-term cash flow." styles={styles} theme={theme} />
+          </>
+        );
+      case 'l6':
+        return (
+          <>
+            <Text style={styles.bodyText}>
+              Subsidy means the government may support part of an approved project cost. It does not mean the full project is paid for,
+              and it should not be treated like guaranteed instant cash.
+            </Text>
+            <BulletItem text={`The likely beneficiary share in this app is ${subsidyText}.`} styles={styles} theme={theme} />
+            <BulletItem text="You still need to arrange the remaining capital through your own funds, loan, or phased execution." styles={styles} theme={theme} />
+            <View style={styles.ytSection}>
+              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              {ytSubsidy.slice(0, 1).map((link) => <YouTubeCard key={link.title} item={link} />)}
+            </View>
+          </>
+        );
+      case 'l7':
+        return (
+          <>
+            <Text style={styles.bodyText}>
+              The funding split explains how the support is shared administratively between Centre and State.
+              It does not change the amount you see as the beneficiary portion.
+            </Text>
+            <BulletItem text={`Current funding split preview: ${fundingPattern}.`} styles={styles} theme={theme} />
+            <BulletItem text="Approval timing and release timing can still affect your actual cash flow on the ground." styles={styles} theme={theme} />
+            <View style={styles.ytSection}>
+              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              {ytSubsidy.slice(1).map((link) => <YouTubeCard key={link.title} item={link} />)}
+            </View>
+          </>
+        );
+      case 'l8':
+        return (
+          <>
+            <Text style={styles.bodyText}>These are the most common planning terms inside the app and in aquaculture project reports.</Text>
+            {glossary.map((item) => (
+              <GlossaryCard key={item.term} term={item.term} meaning={item.meaning} simple={item.simple} styles={styles} theme={theme} />
+            ))}
+          </>
+        );
+      case 'l9':
+        return (
+          <>
+            <Text style={styles.bodyText}>
+              The ROI screen is a planning estimate. It helps compare options, but it is not a guarantee of farm income.
+            </Text>
+            <BulletItem text="Compatibility score shows how well the species fits your inputs." styles={styles} theme={theme} />
+            <BulletItem text="Projected revenue is gross income before cost deduction." styles={styles} theme={theme} />
+            <BulletItem text="Projected profit is the number to judge after cost assumptions are applied." styles={styles} theme={theme} />
+            <BulletItem text="Breakeven timeline tells you how long it may take to recover the initial investment." styles={styles} theme={theme} />
+          </>
+        );
+      case 'l10':
+        return (
+          <>
+            <Text style={styles.bodyText}>
+              These are the most common reasons beginners lose money even when the first plan looked profitable.
+            </Text>
+            {beginnerWarnings.map((item) => (
+              <BulletItem key={item} text={item} styles={styles} theme={theme} accent />
+            ))}
+            <View style={styles.ytSection}>
+              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              {ytWarnings.map((link) => <YouTubeCard key={link.title} item={link} />)}
+            </View>
+          </>
+        );
+      default:
+        return lesson.description ? <Text style={styles.bodyText}>{lesson.description}</Text> : null;
+    }
+  };
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -200,107 +362,19 @@ export default function LearningCenterScreen() {
         <SectionHeader label="LESSONS" />
         <View style={styles.lessonsContainer}>
           {visibleLessons.map((lesson, idx) => (
-            <LessonCard key={lesson.id} lesson={lesson} theme={theme} styles={styles} isLast={idx === visibleLessons.length - 1} />
+            <LessonCard
+              key={lesson.id}
+              lesson={lesson}
+              theme={theme}
+              styles={styles}
+              isLast={idx === visibleLessons.length - 1}
+              isExpanded={Boolean(expandedLessons[lesson.id])}
+              onPress={() => toggleLesson(lesson.id)}
+            >
+              {renderLessonDetails(lesson)}
+            </LessonCard>
           ))}
         </View>
-
-        {/* Detailed content — always visible below lesson list */}
-
-        {/* Start here */}
-        {(activeCategory === 'all' || activeCategory === 'basics') && (
-          <>
-            <LessonSection title="🚀 START HERE — 5 STEPS BEFORE YOU SPEND" icon="flag-outline" styles={styles} theme={theme}>
-              <Text style={styles.bodyText}>🎯 Most new farmers lose money in the first crop because they skipped the planning phase. Follow these steps before spending a single rupee on your setup.</Text>
-              {roadmap.map((item, idx) => (
-                <BulletItem key={item} index={idx + 1} text={item} styles={styles} theme={theme} />
-              ))}
-            </LessonSection>
-            <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>📺 WATCH & LEARN</Text>
-              {ytBasics.map((link, i) => <YouTubeCard key={i} item={link} />)}
-            </View>
-          </>
-        )}
-
-        {/* What the business needs */}
-        {(activeCategory === 'all' || activeCategory === 'systems') && (
-          <>
-            <LessonSection title="🏗️ WHAT THE BUSINESS NEEDS" icon="build-outline" styles={styles} theme={theme}>
-              <Text style={styles.bodyText}>Think of fish farming as running a small factory — you need raw materials (fingerlings, feed), a production floor (pond or tank), utilities (water, electricity), and a sales plan. Here's how each piece fits together 👇</Text>
-              <InfoCard title="🏞️ Land or space"    icon="map-outline"    body="You don't need huge land for every system. Earthen ponds need more area (usually 0.5–2 hectares), while RAS (Recirculating Aquaculture Systems) can run in a small shed. More land = lower cost per kg, but also more risk if flooding hits."   styles={styles} theme={theme} />
-              <InfoCard title="💧 Water quality"    icon="water-outline"  body="Water is your fish's home — and it must be right. Key things to check: temperature, pH (acidity), dissolved oxygen (DO), salinity, and ammonia levels. Get a ₹500 water testing kit before stocking anything."                                      styles={styles} theme={theme} />
-              <InfoCard title="💰 Capital (Setup)"  icon="cash-outline"   body="Ponds are simpler and cheaper to start. RAS or biofloc systems have higher setup cost but can give better yields. Rule of thumb: budget 1.5× your estimate — costs always run higher in practice."                                                   styles={styles} theme={theme} />
-              <InfoCard title="🔄 Working capital"  icon="wallet-outline" body="You need money throughout the crop cycle, not just at the start. Feed alone can be 50–70% of your total running cost. Plan for 6–12 months of cash before your first harvest comes in."                                                              styles={styles} theme={theme} />
-            </LessonSection>
-            <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>📺 WATCH & LEARN</Text>
-              {ytSystems.map((link, i) => <YouTubeCard key={i} item={link} />)}
-            </View>
-          </>
-        )}
-
-        {/* Subsidy */}
-        {(activeCategory === 'all' || activeCategory === 'subsidy') && (
-          <>
-            <LessonSection title="🎁 SUBSIDY EXPLAINED SIMPLY" icon="ribbon-outline" styles={styles} theme={theme}>
-              <Text style={styles.bodyText}>💡 Subsidy doesn't mean the government pays for everything. It means they may cover a portion of your approved project cost. Here's how to think about it clearly.</Text>
-              <Text style={styles.bodyText}>📌 The <Text style={styles.boldText}>beneficiary subsidy %</Text> is the share of your project cost the government may support. So if the subsidy is 40% on a ₹10 lakh project, you might get up to ₹4 lakh — but you still need to arrange the remaining ₹6 lakh yourself.</Text>
-              <Text style={styles.bodyText}>📌 The <Text style={styles.boldText}>funding split</Text> (like 60:40) just tells you how that subsidy amount is split between the Central and State government. It doesn't change what you receive.</Text>
-              <Text style={styles.bodyText}>⚠️ <Text style={styles.boldText}>Sanction ≠ Release.</Text> Getting approved is step one. Getting the actual money in your account can take much longer and depends on state-level paperwork. Plan your cash flow as if the subsidy might arrive late.</Text>
-            </LessonSection>
-            <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>📺 WATCH & LEARN</Text>
-              {ytSubsidy.map((link, i) => <YouTubeCard key={i} item={link} />)}
-            </View>
-          </>
-        )}
-
-        {/* Glossary */}
-        {(activeCategory === 'all' || activeCategory === 'glossary') && (
-          <LessonSection title="📖 JARGON-FREE GLOSSARY" icon="book-outline" styles={styles} theme={theme}>
-            <Text style={styles.bodyText}>You'll see these terms everywhere in fish farming. Here's what they actually mean in plain English 👇</Text>
-            {glossary.map((item) => (
-              <GlossaryCard key={item.term} term={item.term} meaning={item.meaning} simple={item.simple} styles={styles} theme={theme} />
-            ))}
-          </LessonSection>
-        )}
-
-        {/* Results */}
-        {(activeCategory === 'all' || activeCategory === 'results') && (
-          <LessonSection title="📊 HOW TO READ YOUR APP RESULT" icon="analytics-outline" styles={styles} theme={theme}>
-            <Text style={styles.bodyText}>The ROI calculator gives you a planning estimate — not a guarantee. Here's how to read each number correctly 👇</Text>
-            <BulletItem text="🎯 Compatibility score — how well a species matches your water, land, and budget inputs. Higher = better fit for your setup." styles={styles} theme={theme} />
-            <BulletItem text="💵 Projected revenue — your estimated income from selling the harvest. This is before subtracting any costs." styles={styles} theme={theme} />
-            <BulletItem text="📈 Projected profit — what may remain after setup cost (CAPEX) and running cost (OPEX) assumptions are applied. This is the number to focus on." styles={styles} theme={theme} />
-            <BulletItem text="⏳ Breakeven timeline — how many crop cycles before you recover your initial investment, assuming everything goes to plan." styles={styles} theme={theme} />
-            <BulletItem text="🔍 Tap any species card to see why the app rated it strong, medium, or weak for your specific situation." styles={styles} theme={theme} />
-          </LessonSection>
-        )}
-
-        {/* Current rules */}
-        {(activeCategory === 'all' || activeCategory === 'results') && (
-          <LessonSection title="⚙️ HOW THIS APP CALCULATES" icon="settings-outline" styles={styles} theme={theme}>
-            <BulletItem text="Subsidy eligibility checks expect at least 0.1 hectare — smaller farms may not qualify for PMMSY-linked schemes." styles={styles} theme={theme} />
-            <BulletItem text="FCR, survival rate, and cycle duration are sourced from CIFA, MPEDA, and NABARD documents — not random estimates." styles={styles} theme={theme} />
-            <BulletItem text="If you see a warning or disclaimer in the app, treat it seriously. Update your local market prices before making financial decisions." styles={styles} theme={theme} />
-          </LessonSection>
-        )}
-
-        {/* Warnings */}
-        {(activeCategory === 'all' || activeCategory === 'warnings') && (
-          <>
-            <LessonSection title="⚠️ MISTAKES TO AVOID" icon="warning-outline" styles={styles} theme={theme}>
-              <Text style={styles.bodyText}>These are the most common reasons why new fish farmers lose money. Read them once before you invest anything. 🙏</Text>
-              {beginnerWarnings.map((item) => (
-                <BulletItem key={item} text={item} styles={styles} theme={theme} accent />
-              ))}
-            </LessonSection>
-            <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>📺 WATCH & LEARN</Text>
-              {ytWarnings.map((link, i) => <YouTubeCard key={i} item={link} />)}
-            </View>
-          </>
-        )}
 
         {/* Policy guidance link card */}
         <TouchableOpacity
@@ -352,25 +426,55 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-/** Lesson / article card: icon container (surfaceAlt, 44px, primary icon) + title + duration badge + arrow */
-function LessonCard({ lesson, theme, styles, isLast }: { lesson: LessonItem; theme: any; styles: any; isLast: boolean }) {
+/** Lesson / article card: tap to expand topic details inline */
+function LessonCard({
+  lesson,
+  theme,
+  styles,
+  isLast,
+  isExpanded,
+  onPress,
+  children,
+}: {
+  lesson: LessonItem;
+  theme: any;
+  styles: any;
+  isLast: boolean;
+  isExpanded: boolean;
+  onPress: () => void;
+  children?: React.ReactNode;
+}) {
   return (
     <View style={[styles.lessonCard, isLast && { borderBottomWidth: 0 }]}>
-      {/* Icon container — surfaceAlt, 44px */}
-      <View style={styles.lessonIconContainer}>
-        <Ionicons name={lesson.icon} size={20} color={theme.colors.primary} />
-      </View>
-      {/* Text block */}
-      <View style={styles.lessonTextBlock}>
-        <Text style={styles.lessonTitle} numberOfLines={2}>{lesson.title}</Text>
-      </View>
-      {/* Duration badge — pill, accentSoft bg + accent text */}
-      <View style={styles.durationBadge}>
-        <Ionicons name="time-outline" size={10} color={theme.colors.accent} />
-        <Text style={styles.durationText}>{lesson.duration}</Text>
-      </View>
-      {/* Arrow */}
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+      <TouchableOpacity style={styles.lessonCardButton} activeOpacity={0.82} onPress={onPress}>
+        <View style={styles.lessonIconContainer}>
+          <Ionicons name={lesson.icon} size={20} color={theme.colors.primary} />
+        </View>
+        <View style={styles.lessonTextBlock}>
+          <Text style={styles.lessonTitle} numberOfLines={2}>{lesson.title}</Text>
+          {lesson.description ? (
+            <Text style={styles.lessonSubtitle} numberOfLines={isExpanded ? undefined : 2}>
+              {lesson.description}
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.durationBadge}>
+          <Ionicons name="time-outline" size={10} color={theme.colors.accent} />
+          <Text style={styles.durationText}>{lesson.duration}</Text>
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={theme.colors.textMuted}
+          style={isExpanded ? styles.lessonChevronExpanded : undefined}
+        />
+      </TouchableOpacity>
+
+      {isExpanded ? (
+        <View style={styles.lessonExpandedBody}>
+          {children}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -383,18 +487,6 @@ function StatCard({ label, value, icon, theme, styles }: any) {
       </View>
       <Text style={styles.statCardLabel}>{label}</Text>
       <Text style={styles.statCardValue}>{value}</Text>
-    </View>
-  );
-}
-
-function LessonSection({ title, icon, styles, theme, children }: any) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionTitleRow}>
-        <Ionicons name={icon} size={14} color={theme.colors.textMuted} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      <View style={styles.sectionCard}>{children}</View>
     </View>
   );
 }
@@ -598,13 +690,15 @@ const getStyles = (theme: any) =>
       ...theme.shadows.sm,
     },
     lessonCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
       paddingVertical: 14,
       paddingHorizontal: 14,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    lessonCardButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
     },
     // Icon container — surfaceAlt, 44px, primary icon
     lessonIconContainer: {
@@ -625,6 +719,12 @@ const getStyles = (theme: any) =>
       fontWeight: '700',
       lineHeight: 20,
     },
+    lessonSubtitle: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
+      marginTop: 4,
+    },
     // Duration badge — pill, accentSoft bg + accent text
     durationBadge: {
       flexDirection: 'row',
@@ -640,6 +740,16 @@ const getStyles = (theme: any) =>
       color: theme.colors.accent,
       fontSize: 10,
       fontWeight: '700',
+    },
+    lessonChevronExpanded: {
+      transform: [{ rotate: '90deg' }],
+    },
+    lessonExpandedBody: {
+      marginTop: 14,
+      paddingTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      gap: 10,
     },
 
     // ── Section headers ── uppercase, textMuted, letterSpacing 2 ────────────

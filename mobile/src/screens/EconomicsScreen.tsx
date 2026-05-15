@@ -248,6 +248,7 @@ export default function EconomicsScreen() {
   const subsidyPercent = knowledgeInsights?.beneficiarySubsidyPercent;
   const centralPercent = knowledgeInsights?.fundingShare?.centralPercent;
   const statePercent = knowledgeInsights?.fundingShare?.statePercent;
+  const categoryPreview = getCategorySubsidyPreview(farmerCategory, subsidyPercent);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -533,11 +534,12 @@ export default function EconomicsScreen() {
                 <View style={[styles.subsidySchemeCard, { borderLeftColor: theme.colors.primary }]}>
                   <Text style={styles.subsidySchemeName}>PMMSY — Beneficiary Subsidy</Text>
                   <Text style={styles.subsidySchemeValue}>
-                    {subsidyPercent != null ? `${subsidyPercent}%` : 'Pending'}
+                    {categoryPreview.percentLabel}
                   </Text>
                   <Text style={styles.subsidyEligibility}>
                     {getPolicyPreviewDescription(knowledgeInsights, farmerCategory)}
                   </Text>
+                  <Text style={styles.subsidyCategoryMeta}>{categoryPreview.note}</Text>
                 </View>
               </View>
 
@@ -646,16 +648,54 @@ function formatKnowledgeValue(value: number | null | undefined, unit?: string | 
 }
 
 function getPolicyPreviewDescription(knowledgeInsights: any, farmerCategory: string) {
-  if (!knowledgeInsights) return 'Choose your state and category to load policy-backed guidance.';
+  if (!knowledgeInsights) {
+    const fallback = getCategorySubsidyPreview(farmerCategory);
+    return `Choose your state to load policy-backed guidance. The preview is currently showing the default ${fallback.percentLabel} assumption for ${fallback.label}.`;
+  }
   const subsidy = knowledgeInsights?.beneficiarySubsidyPercent;
   const central = knowledgeInsights?.fundingShare?.centralPercent;
   const state = knowledgeInsights?.fundingShare?.statePercent;
-  const categoryLabel = farmerCategory === 'GENERAL' ? 'general category' : farmerCategory.toLowerCase();
+  const categoryLabel = getCategorySubsidyPreview(farmerCategory, subsidy).label;
   if (subsidy == null) return 'The app has not found a subsidy percentage for this profile yet.';
   if (central != null && state != null) {
     return `For a ${categoryLabel} applicant — up to ${subsidy}% support on eligible project cost. Centre:State split is ${central}:${state}.`;
   }
   return `For a ${categoryLabel} applicant — up to ${subsidy}% support on eligible project cost.`;
+}
+
+function getCategorySubsidyPreview(
+  farmerCategory: 'GENERAL' | 'WOMEN' | 'SC' | 'ST' | string,
+  subsidyPercent?: number | null
+) {
+  const fallbackPercent = farmerCategory === 'GENERAL' ? 40 : 60;
+
+  switch (farmerCategory) {
+    case 'WOMEN':
+      return {
+        label: 'women beneficiary',
+        percentLabel: `${subsidyPercent ?? fallbackPercent}%`,
+        note: 'Women applicants are shown under the priority-beneficiary PMMSY track used by the calculator.',
+      };
+    case 'SC':
+      return {
+        label: 'SC beneficiary',
+        percentLabel: `${subsidyPercent ?? fallbackPercent}%`,
+        note: 'SC applicants are shown under the priority-beneficiary PMMSY track used by the calculator.',
+      };
+    case 'ST':
+      return {
+        label: 'ST beneficiary',
+        percentLabel: `${subsidyPercent ?? fallbackPercent}%`,
+        note: 'ST applicants are shown under the priority-beneficiary PMMSY track used by the calculator.',
+      };
+    case 'GENERAL':
+    default:
+      return {
+        label: 'general category beneficiary',
+        percentLabel: `${subsidyPercent ?? fallbackPercent}%`,
+        note: 'General applicants are shown with the baseline PMMSY beneficiary subsidy assumption.',
+      };
+  }
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -1071,6 +1111,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: 12,
     lineHeight: 17,
+  },
+  subsidyCategoryMeta: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
   },
   benchmarkList: {
     gap: 8,
