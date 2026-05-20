@@ -10,11 +10,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import { type DoctorDashboardSnapshot, getDoctorDashboardSnapshot } from '../services/doctorDashboardService';
 
 export default function DoctorReportsScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const styles = getStyles(theme);
 
@@ -56,40 +58,40 @@ export default function DoctorReportsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadReports('refresh')} tintColor={c.primary} />}
       >
-        <Text style={styles.title}>Performance Report</Text>
-        <Text style={styles.subtitle}>Track how many farms you covered, what was completed, and where visit pressure is highest.</Text>
+        <Text style={styles.title}>{t('doctor.reports')}</Text>
+        <Text style={styles.subtitle}>{t('doctor.weeklyHelp')}</Text>
 
         <View style={styles.primaryStatsGrid}>
-          <StatCard label="Assigned" value={String(reports.totalAssigned)} icon="briefcase-outline" accent={c.primary} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
-          <StatCard label="Completed" value={String(reports.completed)} icon="checkmark-circle-outline" accent={c.secondary} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
-          <StatCard label="Missed" value={String(reports.missed)} icon="alert-circle-outline" accent={c.error} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
-          <StatCard label="Repeat Ponds" value={String(reports.repeatPonds)} icon="refresh-outline" accent={c.accent} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+          <StatCard label={t('doctor.statAssigned')} value={String(reports.totalAssigned)} icon="briefcase-outline" accent={c.primary} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+          <StatCard label={t('doctor.statCompleted')} value={String(reports.completed)} icon="checkmark-circle-outline" accent={c.secondary} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+          <StatCard label={t('doctor.statMissed')} value={String(reports.missed)} icon="alert-circle-outline" accent={c.error} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+          <StatCard label={t('doctor.statRepeatPonds')} value={String(reports.repeatPonds)} icon="refresh-outline" accent={c.accent} backgroundColor={c.surface} textColor={c.textPrimary} subTextColor={c.textSecondary} />
         </View>
 
         <View style={styles.summaryBand}>
-          <ProgressBlock label="Completion Rate" value={`${reports.completionRate}%`} progress={reports.completionRate} color={c.secondary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
-          <ProgressBlock label="Avg Response" value={`${reports.averageResponseHours}h`} progress={Math.max(0, 100 - reports.averageResponseHours * 4)} color={c.primary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
-          <ProgressBlock label="Avg Closure" value={`${reports.averageClosureHours}h`} progress={Math.max(0, 100 - reports.averageClosureHours * 2)} color={c.accent} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <ProgressBlock label={t('doctor.statCompletionRate')} value={`${reports.completionRate}%`} progress={reports.completionRate} color={c.secondary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <ProgressBlock label={t('doctor.statAvgResponse')} value={`${reports.averageResponseHours}h`} progress={Math.max(0, 100 - reports.averageResponseHours * 4)} color={c.primary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <ProgressBlock label={t('doctor.statAvgClosure')} value={`${reports.averageClosureHours}h`} progress={Math.max(0, 100 - reports.averageClosureHours * 2)} color={c.accent} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
         </View>
 
-        <Text style={styles.sectionLabel}>CASE STATUS MIX</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.statInProgress').toUpperCase()}</Text>
         <View style={styles.chartCard}>
-          <BarRow label="In Progress" value={reports.inProgress} total={Math.max(1, reports.totalAssigned)} color={c.primary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
-          <BarRow label="Waiting / Accepted" value={reports.acknowledged} total={Math.max(1, reports.totalAssigned)} color={c.accent} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
-          <BarRow label="Completed" value={reports.completed} total={Math.max(1, reports.totalAssigned)} color={c.secondary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
-          <BarRow label="Missed" value={reports.missed} total={Math.max(1, reports.totalAssigned)} color={c.error} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <BarRow label={t('doctor.statInProgress')} value={reports.inProgress} total={Math.max(1, reports.totalAssigned)} color={c.primary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <BarRow label={t('doctor.statWaitingAccepted')} value={reports.acknowledged} total={Math.max(1, reports.totalAssigned)} color={c.accent} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <BarRow label={t('doctor.statCompleted')} value={reports.completed} total={Math.max(1, reports.totalAssigned)} color={c.secondary} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
+          <BarRow label={t('doctor.statMissed')} value={reports.missed} total={Math.max(1, reports.totalAssigned)} color={c.error} textColor={c.textPrimary} trackColor={c.surfaceAlt} />
         </View>
 
-        <Text style={styles.sectionLabel}>SERVICE HOTSPOTS</Text>
+        <Text style={styles.sectionLabel}>{t('profile.location').toUpperCase()}</Text>
         <View style={styles.chartCard}>
           {reports.topLocations.length === 0 ? (
-            <Text style={styles.emptyText}>Hotspots will appear after a few live or simulator visits are logged.</Text>
+            <Text style={styles.emptyText}>{t('doctor.hotspotEmpty')}</Text>
           ) : (
             reports.topLocations.map((location) => (
               <View key={location.label} style={styles.hotspotRow}>
                 <View>
                   <Text style={styles.hotspotTitle}>{location.label}</Text>
-                  <Text style={styles.hotspotMeta}>{location.count} appointment{location.count === 1 ? '' : 's'}</Text>
+                  <Text style={styles.hotspotMeta}>{t('doctor.appointmentCount', { count: location.count })}</Text>
                 </View>
                 <View style={styles.hotspotBadge}>
                   <Text style={styles.hotspotBadgeText}>{location.count}</Text>
@@ -99,11 +101,11 @@ export default function DoctorReportsScreen() {
           )}
         </View>
 
-        <Text style={styles.sectionLabel}>FIELD QUALITY NOTES</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.notes').toUpperCase()}</Text>
         <View style={styles.notesCard}>
-          <Insight icon="map-outline" text="Route planning is strongest when ponds have coordinates saved. The dashboard is already reading those when they exist." />
-          <Insight icon="images-outline" text="Farmer-captured fish and pond photos are attached to each appointment so you can review before travel." />
-          <Insight icon="alarm-outline" text="Reminder alerts are generated at 12h, 24h, 36h, and 48h thresholds until the appointment is completed." />
+          <Insight icon="map-outline" text={t('doctor.insightRoute')} />
+          <Insight icon="images-outline" text={t('doctor.insightPhotos')} />
+          <Insight icon="alarm-outline" text={t('doctor.insightReminders')} />
         </View>
       </ScrollView>
     </SafeAreaView>

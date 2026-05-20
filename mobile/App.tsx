@@ -68,6 +68,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   DiseaseList: undefined;
   DiseaseDetail: { disease: any };
+  Maps: undefined;
   DoctorNetwork: undefined;
 };
 
@@ -75,7 +76,7 @@ export type MainTabParamList = {
   Home: undefined;
   Species: undefined;
   Economics: undefined;
-  Maps: undefined;
+  Diseases: undefined;
   Profile: undefined;
 };
 
@@ -117,8 +118,8 @@ function MainTabs() {
             case 'Economics':
               iconName = focused ? 'calculator' : 'calculator-outline';
               break;
-            case 'Maps':
-              iconName = focused ? 'map' : 'map-outline';
+            case 'Diseases':
+              iconName = focused ? 'bug' : 'bug-outline';
               break;
             case 'Profile':
               iconName = focused ? 'person' : 'person-outline';
@@ -132,10 +133,11 @@ function MainTabs() {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '700',
           marginBottom: 2,
           textTransform: 'uppercase',
+          letterSpacing: 0.2,
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
@@ -147,7 +149,8 @@ function MainTabs() {
         },
         tabBarItemStyle: {
           borderRadius: 16,
-          marginHorizontal: 4,
+          marginHorizontal: 2,
+          paddingHorizontal: 2,
         },
         headerShown: false,
         tabBarBackground: () => (
@@ -171,9 +174,9 @@ function MainTabs() {
         options={{ title: t('navigation.economics') || 'Economics' }}
       />
       <Tab.Screen
-        name="Maps"
-        component={MapScreen}
-        options={{ title: t('navigation.maps') || 'Map' }}
+        name="Diseases"
+        component={DiseaseListScreen}
+        options={{ title: t('disease.title') || 'Diseases' }}
       />
       <Tab.Screen
         name="Profile"
@@ -263,6 +266,7 @@ function FarmerNavigator() {
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="DiseaseList" component={DiseaseListScreen} options={{ headerShown: false }} />
         <Stack.Screen name="DiseaseDetail" component={DiseaseDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Maps" component={MapScreen} options={{ headerShown: false }} />
         <Stack.Screen name="DoctorNetwork" component={DoctorNetworkScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>

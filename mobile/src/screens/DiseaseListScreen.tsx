@@ -3,10 +3,12 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 import { diseaseService } from '../services/apiService';
 import { resolveDiseaseImage } from '../utils/diseaseImages';
+import { getDiseaseDbOverride, type Lang } from '../utils/diseaseContent';
 
 const CATEGORIES = ['ALL', 'BACTERIAL', 'VIRAL', 'PARASITIC', 'FUNGAL', 'ENVIRONMENTAL'] as const;
 
@@ -21,11 +23,15 @@ const DiseaseCard = ({
   styles,
   theme,
   onPress,
+  t,
+  lang,
 }: {
   item: any;
   styles: any;
   theme: any;
   onPress: () => void;
+  t: (key: string) => string;
+  lang: Lang;
 }) => {
   const [imageError, setImageError] = useState(false);
   const imgUri = resolveDiseaseImage({
@@ -33,6 +39,12 @@ const DiseaseCard = ({
     category: item.category,
     image_url: item.image_url,
   });
+
+  // Apply localized override for the disease name (and symptoms if needed)
+  const override = getDiseaseDbOverride(item.slug, lang);
+  const displayName = override?.name || item.name;
+  const displaySymptoms = override?.symptoms || item.symptoms;
+  const displayAffected = item.affected_species;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
@@ -46,12 +58,12 @@ const DiseaseCard = ({
       ) : (
         <View style={styles.cardImageFallback}>
           <Ionicons name="bug-outline" size={40} color={theme.colors.primary} />
-          <Text style={styles.cardImageFallbackText}>{item.category}</Text>
+          <Text style={styles.cardImageFallbackText}>{t(`disease.categories.${item.category}`) || item.category}</Text>
         </View>
       )}
       <View style={styles.cardContent}>
         <View style={styles.row}>
-          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.name}>{displayName}</Text>
           <View style={[
             styles.severityBadge,
             item.severity === 'HIGH' ? styles.high : item.severity === 'MEDIUM' ? styles.medium : styles.low,
@@ -65,16 +77,16 @@ const DiseaseCard = ({
               styles.severityText,
               item.severity === 'HIGH' ? styles.highText : item.severity === 'MEDIUM' ? styles.mediumText : styles.lowText,
             ]}>
-              {item.severity}
+              {t(`disease.severity.${item.severity}`) || item.severity}
             </Text>
           </View>
         </View>
-        <Text style={styles.meta}>{item.category}</Text>
+        <Text style={styles.meta}>{t(`disease.categories.${item.category}`) || item.category}</Text>
         <Text style={styles.species}>
-          Affected: {(item.affected_species || []).slice(0, 3).join(', ') || 'Various species'}
+          {t('disease.affected')} {(displayAffected || []).slice(0, 3).join(', ') || t('disease.variousSpecies')}
         </Text>
         <Text style={styles.preview} numberOfLines={2}>
-          {(item.symptoms || []).slice(0, 3).join(' • ')}
+          {(displaySymptoms || []).slice(0, 3).join(' • ')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -83,6 +95,8 @@ const DiseaseCard = ({
 
 export default function DiseaseListScreen() {
   const navigation = useNavigation<any>();
+  const { t, i18n } = useTranslation();
+  const lang: Lang = (i18n.language?.startsWith('hi') ? 'hi' : 'en');
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const [diseases, setDiseases] = useState<any[]>([]);
@@ -108,27 +122,30 @@ export default function DiseaseListScreen() {
     const q = query.trim().toLowerCase();
     if (!q) return diseases;
     return diseases.filter((d) => {
-      const text = `${d.name} ${(d.symptoms || []).join(' ')} ${(d.affected_species || []).join(' ')}`.toLowerCase();
+      const override = getDiseaseDbOverride(d.slug, lang);
+      const localizedName = override?.name || d.name;
+      const localizedSymptoms = override?.symptoms || d.symptoms;
+      const text = `${localizedName} ${d.name} ${(localizedSymptoms || []).join(' ')} ${(d.affected_species || []).join(' ')}`.toLowerCase();
       return text.includes(q);
     });
-  }, [diseases, query]);
+  }, [diseases, query, lang]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Disease Intelligence" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={t('disease.title')} onBack={() => navigation.goBack()} />
 
       <View style={styles.searchWrap}>
         <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by symptom, species, disease..."
+          placeholder={t('disease.searchPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           style={styles.searchInput}
         />
       </View>
 
-      <View style={{ flexGrow: 0, minHeight: 40, marginBottom: 12 }}>
+      <View style={{ flexGrow: 0, minHeight: 44, marginBottom: 8 }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -140,11 +157,20 @@ export default function DiseaseListScreen() {
               style={[styles.filterChip, category === item && styles.filterChipActive]} 
               onPress={() => setCategory(item as any)}
             >
-              <Text style={[styles.filterText, category === item && styles.filterTextActive]}>{item}</Text>
+              <Text style={[styles.filterText, category === item && styles.filterTextActive]}>
+                {t(`disease.categories.${item}`) || item}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
+
+      {/* Item count */}
+      {!loading && (
+        <View style={styles.countRow}>
+          <Text style={styles.countText}>{filtered.length} DISEASES</Text>
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -155,12 +181,14 @@ export default function DiseaseListScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<Text style={styles.emptyText}>No disease record found for this filter.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t('disease.noResults')}</Text>}
           renderItem={({ item }) => (
             <DiseaseCard
               item={item}
               styles={styles}
               theme={theme}
+              t={t}
+              lang={lang}
               onPress={() => navigation.navigate('DiseaseDetail', { disease: item })}
             />
           )}
@@ -186,18 +214,29 @@ const getStyles = (theme: any) => StyleSheet.create({
     gap: 8,
   },
   searchInput: { flex: 1, color: theme.colors.textPrimary, paddingVertical: 12 },
-  filters: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  filters: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10, gap: 8 },
   filterChip: {
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 36,
     backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterChipActive: { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary },
   filterText: { color: theme.colors.textSecondary, fontWeight: '700', fontSize: 12 },
   filterTextActive: { color: theme.colors.textPrimary },
+  countRow: { paddingHorizontal: 16, paddingBottom: 6 },
+  countText: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { paddingHorizontal: 16, paddingBottom: 110, paddingTop: 4 },
   card: {

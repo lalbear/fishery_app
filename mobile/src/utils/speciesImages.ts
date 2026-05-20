@@ -34,7 +34,9 @@ const IMG_ANABAS_TESTUDINEUS         = require('../../assets/images/species/anab
 
 // ── Tilapia / Cichlid / Coastal ──────────────────────────────────────────────
 const IMG_OREOCHROMIS_NILOTICUS      = require('../../assets/images/species/oreochromis_niloticus.jpg');
-const IMG_ETROPLUS_SURATENSIS        = require('../../assets/images/species/etroplus_suratensis.jpg');
+// Etroplus suratensis (Pearlspot) removed — coastal southern India species,
+// not cultivable in Bihar/UP. Image import kept commented for reference.
+// const IMG_ETROPLUS_SURATENSIS     = require('../../assets/images/species/etroplus_suratensis.jpg');
 
 // ── Brackish / Marine finfish ─────────────────────────────────────────────────
 const IMG_LATES_CALCARIFER           = require('../../assets/images/species/lates_calcarifer.jpg');
@@ -51,7 +53,9 @@ const IMG_SALMO_TRUTTA               = require('../../assets/images/species/salm
 
 // ── Shrimp ────────────────────────────────────────────────────────────────────
 const IMG_LITOPENAEUS_VANNAMEI       = require('../../assets/images/species/litopenaeus_vannamei.jpg');
-const IMG_PENAEUS_MONODON            = require('../../assets/images/species/penaeus_monodon.jpg');
+// Penaeus monodon (Black Tiger Shrimp) removed — strictly coastal/maritime,
+// not farmed in inland Bihar or UP. Image import kept commented for reference.
+// const IMG_PENAEUS_MONODON         = require('../../assets/images/species/penaeus_monodon.jpg');
 const IMG_MACROBRACHIUM_ROSENBERGII  = require('../../assets/images/species/macrobrachium_rosenbergii.jpg');
 const IMG_MACROBRACHIUM_MALCOLMSONII = require('../../assets/images/species/macrobrachium_malcolmsonii.jpg');
 
@@ -96,7 +100,7 @@ const SPECIES_MAP: Record<string, any> = {
   'channa marulius':             img(IMG_CHANNA_MARULIUS),
   'anabas testudineus':          img(IMG_ANABAS_TESTUDINEUS),
   'oreochromis niloticus':       img(IMG_OREOCHROMIS_NILOTICUS),
-  'etroplus suratensis':         img(IMG_ETROPLUS_SURATENSIS),
+  // 'etroplus suratensis' removed — coastal southern India, not cultivable in Bihar/UP
   'lates calcarifer':            img(IMG_LATES_CALCARIFER),
   'chanos chanos':               img(IMG_CHANOS_CHANOS),
   'mugil cephalus':              img(IMG_MUGIL_CEPHALUS),
@@ -109,7 +113,7 @@ const SPECIES_MAP: Record<string, any> = {
   'salmo trutta':                img(IMG_SALMO_TRUTTA),
   'salmo trutta fario':          img(IMG_SALMO_TRUTTA),
   'litopenaeus vannamei':        img(IMG_LITOPENAEUS_VANNAMEI),
-  'penaeus monodon':             img(IMG_PENAEUS_MONODON),
+  // 'penaeus monodon' removed — strictly coastal/maritime, not farmed in Bihar/UP
   'macrobrachium rosenbergii':   img(IMG_MACROBRACHIUM_ROSENBERGII),
   'macrobrachium malcolmsonii':  img(IMG_MACROBRACHIUM_MALCOLMSONII),
   'scylla serrata':              img(IMG_SCYLLA_SERRATA),
@@ -143,11 +147,12 @@ export function getSpeciesImageUri(
   if (key.includes('penaeus') || key.includes('macrobrachium') || key.includes('metapenaeus') || key.includes('litopenaeus')) {
     return IMG_SHRIMP;
   }
-  if (key.includes('scylla')) return IMG_CRAB;
+  if (key.includes('scylla') || key.includes('sartoriana') || key.includes('barytelphusa') || key.includes('paratelphusa')) return IMG_CRAB;
   if (
     key.includes('clarias') || key.includes('mystus') || key.includes('heteropneustes') ||
     key.includes('wallago') || key.includes('pangasianodon') || key.includes('ompok') ||
-    key.includes('sperata') || key.includes('monopterus')
+    key.includes('sperata') || key.includes('monopterus') || key.includes('mastacembelus') ||
+    key.includes('rita') || key.includes('pangasius')
   ) {
     return IMG_CATFISH;
   }

@@ -3,9 +3,10 @@ import { ScrollView, StyleSheet, Text, View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
-import { getDiseaseEducationContent } from '../utils/diseaseContent';
+import { getDiseaseEducationContent, getDiseaseDbOverride, type Lang } from '../utils/diseaseContent';
 import { resolveDiseaseImage } from '../utils/diseaseImages';
 
 function Section({ title, items, theme, styles }: any) {
@@ -23,6 +24,8 @@ function Section({ title, items, theme, styles }: any) {
 export default function DiseaseDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t, i18n } = useTranslation();
+  const lang: Lang = (i18n.language?.startsWith('hi') ? 'hi' : 'en');
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const disease = route.params?.disease;
@@ -31,8 +34,8 @@ export default function DiseaseDetailScreen() {
   if (!disease) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title="Disease Detail" onBack={() => navigation.goBack()} />
-        <View style={styles.empty}><Text style={styles.emptyText}>No disease data found.</Text></View>
+        <ScreenHeader title={t('disease.detailTitle')} onBack={() => navigation.goBack()} />
+        <View style={styles.empty}><Text style={styles.emptyText}>{t('disease.notFound')}</Text></View>
       </SafeAreaView>
     );
   }
@@ -42,7 +45,15 @@ export default function DiseaseDetailScreen() {
     category: disease.category,
     image_url: disease.image_url,
   });
-  const education = getDiseaseEducationContent(disease.slug);
+  const education = getDiseaseEducationContent(disease.slug, lang);
+  const override = getDiseaseDbOverride(disease.slug, lang);
+
+  // Use localized override when available, else fall back to DB row
+  const displayName = override?.name || disease.name;
+  const displaySymptoms = override?.symptoms || disease.symptoms;
+  const displayCauses = override?.causes || disease.causes;
+  const displayPrevention = override?.prevention || disease.prevention;
+  const displayTreatment = override?.treatment || disease.treatment;
 
   const severityColor =
     disease.severity === 'HIGH' ? theme.colors.error
@@ -51,7 +62,7 @@ export default function DiseaseDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title={disease.name} onBack={() => navigation.goBack()} />
+      <ScreenHeader title={displayName} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content}>
 
         {/* Hero Image */}
@@ -65,50 +76,50 @@ export default function DiseaseDetailScreen() {
         ) : (
           <View style={styles.heroImageFallback}>
             <Ionicons name="bug-outline" size={54} color={theme.colors.primary} />
-            <Text style={styles.heroImageFallbackText}>{disease.category}</Text>
+            <Text style={styles.heroImageFallbackText}>{t(`disease.categories.${disease.category}`) || disease.category}</Text>
           </View>
         )}
 
         {/* Info Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroTopRow}>
-            <Text style={styles.heroMeta}>{disease.category}</Text>
+            <Text style={styles.heroMeta}>{t(`disease.categories.${disease.category}`) || disease.category}</Text>
             <View style={[styles.severityBadge, { backgroundColor: `${severityColor}22` }]}>
               <Ionicons
                 name={disease.severity === 'HIGH' ? 'alert-circle' : disease.severity === 'MEDIUM' ? 'warning' : 'information-circle'}
                 size={12}
                 color={severityColor}
               />
-              <Text style={[styles.severityText, { color: severityColor }]}>{disease.severity} RISK</Text>
+              <Text style={[styles.severityText, { color: severityColor }]}>{t(`disease.severity.${disease.severity}`) || disease.severity} {t('disease.riskSuffix')}</Text>
             </View>
           </View>
-          <Text style={styles.heroTitle}>{disease.name}</Text>
+          <Text style={styles.heroTitle}>{displayName}</Text>
           {disease.mortality_rate != null && (
-            <Text style={styles.heroBody}>Mortality risk: <Text style={{ color: theme.colors.error, fontWeight: '800' }}>{disease.mortality_rate}%</Text></Text>
+            <Text style={styles.heroBody}>{t('disease.mortalityRisk')} <Text style={{ color: theme.colors.error, fontWeight: '800' }}>{disease.mortality_rate}%</Text></Text>
           )}
-          <Text style={styles.heroBody}>Affected species: {(disease.affected_species || []).join(', ') || 'Not specified'}</Text>
+          <Text style={styles.heroBody}>{t('disease.affectedSpecies')} {(disease.affected_species || []).join(', ') || t('disease.notSpecified')}</Text>
           {(disease.seasonality || []).length > 0 && (
             <View style={styles.seasonRow}>
               <Ionicons name="calendar-outline" size={13} color={theme.colors.textMuted} />
-              <Text style={styles.seasonText}>Season: {disease.seasonality.join(', ')}</Text>
+              <Text style={styles.seasonText}>{t('disease.season')} {disease.seasonality.join(', ')}</Text>
             </View>
           )}
         </View>
 
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>What this means on the farm</Text>
+          <Text style={styles.summaryTitle}>{t('disease.sections.whatItMeans')}</Text>
           <Text style={styles.summaryText}>{education.overview}</Text>
-          <Text style={styles.summaryTitle}>Why it usually shows up</Text>
+          <Text style={styles.summaryTitle}>{t('disease.sections.whyItHappens')}</Text>
           <Text style={styles.summaryText}>{education.whyItHappens}</Text>
         </View>
 
-        <Section title="Symptoms" items={disease.symptoms} theme={theme} styles={styles} />
-        <Section title="Causes" items={disease.causes} theme={theme} styles={styles} />
-        <Section title="Prevention" items={disease.prevention} theme={theme} styles={styles} />
-        <Section title="Treatment" items={disease.treatment} theme={theme} styles={styles} />
-        <Section title="First response" items={education.firstResponse} theme={theme} styles={styles} />
-        <Section title="Farmer checklist" items={education.farmerChecklist} theme={theme} styles={styles} />
-        <Section title="Call a doctor urgently if" items={education.callDoctorNow} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.symptoms')} items={displaySymptoms} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.causes')} items={displayCauses} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.prevention')} items={displayPrevention} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.treatment')} items={displayTreatment} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.firstResponse')} items={education.firstResponse} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.farmerChecklist')} items={education.farmerChecklist} theme={theme} styles={styles} />
+        <Section title={t('disease.sections.callDoctorNow')} items={education.callDoctorNow} theme={theme} styles={styles} />
       </ScrollView>
     </SafeAreaView>
   );

@@ -195,7 +195,7 @@ export class MarketDataIngestionWorker {
       { speciesName: 'Rohu', marketName: 'Hyderabad', stateCode: 'TG', priceInrPerKg: 150, grade: 'A', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 750 },
       { speciesName: 'Catla', marketName: 'Kolkata', stateCode: 'WB', priceInrPerKg: 155, grade: 'A', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 450 },
       { speciesName: 'Vannamei Shrimp', marketName: 'Visakhapatnam', stateCode: 'AP', priceInrPerKg: 375, grade: '60-count', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 1200 },
-      { speciesName: 'Black Tiger Shrimp', marketName: 'Kochi', stateCode: 'KL', priceInrPerKg: 650, grade: 'Standard', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 800 },
+      // Black Tiger Shrimp removed — not farmed in Bihar/UP inland systems
       { speciesName: 'Pangasius', marketName: 'Nadia', stateCode: 'WB', priceInrPerKg: 175, grade: 'A', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 2000 },
       { speciesName: 'Tilapia', marketName: 'Bengaluru', stateCode: 'KA', priceInrPerKg: 160, grade: 'A', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 600 },
       { speciesName: 'Striped Murrel', marketName: 'Chennai', stateCode: 'TN', priceInrPerKg: 525, grade: 'Premium', date: new Date(), source: 'MANUAL_ENTRY', volumeKg: 150 },

@@ -1,7 +1,7 @@
 /**
  * Pond Advisory Rule Engine
  * Offline-first, zero-backend rule system.
- * Evaluates water quality readings and returns actionable advice.
+ * Evaluates water quality readings against species-specific targets.
  */
 
 export type AdvisoryLevel = 'critical' | 'warning' | 'good';
@@ -20,12 +20,19 @@ interface Reading {
     ph?: number | null;
     salinity?: number | null;
     ammonia?: number | null;
+    /** Optional: pass scientific name for species-specific thresholds */
+    speciesScientificName?: string | null;
 }
 
 export function evaluatePondHealth(reading: Reading): Advisory {
-    const { temperature, dissolved_oxygen, ph, ammonia } = reading;
+    const { temperature, dissolved_oxygen, ph, ammonia, speciesScientificName } = reading;
 
-    // ─── CRITICAL rules (immediate action required) ───────────────────────
+    // Import targets lazily to avoid circular deps
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getWaterQualityTargets } = require('./pondLifecycle') as typeof import('./pondLifecycle');
+    const targets = getWaterQualityTargets(speciesScientificName);
+
+    // ─── CRITICAL rules ───────────────────────────────────────────────────
     if (dissolved_oxygen != null && dissolved_oxygen < 3) {
         return {
             level: 'critical',
@@ -36,72 +43,72 @@ export function evaluatePondHealth(reading: Reading): Advisory {
         };
     }
 
-    if (ammonia != null && ammonia > 0.5) {
+    if (ammonia != null && ammonia > targets.ammoniaMax) {
         return {
             level: 'critical',
             title: '🚨 Critical: Toxic Ammonia',
-            message: `Ammonia is ${ammonia} mg/L — above safe limit of 0.5 mg/L.`,
+            message: `Ammonia is ${ammonia} mg/L — above safe limit of ${targets.ammoniaMax} mg/L.`,
             action: 'Stop feeding immediately. Do a 20–30% water exchange. Apply zeolite at 50 kg/acre.',
             icon: 'alert-circle',
         };
     }
 
-    // ─── WARNING rules (act within a few hours) ───────────────────────────
-    if (dissolved_oxygen != null && dissolved_oxygen < 5) {
+    // ─── WARNING rules ────────────────────────────────────────────────────
+    if (dissolved_oxygen != null && dissolved_oxygen < targets.doMin) {
         return {
             level: 'warning',
             title: '⚠️ Low Dissolved Oxygen',
-            message: `DO is ${dissolved_oxygen} mg/L. Optimal is 5–8 mg/L.`,
+            message: `DO is ${dissolved_oxygen} mg/L. Optimal for this species is > ${targets.doOpt} mg/L.`,
             action: 'Start aerators. Avoid feeding during low-oxygen hours (5–7 AM). Recheck in 2 hrs.',
             icon: 'warning',
         };
     }
 
-    if (ph != null && ph > 9.0) {
+    if (ph != null && ph > targets.phMax) {
         return {
             level: 'warning',
             title: '⚠️ pH Too High',
-            message: `pH is ${ph.toFixed(1)} — highly alkaline. Stress risk for fish.`,
+            message: `pH is ${ph.toFixed(1)} — above safe range of ${targets.phMin}–${targets.phMax}.`,
             action: 'Add agricultural gypsum at 10 kg/acre. Avoid lime application today.',
             icon: 'warning',
         };
     }
 
-    if (ph != null && ph < 6.5) {
+    if (ph != null && ph < targets.phMin) {
         return {
             level: 'warning',
             title: '⚠️ pH Too Low (Acidic)',
-            message: `pH is ${ph.toFixed(1)} — below safe range of 6.5–8.5.`,
+            message: `pH is ${ph.toFixed(1)} — below safe range of ${targets.phMin}–${targets.phMax}.`,
             action: 'Apply agricultural lime (quicklime) at 10–15 kg/acre in the evening.',
             icon: 'warning',
         };
     }
 
-    if (temperature != null && temperature > 35) {
+    if (temperature != null && temperature > targets.tempMax) {
         return {
             level: 'warning',
             title: '⚠️ High Water Temperature',
-            message: `Water temperature is ${temperature}°C. Above 35°C causes heat stress.`,
+            message: `Water temperature is ${temperature}°C. Above ${targets.tempMax}°C causes heat stress.`,
             action: 'Increase water depth if possible. Run aerators 24/7. Reduce feed by 30% today.',
             icon: 'thermometer',
         };
     }
 
-    if (temperature != null && temperature < 20) {
+    if (temperature != null && temperature < targets.tempMin) {
         return {
             level: 'warning',
             title: '⚠️ Low Temperature',
-            message: `Temperature is ${temperature}°C. Fish metabolism slows below 20°C.`,
+            message: `Temperature is ${temperature}°C. Below ${targets.tempMin}°C — fish metabolism slows.`,
             action: 'Reduce feeding by 50%. Avoid stocking during cold spell. Monitor DO more frequently.',
             icon: 'thermometer',
         };
     }
 
-    if (ammonia != null && ammonia > 0.1) {
+    if (ammonia != null && ammonia > targets.ammoniaMax * 0.2) {
         return {
             level: 'warning',
             title: '⚠️ Ammonia Rising',
-            message: `Ammonia at ${ammonia} mg/L — approaching danger zone.`,
+            message: `Ammonia at ${ammonia} mg/L — approaching danger zone (limit: ${targets.ammoniaMax} mg/L).`,
             action: 'Reduce feed ration by 20%. Apply probiotics. Ensure aeration is running.',
             icon: 'warning',
         };
@@ -119,27 +126,22 @@ export function evaluatePondHealth(reading: Reading): Advisory {
 
 /** Returns a simple health score 0–100 for display in dashboards */
 export function pondHealthScore(reading: Reading): number {
-    const advisories: Advisory[] = [];
-    const { dissolved_oxygen, ph, temperature, ammonia } = reading;
+    const { dissolved_oxygen, ph, temperature, ammonia, speciesScientificName } = reading;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getWaterQualityTargets } = require('./pondLifecycle') as typeof import('./pondLifecycle');
+    const t = getWaterQualityTargets(speciesScientificName);
 
     if (dissolved_oxygen != null && dissolved_oxygen < 3) return 5;
-    if (ammonia != null && ammonia > 0.5) return 10;
-    if (dissolved_oxygen != null && dissolved_oxygen < 5) return 40;
-    if (ph != null && (ph < 6.5 || ph > 9.0)) return 45;
-    if (temperature != null && temperature > 35) return 50;
-    if (ammonia != null && ammonia > 0.1) return 55;
+    if (ammonia != null && ammonia > t.ammoniaMax) return 10;
+    if (dissolved_oxygen != null && dissolved_oxygen < t.doMin) return 40;
+    if (ph != null && (ph < t.phMin || ph > t.phMax)) return 45;
+    if (temperature != null && temperature > t.tempMax) return 50;
+    if (ammonia != null && ammonia > t.ammoniaMax * 0.2) return 55;
 
-    // Score based on how close to optimal values
     let score = 100;
-    if (dissolved_oxygen != null) {
-        if (dissolved_oxygen < 6) score -= 10;
-    }
-    if (ph != null) {
-        if (ph < 7 || ph > 8.5) score -= 5;
-    }
-    if (temperature != null) {
-        if (temperature > 32 || temperature < 22) score -= 5;
-    }
+    if (dissolved_oxygen != null && dissolved_oxygen < t.doOpt) score -= 10;
+    if (ph != null && (ph < t.phOpt - 0.5 || ph > t.phOpt + 0.5)) score -= 5;
+    if (temperature != null && (temperature > t.tempOptMax || temperature < t.tempOptMin)) score -= 5;
 
     return Math.max(0, Math.min(100, score));
 }

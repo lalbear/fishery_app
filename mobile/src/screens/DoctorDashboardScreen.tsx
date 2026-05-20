@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import {
   type DecoratedDoctorAppointment,
@@ -22,6 +23,7 @@ import {
 export default function DoctorDashboardScreen() {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(theme);
   const c = theme.colors;
 
@@ -89,7 +91,7 @@ export default function DoctorDashboardScreen() {
       >
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.eyebrow}>DOCTOR COMMAND CENTER</Text>
+            <Text style={styles.eyebrow}>{t('doctor.dashboard').toUpperCase()}</Text>
             <Text style={styles.heroTitle}>{snapshot.doctor.name}</Text>
             <Text style={styles.heroSubtitle}>{snapshot.doctor.specialization}</Text>
           </View>
@@ -111,7 +113,7 @@ export default function DoctorDashboardScreen() {
           <View style={styles.heroRow}>
             <View style={styles.heroBadge}>
               <Ionicons name="pulse-outline" size={14} color={c.primary} />
-              <Text style={styles.heroBadgeText}>48-hour visit commitment active</Text>
+              <Text style={styles.heroBadgeText}>{t('doctor.appointments')}</Text>
             </View>
             <View style={styles.modeBadge}>
               <Text style={styles.modeBadgeText}>{snapshot.doctor.roleMode}</Text>
@@ -119,23 +121,23 @@ export default function DoctorDashboardScreen() {
           </View>
           <Text style={styles.heroMessage}>
             {snapshot.summary.activeCount > 0
-              ? `${snapshot.summary.activeCount} live case${snapshot.summary.activeCount === 1 ? '' : 's'} assigned. ${snapshot.summary.dueWithin12Hours} need attention in the next 12 hours.`
-              : 'No active field visits right now. New farmer bookings will appear here.'}
+              ? `${snapshot.summary.activeCount} ${t('doctor.inProgress').toLowerCase()}`
+              : t('doctor.noAppointmentsBody')}
           </Text>
           <View style={styles.metricGrid}>
-            <MetricCard label="Live Queue" value={String(snapshot.summary.activeCount)} accent={c.primary} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
-            <MetricCard label="Due <12h" value={String(snapshot.summary.dueWithin12Hours)} accent={c.accent} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
-            <MetricCard label="Completed" value={String(snapshot.summary.completedThisWeek)} accent={c.secondary} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
-            <MetricCard label="SLA Risk" value={String(snapshot.summary.overdueCount)} accent={c.error} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+            <MetricCard label={t('doctor.todayCount')} value={String(snapshot.summary.activeCount)} accent={c.primary} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+            <MetricCard label={t('doctor.pendingCount')} value={String(snapshot.summary.dueWithin12Hours)} accent={c.accent} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+            <MetricCard label={t('doctor.completedCount')} value={String(snapshot.summary.completedThisWeek)} accent={c.secondary} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
+            <MetricCard label={t('common.warning')} value={String(snapshot.summary.overdueCount)} accent={c.error} bgColor={c.surfaceAlt} textColor={c.textPrimary} subTextColor={c.textSecondary} />
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>URGENT VISITS</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.appointments').toUpperCase()}</Text>
         {urgentAppointments.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="checkmark-circle-outline" size={22} color={c.secondary} />
-            <Text style={styles.emptyTitle}>Queue is clear</Text>
-            <Text style={styles.emptyText}>When a farmer books a visit, it will appear here with alerts and pond details.</Text>
+            <Text style={styles.emptyTitle}>{t('doctor.noAppointmentsTitle')}</Text>
+            <Text style={styles.emptyText}>{t('doctor.noAppointmentsBody')}</Text>
           </View>
         ) : (
           urgentAppointments.map((appointment) => (
@@ -168,10 +170,10 @@ export default function DoctorDashboardScreen() {
               <TouchableOpacity style={styles.primaryAction} onPress={() => void handleQuickAction(appointment)}>
                 <Text style={styles.primaryActionText}>
                   {appointment.derivedStatus === 'NEW'
-                    ? 'Acknowledge'
+                    ? t('doctor.approve')
                     : appointment.derivedStatus === 'ACKNOWLEDGED'
-                    ? 'Start Visit'
-                    : 'Open Case'}
+                    ? t('doctor.inProgress')
+                    : t('common.view')}
                 </Text>
                 <Ionicons name="arrow-forward" size={16} color={c.textInverse} />
               </TouchableOpacity>
@@ -179,7 +181,7 @@ export default function DoctorDashboardScreen() {
           ))
         )}
 
-        <Text style={styles.sectionLabel}>TODAY'S ROUTE CUES</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.weeklyOverview').toUpperCase()}</Text>
         <View style={styles.routeCard}>
           {urgentAppointments.map((appointment, index) => (
             <View key={appointment.id} style={[styles.routeRow, index === urgentAppointments.length - 1 && styles.routeRowLast]}>
@@ -199,7 +201,7 @@ export default function DoctorDashboardScreen() {
           ) : null}
         </View>
 
-        <Text style={styles.sectionLabel}>RECENT COMPLETIONS</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.completedCount').toUpperCase()}</Text>
         <View style={styles.completionCard}>
           {recentCompleted.length === 0 ? (
             <Text style={styles.emptyText}>Complete a field visit to start building your progress report and visit history.</Text>

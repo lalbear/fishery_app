@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 import { economicsService } from '../services/apiService';
@@ -20,6 +21,7 @@ function formatFeedCategory(category: string): string {
 
 export default function FeedCatalogScreen() {
     const { theme } = useTheme();
+    const { t } = useTranslation();
     const styles = getStyles(theme);
     const navigation = useNavigation<any>();
     const [feeds, setFeeds] = useState<any[]>([]);
@@ -79,7 +81,7 @@ export default function FeedCatalogScreen() {
                 >
                     <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Feed & Nutrition</Text>
+                <Text style={styles.headerTitle}>{t('feed.title')}</Text>
                 <View style={{ width: 38 }} />
             </View>
 
@@ -89,7 +91,7 @@ export default function FeedCatalogScreen() {
                     <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search feed, brand, species..."
+                        placeholder={t('feed.searchPlaceholder')}
                         placeholderTextColor={theme.colors.textMuted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -136,11 +138,11 @@ export default function FeedCatalogScreen() {
                         colors={[theme.colors.primary]}
                     />
                 }
-                renderItem={({ item }) => <FeedCard item={item} theme={theme} styles={styles} />}
+                renderItem={({ item }) => <FeedCard item={item} theme={theme} styles={styles} t={t} />}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
                         <Ionicons name="nutrition-outline" size={48} color={theme.colors.textMuted} />
-                        <Text style={styles.emptyText}>No feed products found.</Text>
+                        <Text style={styles.emptyText}>{t('feed.noResults')}</Text>
                     </View>
                 }
             />
@@ -148,7 +150,7 @@ export default function FeedCatalogScreen() {
     );
 }
 
-function FeedCard({ item, theme, styles }: { item: any; theme: any; styles: any }) {
+function FeedCard({ item, theme, styles, t }: { item: any; theme: any; styles: any; t: (k: string) => string }) {
     const typeColor = getFeedTypeColor(item.feed_type);
 
     // Stock / availability badge
@@ -223,7 +225,7 @@ function FeedCard({ item, theme, styles }: { item: any; theme: any; styles: any 
                     activeOpacity={0.85}
                 >
                     <Ionicons name="cart-outline" size={18} color={theme.colors.primary} />
-                    <Text style={styles.ctaText}>{item.shop_url ? 'Shop Now' : 'Search Suppliers'}</Text>
+                    <Text style={styles.ctaText}>{t('feed.shopOnline')}</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -289,11 +291,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     },
 
     // Category filter chips — horizontal scroll, pill shape
-    categoryRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+    categoryRow: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 12, gap: 8 },
     categoryChip: {
-        height: 34,
+        minHeight: 36,
         borderRadius: 9999,
         paddingHorizontal: 14,
+        paddingVertical: 8,
         backgroundColor: theme.colors.surfaceAlt,
         borderWidth: 1.5,
         borderColor: theme.colors.border,

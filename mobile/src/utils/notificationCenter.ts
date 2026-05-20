@@ -3,13 +3,13 @@ import database from '../database';
 import Pond from '../database/models/Pond';
 import WaterQualityLog from '../database/models/WaterQualityLog';
 import { evaluatePondHealth } from './pondAdvisory';
-import { getHarvestMetrics } from './pondLifecycle';
+import { getCurrentMilestone, getCultureProfile, getWaterQualityTargets, getFeedingGuide, getSpeciesProfile } from './pondLifecycle';
 import { fetchSpeciesLookup } from './speciesLookup';
 
 const NOTIFICATION_READS_KEY = '@fishing_god_notification_reads';
 
 export type NotificationSeverity = 'info' | 'warning' | 'critical';
-export type NotificationType = 'harvest' | 'water_quality' | 'setup' | 'feed' | 'disease' | 'market' | 'subsidy';
+export type NotificationType = 'harvest' | 'water_quality' | 'setup' | 'feed' | 'disease' | 'market' | 'subsidy' | 'milestone' | 'temperature';
 
 export interface FarmNotification {
   id: string;
@@ -30,9 +30,7 @@ async function loadReadMap(): Promise<NotificationReadMap> {
     const raw = await AsyncStorage.getItem(NOTIFICATION_READS_KEY);
     if (!raw) return {};
     return JSON.parse(raw) as NotificationReadMap;
-  } catch {
-    return {};
-  }
+  } catch { return {}; }
 }
 
 async function saveReadMap(readMap: NotificationReadMap) {
@@ -40,24 +38,21 @@ async function saveReadMap(readMap: NotificationReadMap) {
 }
 
 type PondLike = {
-  id: string;
-  name: string;
-  speciesId?: string | null;
-  stockingDate?: number | null;
-  status?: string | null;
-  createdAt?: number | null;
-  updatedAt?: number | null;
+  id: string; name: string; speciesId?: string | null;
+  stockingDate?: number | null; status?: string | null;
+  systemType?: string | null;
+  createdAt?: number | null; updatedAt?: number | null;
 };
 
 type WaterLogLike = {
-  id: string;
-  pondId: string;
-  timestamp: number;
-  temperature?: number | null;
-  dissolvedOxygen?: number | null;
-  ph?: number | null;
-  ammonia?: number | null;
+  id: string; pondId: string; timestamp: number;
+  temperature?: number | null; dissolvedOxygen?: number | null;
+  ph?: number | null; ammonia?: number | null;
 };
+
+function push(items: FarmNotification[], item: Omit<FarmNotification, 'isRead'>, readMap: NotificationReadMap) {
+  items.push({ ...item, isRead: Boolean(readMap[item.id]) });
+}
 
 function buildNotifications(params: {
   ponds: PondLike[];
@@ -67,197 +62,210 @@ function buildNotifications(params: {
 }): FarmNotification[] {
   const { ponds, logs, speciesLookup, readMap } = params;
   const items: FarmNotification[] = [];
+  const now = Date.now();
+  const DAY = 86400000;
 
-  for (const pond of ponds) {
-    const normalizedStatus = String(pond.status || '').toLowerCase();
-    const species = pond.speciesId ? speciesLookup[pond.speciesId] : null;
-
-    if (normalizedStatus === 'active' && (!pond.speciesId || !pond.stockingDate)) {
-      const id = `setup-${pond.id}`;
-      items.push({
-        id,
-        type: 'setup',
-        severity: 'warning',
-        title: `Complete setup for ${pond.name}`,
-        message: 'Add species and stocking date to unlock harvest tracking and pond alerts.',
-        timestamp: pond.updatedAt || pond.createdAt || 0,
-        pondId: pond.id,
-        pondName: pond.name,
-        isRead: Boolean(readMap[id]),
-      });
-    }
-
-    if (normalizedStatus === 'active' && pond.stockingDate) {
-      const harvest = getHarvestMetrics({
-        stockingDate: pond.stockingDate,
-        speciesScientificName: species?.scientificName,
-      });
-
-      if (harvest.isReady) {
-        const id = `harvest-ready-${pond.id}-${pond.stockingDate}`;
-        items.push({
-          id,
-          type: 'harvest',
-          severity: 'info',
-          title: `${pond.name} is ready to harvest`,
-          message: `${species?.label || harvest.culture.label} has reached the planned harvest window.`,
-          timestamp: harvest.expectedHarvestAt || pond.stockingDate,
-          pondId: pond.id,
-          pondName: pond.name,
-          isRead: Boolean(readMap[id]),
-        });
-      } else if (harvest.daysRemaining <= 7) {
-        const id = `harvest-soon-${pond.id}-${pond.stockingDate}`;
-        items.push({
-          id,
-          type: 'harvest',
-          severity: 'warning',
-          title: `${pond.name} harvest is approaching`,
-          message: `${species?.label || harvest.culture.label} is estimated to reach harvest in ${harvest.daysRemaining} day${harvest.daysRemaining === 1 ? '' : 's'}.`,
-          timestamp: harvest.expectedHarvestAt || pond.stockingDate,
-          pondId: pond.id,
-          pondName: pond.name,
-          isRead: Boolean(readMap[id]),
-        });
-      }
-    }
-  }
-
+  // Latest log per pond
   const latestLogByPond = new Map<string, WaterLogLike>();
   for (const log of logs) {
-    const current = latestLogByPond.get(log.pondId);
-    if (!current || current.timestamp < log.timestamp) {
-      latestLogByPond.set(log.pondId, log);
-    }
+    const cur = latestLogByPond.get(log.pondId);
+    if (!cur || cur.timestamp < log.timestamp) latestLogByPond.set(log.pondId, log);
   }
-
-  for (const [pondId, log] of latestLogByPond.entries()) {
-    const advisory = evaluatePondHealth({
-      temperature: log.temperature,
-      dissolved_oxygen: log.dissolvedOxygen,
-      ph: log.ph,
-      ammonia: log.ammonia,
-    });
-
-    if (advisory.level === 'good') {
-      continue;
-    }
-
-    const pond = ponds.find((item) => item.id === pondId);
-    const id = `water-quality-${log.id}`;
-
-    items.push({
-      id,
-      type: 'water_quality',
-      severity: advisory.level === 'critical' ? 'critical' : 'warning',
-      title: pond ? `${pond.name}: ${advisory.title.replace(/^[^\w]+/u, '').trim()}` : advisory.title,
-      message: advisory.message,
-      timestamp: log.timestamp,
-      pondId,
-      pondName: pond?.name,
-      isRead: Boolean(readMap[id]),
-    });
-  }
-
-  const now = Date.now();
-  const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 
   for (const pond of ponds) {
-    const normalizedStatus = String(pond.status || '').toLowerCase();
-    
-    if (normalizedStatus === 'active') {
-      // 1. REAL Feed Schedule / Reminder
-      if (pond.stockingDate && pond.stockingDate < now) {
-        // Calculate rough biomass-based feed just for fun (or keep it simple)
-        const daysSinceStocking = Math.floor((now - pond.stockingDate) / (1000 * 60 * 60 * 24));
-        const estimatedFeedKg = Math.max(1, Math.min(50, Math.floor(daysSinceStocking * 0.5))); // Just an estimate logic
-        
-        const feedId = `feed-reminder-${pond.id}`;
-        items.push({
-          id: feedId,
-          type: 'feed',
-          severity: 'info',
-          title: `Time to feed ${pond.name}`,
-          message: `Based on your stocking date (${daysSinceStocking} days ago), we suggest throwing ~${estimatedFeedKg}kg of feed today.`,
-          timestamp: now - (1000 * 60 * 60 * 6), // 6 hours ago
-          pondId: pond.id,
-          pondName: pond.name,
-          isRead: Boolean(readMap[feedId]),
-        });
-      }
+    const status = String(pond.status || '').toLowerCase();
+    const species = pond.speciesId ? speciesLookup[pond.speciesId] : null;
+    const sciName = species?.scientificName ?? null;
+    const profile = getSpeciesProfile(sciName);
+    const wqTargets = getWaterQualityTargets(sciName);
+    const feedGuide = getFeedingGuide(sciName);
 
-      // 2. REAL Water Quality Checkups
-      const lastLog = latestLogByPond.get(pond.id);
-      if (lastLog) {
-        const timeSinceLastLog = now - lastLog.timestamp;
-        if (timeSinceLastLog > FIVE_DAYS_MS) {
-          const daysAgo = Math.floor(timeSinceLastLog / (1000 * 60 * 60 * 24));
-          const wqReminderId = `wq-reminder-${pond.id}`;
-          items.push({
-            id: wqReminderId,
-            type: 'water_quality',
-            severity: 'warning',
-            title: `Water Check Due for ${pond.name}`,
-            message: `It's been ${daysAgo} days since you last logged water quality. Regular checking prevents disease!`,
-            timestamp: now - 1000 * 60 * 60 * 24, // 1 day ago
-            pondId: pond.id,
-            pondName: pond.name,
-            isRead: Boolean(readMap[wqReminderId]),
-          });
-        }
-      } else {
-        // No logs ever
-        const wqMissingId = `wq-missing-${pond.id}`;
-        items.push({
-          id: wqMissingId,
-          type: 'water_quality',
-          severity: 'warning',
-          title: `Start logging ${pond.name}`,
-          message: `Add your first water quality log to unlock health analytics for this pond!`,
-          timestamp: pond.updatedAt || pond.createdAt || now,
-          pondId: pond.id,
-          pondName: pond.name,
-          isRead: Boolean(readMap[wqMissingId]),
-        });
+    // ── 1. Setup incomplete ──────────────────────────────────────────────────
+    if (status === 'active' && (!pond.speciesId || !pond.stockingDate)) {
+      push(items, {
+        id: `setup-${pond.id}`,
+        type: 'setup', severity: 'warning',
+        title: `Complete setup for ${pond.name}`,
+        message: 'Add species and stocking date to unlock harvest tracking, feeding schedules, and daily alerts.',
+        timestamp: pond.updatedAt || pond.createdAt || 0,
+        pondId: pond.id, pondName: pond.name,
+      }, readMap);
+      continue; // No further alerts until setup is complete
+    }
+
+    if (status !== 'active' || !pond.stockingDate) continue;
+
+    // ── 2. Growth stage milestone ────────────────────────────────────────────
+    const milestone = getCurrentMilestone({
+      stockingDate: pond.stockingDate,
+      speciesScientificName: sciName,
+      system: pond.systemType,
+    });
+
+    // Harvest ready
+    if (milestone.isReady) {
+      push(items, {
+        id: `harvest-ready-${pond.id}-${pond.stockingDate}`,
+        type: 'harvest', severity: 'info',
+        title: `🎣 ${pond.name} is ready to harvest!`,
+        message: `${species?.label || 'Your fish'} has completed the ${getCultureProfile(sciName, pond.systemType).days}-day culture period. Harvest now for best price.`,
+        timestamp: milestone.expectedHarvestAt || pond.stockingDate,
+        pondId: pond.id, pondName: pond.name,
+      }, readMap);
+    } else if (milestone.daysRemaining <= 14 && milestone.daysRemaining > 0) {
+      push(items, {
+        id: `harvest-soon-${pond.id}-${pond.stockingDate}`,
+        type: 'harvest', severity: 'warning',
+        title: `⏰ ${pond.name} harvest in ${milestone.daysRemaining} days`,
+        message: `${species?.label || 'Your fish'} is approaching harvest. Prepare nets, buyers, and transport. ${getCultureProfile(sciName, pond.systemType).note}`,
+        timestamp: milestone.expectedHarvestAt || pond.stockingDate,
+        pondId: pond.id, pondName: pond.name,
+      }, readMap);
+    }
+
+    // Current growth stage action
+    const stageId = `milestone-${pond.id}-${milestone.stage.replace(/\s/g, '-')}`;
+    push(items, {
+      id: stageId,
+      type: 'milestone', severity: 'info',
+      title: `📊 ${pond.name}: ${milestone.stage}`,
+      message: `Day ${milestone.daysElapsed} of ${getCultureProfile(sciName, pond.systemType).days}. ${milestone.action}`,
+      timestamp: now - DAY,
+      pondId: pond.id, pondName: pond.name,
+    }, readMap);
+
+    // ── 3. Species-specific feeding reminder ─────────────────────────────────
+    if (feedGuide) {
+      const feedId = `feed-${pond.id}-${new Date().toDateString()}`;
+      const feedTimes = feedGuide.feedingTimes.join(', ');
+      const bwPct = milestone.daysElapsed < 30 ? feedGuide.bwPercentEarly : feedGuide.bwPercentGrowOut;
+      push(items, {
+        id: feedId,
+        type: 'feed', severity: 'info',
+        title: `🍽️ Feed ${pond.name} today`,
+        message: `${species?.label || 'Fish'} (Day ${milestone.daysElapsed}): Feed ${feedGuide.feedType} at ${bwPct} body weight, ${feedGuide.frequencyPerDay}x daily. Best times: ${feedTimes}.`,
+        timestamp: now - (DAY * 0.5),
+        pondId: pond.id, pondName: pond.name,
+      }, readMap);
+
+      // Feed tip of the day (rotates by day of year)
+      if (feedGuide.tips.length > 0) {
+        const tipIndex = Math.floor(now / (DAY * 3)) % feedGuide.tips.length;
+        const tipId = `feed-tip-${pond.id}-${tipIndex}`;
+        push(items, {
+          id: tipId,
+          type: 'feed', severity: 'info',
+          title: `💡 Feeding tip for ${species?.label || 'your fish'}`,
+          message: feedGuide.tips[tipIndex],
+          timestamp: now - (DAY * 1.5),
+          pondId: pond.id, pondName: pond.name,
+        }, readMap);
       }
     }
+
+    // ── 4. Water quality check ───────────────────────────────────────────────
+    const lastLog = latestLogByPond.get(pond.id);
+    if (lastLog) {
+      const advisory = evaluatePondHealth({
+        temperature: lastLog.temperature,
+        dissolved_oxygen: lastLog.dissolvedOxygen,
+        ph: lastLog.ph,
+        ammonia: lastLog.ammonia,
+      });
+
+      if (advisory.level !== 'good') {
+        push(items, {
+          id: `water-quality-${lastLog.id}`,
+          type: 'water_quality',
+          severity: advisory.level === 'critical' ? 'critical' : 'warning',
+          title: `${pond.name}: ${advisory.title.replace(/^[^\w]+/u, '').trim()}`,
+          message: advisory.message,
+          timestamp: lastLog.timestamp,
+          pondId: pond.id, pondName: pond.name,
+        }, readMap);
+      }
+
+      // Species-specific temperature warning
+      if (lastLog.temperature != null) {
+        const temp = lastLog.temperature;
+        if (wqTargets.coldWarningBelow && temp < wqTargets.coldWarningBelow) {
+          const coldId = `cold-warning-${pond.id}-${lastLog.id}`;
+          push(items, {
+            id: coldId,
+            type: 'temperature', severity: 'warning',
+            title: `🌡️ Cold stress risk for ${species?.label || 'your fish'}`,
+            message: `Water temp is ${temp}°C — below the safe minimum of ${wqTargets.coldWarningBelow}°C for ${species?.label || 'this species'}. Reduce feeding by 50%. ${sciName === 'Pangasianodon hypophthalmus' ? 'Harvest Pangasius before October!' : 'Avoid stocking during cold spell.'}`,
+            timestamp: lastLog.timestamp,
+            pondId: pond.id, pondName: pond.name,
+          }, readMap);
+        }
+        if (wqTargets.heatWarningAbove && temp > wqTargets.heatWarningAbove) {
+          const heatId = `heat-warning-${pond.id}-${lastLog.id}`;
+          push(items, {
+            id: heatId,
+            type: 'temperature', severity: 'warning',
+            title: `🌡️ Heat stress risk for ${species?.label || 'your fish'}`,
+            message: `Water temp is ${temp}°C — above the safe maximum of ${wqTargets.heatWarningAbove}°C for ${species?.label || 'this species'}. Run aerators 24/7. Reduce feed by 30%.`,
+            timestamp: lastLog.timestamp,
+            pondId: pond.id, pondName: pond.name,
+          }, readMap);
+        }
+      }
+
+      // Overdue water quality check
+      const daysSinceLog = Math.floor((now - lastLog.timestamp) / DAY);
+      if (daysSinceLog >= 5) {
+        push(items, {
+          id: `wq-overdue-${pond.id}`,
+          type: 'water_quality', severity: 'warning',
+          title: `📋 Water check overdue for ${pond.name}`,
+          message: `Last logged ${daysSinceLog} days ago. ${species?.label ? `${species.label} needs` : 'Your fish need'} DO > ${wqTargets.doMin} mg/L and pH ${wqTargets.phMin}–${wqTargets.phMax}. Log today to stay on track.`,
+          timestamp: now - DAY,
+          pondId: pond.id, pondName: pond.name,
+        }, readMap);
+      }
+    } else {
+      // No logs at all
+      push(items, {
+        id: `wq-missing-${pond.id}`,
+        type: 'water_quality', severity: 'warning',
+        title: `📋 Start logging ${pond.name}`,
+        message: `No water quality data yet. ${species?.label ? `${species.label} needs` : 'Your fish need'} DO > ${wqTargets.doMin} mg/L, pH ${wqTargets.phMin}–${wqTargets.phMax}, temp ${wqTargets.tempOptMin}–${wqTargets.tempOptMax}°C. Log your first reading today.`,
+        timestamp: pond.updatedAt || pond.createdAt || now,
+        pondId: pond.id, pondName: pond.name,
+      }, readMap);
+    }
+
+    // ── 5. Weekly water quality target reminder ──────────────────────────────
+    const weeklyId = `wq-targets-${pond.id}-week${Math.floor(now / (DAY * 7))}`;
+    push(items, {
+      id: weeklyId,
+      type: 'water_quality', severity: 'info',
+      title: `📊 Weekly targets for ${species?.label || pond.name}`,
+      message: `Optimal: Temp ${wqTargets.tempOptMin}–${wqTargets.tempOptMax}°C | DO > ${wqTargets.doOpt} mg/L | pH ${wqTargets.phMin}–${wqTargets.phMax} | Ammonia < ${wqTargets.ammoniaMax} mg/L`,
+      timestamp: now - (DAY * 2),
+      pondId: pond.id, pondName: pond.name,
+    }, readMap);
   }
 
-  // --- PLACEHOLDER ALERTS FOR EXTERNAL DATA (Disease, Market, Subsidy) ---
-  const nowMock = Date.now();
-
-  const diseaseId = 'mock-disease-outbreak';
-  items.push({
+  // ── Static regional alerts (will be replaced by real API data later) ────────
+  const diseaseId = 'regional-disease-alert';
+  push(items, {
     id: diseaseId,
-    type: 'disease',
-    severity: 'critical',
+    type: 'disease', severity: 'critical',
     title: 'Regional Disease Alert: ARGULUS',
-    message: '[Placeholder] Reports of ARGULUS (fish lice) in your district. Watch for fish rubbing against surfaces & consider preventive measures.',
-    timestamp: nowMock - 1000 * 60 * 60 * 48, // 2 days ago
-    isRead: Boolean(readMap[diseaseId]),
-  });
+    message: 'Reports of ARGULUS (fish lice) in your district. Watch for fish rubbing against surfaces. Apply KMnO4 (2–4 mg/L) as preventive measure.',
+    timestamp: now - (DAY * 2),
+  }, readMap);
 
-  const marketId = 'mock-market-surge';
-  items.push({
-    id: marketId,
-    type: 'market',
-    severity: 'info',
-    title: 'Market Prices Surging',
-    message: '[Placeholder] Rohu prices are up 12% in your local market this week! Great time to consider partial harvest.',
-    timestamp: nowMock - 1000 * 60 * 60 * 72, // 3 days ago
-    isRead: Boolean(readMap[marketId]),
-  });
-
-  const subsidyId = 'mock-subsidy-deadline';
-  items.push({
+  const subsidyId = 'pmmsy-subsidy-reminder';
+  push(items, {
     id: subsidyId,
-    type: 'subsidy',
-    severity: 'info',
-    title: 'PMMSY Subsidy Deadline',
-    message: '[Placeholder] Deadline approaching for the latest Pradhan Mantri Matsya Sampada Yojana cycle. Subsidize your aeration equipment now.',
-    timestamp: nowMock - 1000 * 60 * 60 * 96, // 4 days ago
-    isRead: Boolean(readMap[subsidyId]),
-  });
+    type: 'subsidy', severity: 'info',
+    title: 'PMMSY Subsidy Available',
+    message: 'Pradhan Mantri Matsya Sampada Yojana subsidizes 40–60% of aquaculture setup costs. Apply through your district fisheries office.',
+    timestamp: now - (DAY * 4),
+  }, readMap);
 
   return items.sort((a, b) => b.timestamp - a.timestamp);
 }
@@ -271,23 +279,17 @@ export async function getNotificationFeed(): Promise<FarmNotification[]> {
   ]);
 
   return buildNotifications({
-    ponds: ponds.map((pond) => ({
-      id: pond.id,
-      name: pond.name,
-      speciesId: pond.speciesId,
-      stockingDate: pond.stockingDate,
-      status: pond.status,
-      createdAt: pond.createdAt?.getTime?.() ?? null,
-      updatedAt: pond.updatedAt?.getTime?.() ?? null,
+    ponds: ponds.map(p => ({
+      id: p.id, name: p.name, speciesId: p.speciesId,
+      stockingDate: p.stockingDate, status: p.status,
+      systemType: (p as any).systemType ?? null,
+      createdAt: p.createdAt?.getTime?.() ?? null,
+      updatedAt: p.updatedAt?.getTime?.() ?? null,
     })),
-    logs: logs.map((log) => ({
-      id: log.id,
-      pondId: log.pondId,
-      timestamp: log.timestamp,
-      temperature: log.temperature,
-      dissolvedOxygen: log.dissolvedOxygen,
-      ph: log.ph,
-      ammonia: log.ammonia,
+    logs: logs.map(l => ({
+      id: l.id, pondId: l.pondId, timestamp: l.timestamp,
+      temperature: l.temperature, dissolvedOxygen: l.dissolvedOxygen,
+      ph: l.ph, ammonia: l.ammonia,
     })),
     speciesLookup,
     readMap,
@@ -296,7 +298,7 @@ export async function getNotificationFeed(): Promise<FarmNotification[]> {
 
 export async function getUnreadNotificationCount(): Promise<number> {
   const feed = await getNotificationFeed();
-  return feed.filter((item) => !item.isRead).length;
+  return feed.filter(n => !n.isRead).length;
 }
 
 export async function markNotificationRead(notificationId: string) {
@@ -307,8 +309,6 @@ export async function markNotificationRead(notificationId: string) {
 
 export async function markAllNotificationsRead(notificationIds: string[]) {
   const readMap = await loadReadMap();
-  for (const id of notificationIds) {
-    readMap[id] = true;
-  }
+  for (const id of notificationIds) readMap[id] = true;
   await saveReadMap(readMap);
 }

@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import database from '../database';
 import Pond from '../database/models/Pond';
@@ -116,11 +117,81 @@ function SectionHeader({ label, styles }: { label: string; styles: any }) {
     return <Text style={styles.sectionLabel}>{label}</Text>;
 }
 
+// ─── System-aware scale field config ─────────────────────────────────────────
+
+type ScaleConfig = {
+    label: string;
+    suffix: string;
+    placeholder: string;
+    hint: string;
+    keyboardType: 'decimal-pad' | 'number-pad';
+    /** Convert stored areaHectares value to display string */
+    fromStored: (v: number) => string;
+    /** Convert display string to areaHectares for storage */
+    toStored: (v: string) => number;
+};
+
+function getScaleConfig(system: string): ScaleConfig {
+    switch (system) {
+        case 'BIOFLOC':
+            return {
+                label: 'NUMBER OF TANKS',
+                suffix: 'Tanks',
+                placeholder: 'e.g. 4',
+                hint: 'Each 10,000-litre tank needs ~4–5 sq. meters. 2 cycles/year.',
+                keyboardType: 'number-pad',
+                fromStored: (v) => Math.round(v).toString(),
+                toStored: (v) => parseInt(v) || 0,
+            };
+        case 'RAS':
+            return {
+                label: 'NUMBER OF RAS UNITS',
+                suffix: 'Units',
+                placeholder: 'e.g. 2',
+                hint: 'Each unit = 90,000-litre tank + 3 cages. Needs ~100 sq. meters.',
+                keyboardType: 'number-pad',
+                fromStored: (v) => Math.round(v).toString(),
+                toStored: (v) => parseInt(v) || 0,
+            };
+        case 'CAGES':
+            return {
+                label: 'NUMBER OF CAGES',
+                suffix: 'Cages',
+                placeholder: 'e.g. 6',
+                hint: 'Standard cage: 6m × 4m × 4m (96 m³). Requires reservoir ≥ 1,000 ha.',
+                keyboardType: 'number-pad',
+                fromStored: (v) => Math.round(v).toString(),
+                toStored: (v) => parseInt(v) || 0,
+            };
+        case 'PENS':
+            return {
+                label: 'PEN AREA (HECTARES)',
+                suffix: 'Ha',
+                placeholder: 'e.g. 0.5',
+                hint: 'Total area of pen enclosures in the water body.',
+                keyboardType: 'decimal-pad',
+                fromStored: (v) => v.toString(),
+                toStored: (v) => parseFloat(v) || 0,
+            };
+        default: // EARTHEN
+            return {
+                label: 'POND AREA (HECTARES)',
+                suffix: 'Ha',
+                placeholder: 'e.g. 0.5',
+                hint: '1 hectare = 2.47 acres. Enter total water surface area.',
+                keyboardType: 'decimal-pad',
+                fromStored: (v) => v.toString(),
+                toStored: (v) => parseFloat(v) || 0,
+            };
+    }
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function AddEditPondScreen({ route }: any) {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
+    const { t } = useTranslation();
     const styles = getStyles(theme);
 
     const existingPondId = route.params?.pondId;
@@ -205,7 +276,8 @@ export default function AddEditPondScreen({ route }: any) {
         try {
             const pond = await database.collections.get<Pond>('ponds').find(existingPondId);
             setName(pond.name);
-            setArea(pond.areaHectares.toString());
+            const cfg = getScaleConfig(pond.systemType);
+            setArea(cfg.fromStored(pond.areaHectares));
             setSource(pond.waterSourceType);
             setSystem(pond.systemType);
             setStatus(pond.status);
@@ -214,7 +286,13 @@ export default function AddEditPondScreen({ route }: any) {
             if (pond.latitude) setLat(pond.latitude.toString());
             if (pond.longitude) setLng(pond.longitude.toString());
             if (pond.districtCode) {
-                setPondStateCode('BR');
+                // Fix #6: Derive state code from the district code prefix (e.g. 'BR-PATNA' → 'BR')
+                // instead of hardcoding 'BR'. Fall back to the user's profile state if the
+                // district code doesn't contain a dash (legacy / manual-entry codes).
+                const derivedStateCode = pond.districtCode.includes('-')
+                    ? pond.districtCode.split('-')[0]
+                    : (await loadProfile()).stateCode || 'BR';
+                setPondStateCode(derivedStateCode);
                 setPondLocation({
                     districtCode: pond.districtCode,
                     districtName: pond.districtName,
@@ -225,7 +303,7 @@ export default function AddEditPondScreen({ route }: any) {
                 });
             }
         } catch {
-            Alert.alert('Error', 'Could not load pond details.');
+            Alert.alert(t('common.error'), t('addEditPond.saveErrorBody'));
             navigation.goBack();
         }
     };
@@ -235,26 +313,35 @@ export default function AddEditPondScreen({ route }: any) {
         try {
             const permResult = await Location.requestForegroundPermissionsAsync();
             if (permResult.status !== 'granted') {
-                Alert.alert('Permission Denied', 'Location access was not granted. You can enter coordinates manually instead.');
+                Alert.alert(t('addEditPond.locationErrorTitle'), t('addEditPond.locationErrorBody'));
                 return;
             }
             const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
             setLat(loc.coords.latitude.toFixed(6));
             setLng(loc.coords.longitude.toFixed(6));
         } catch (err: any) {
-            Alert.alert('Location Error', err?.message || 'Could not detect your location. Try again or enter coordinates manually.');
+            Alert.alert(t('addEditPond.locationErrorTitle'), err?.message || t('addEditPond.locationErrorBody'));
         } finally {
             setIsGettingLocation(false);
         }
     };
 
     const handleSave = async () => {
-        if (!name.trim()) return Alert.alert('Validation Error', 'Pond name is required.');
-        if (!area.trim() || isNaN(Number(area))) return Alert.alert('Validation Error', 'Valid area in hectares is required.');
+        const scaleConfig = getScaleConfig(system);
+        const storedArea = scaleConfig.toStored(area);
+
+        if (!name.trim()) return Alert.alert(t('addEditPond.validation.title'), t('addEditPond.validation.nameRequired'));
+        if (!area.trim() || isNaN(storedArea) || storedArea <= 0) {
+            const msg = system === 'BIOFLOC' ? 'Please enter the number of Biofloc tanks.'
+                : system === 'RAS' ? 'Please enter the number of RAS units.'
+                : system === 'CAGES' ? 'Please enter the number of cages.'
+                : t('addEditPond.validation.areaInvalid');
+            return Alert.alert(t('addEditPond.validation.title'), msg);
+        }
         const parsedStockingDate = parseDateInput(stockingDate);
-        if (status === 'ACTIVE' && !speciesId) return Alert.alert('Validation Error', 'Choose a species for active ponds.');
-        if (status === 'ACTIVE' && !parsedStockingDate) return Alert.alert('Validation Error', 'Choose a valid stocking date for active ponds.');
-        if (parsedStockingDate && parsedStockingDate.getTime() > Date.now()) return Alert.alert('Validation Error', 'Stocking date cannot be in the future.');
+        if (status === 'ACTIVE' && !speciesId) return Alert.alert(t('addEditPond.validation.title'), t('ponds.validationError'));
+        if (status === 'ACTIVE' && !parsedStockingDate) return Alert.alert(t('addEditPond.validation.title'), t('ponds.validationError'));
+        if (parsedStockingDate && parsedStockingDate.getTime() > Date.now()) return Alert.alert(t('addEditPond.validation.title'), t('ponds.validationError'));
 
         setIsSaving(true);
         try {
@@ -263,7 +350,7 @@ export default function AddEditPondScreen({ route }: any) {
                     const pond = await database.collections.get<Pond>('ponds').find(existingPondId);
                     await pond.update(p => {
                         p.name = name;
-                        p.areaHectares = Number(area);
+                        p.areaHectares = storedArea;
                         p.waterSourceType = source;
                         p.systemType = system;
                         p.status = status;
@@ -284,7 +371,7 @@ export default function AddEditPondScreen({ route }: any) {
                         p._raw.id = uuidv4();
                         p.pondId = p._raw.id;
                         p.name = name;
-                        p.areaHectares = Number(area);
+                        p.areaHectares = storedArea;
                         p.waterSourceType = source;
                         p.systemType = system;
                         p.status = status;
@@ -304,7 +391,7 @@ export default function AddEditPondScreen({ route }: any) {
             });
             navigation.goBack();
         } catch (e: any) {
-            Alert.alert('Save Error', e.message);
+            Alert.alert(t('addEditPond.saveErrorTitle'), e.message);
         } finally {
             setIsSaving(false);
         }
@@ -333,37 +420,67 @@ export default function AddEditPondScreen({ route }: any) {
                 <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{existingPondId ? 'Edit Pond' : 'Add Pond'}</Text>
+                <Text style={styles.headerTitle}>{existingPondId ? t('addEditPond.editTitle') : t('addEditPond.newTitle')}</Text>
                 <View style={styles.headerIconBtn} />
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20} style={{ flex: 1 }}>
                 <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
 
-                    {/* ── Section: Basic info ── */}
-                    <SectionHeader label="BASIC INFO" styles={styles} />
-                    <View style={styles.sectionCard}>
-                        <Field
-                            label="POND NAME"
-                            value={name}
-                            onChangeText={setName}
-                            placeholder="e.g. North Pond 1"
-                            styles={styles}
-                            theme={theme}
-                        />
-                        <Field
-                            label="AREA (HECTARES)"
-                            value={area}
-                            onChangeText={setArea}
-                            keyboardType="decimal-pad"
-                            placeholder="e.g. 0.5"
-                            styles={styles}
-                            theme={theme}
-                        />
+                    {/* ── Section: System type — FIRST so scale field updates immediately ── */}
+                    <SectionHeader label={t('addEditPond.fields.system').toUpperCase()} styles={styles} />
+                    <View style={styles.chipRow}>
+                        {SYSTEMS.map(item => (
+                            <TouchableOpacity
+                                key={item}
+                                style={[styles.chip, system === item && styles.chipActive]}
+                                onPress={() => { setSystem(item); setArea(''); }}
+                            >
+                                <Text style={[styles.chipText, system === item && styles.chipTextActive]}>
+                                    {item === 'EARTHEN' ? 'EARTHEN POND' : item}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
 
-                    {/* ── Section: Water & System ── */}
-                    <SectionHeader label="WATER SOURCE" styles={styles} />
+                    {/* ── Section: Basic info ── */}
+                    <SectionHeader label={t('addEditPond.basicInfo').toUpperCase()} styles={styles} />
+                    <View style={styles.sectionCard}>
+                        <Field
+                            label="POND / UNIT NAME"
+                            value={name}
+                            onChangeText={setName}
+                            placeholder={t('addEditPond.fields.namePlaceholder')}
+                            styles={styles}
+                            theme={theme}
+                        />
+                        {/* Dynamic scale field — changes based on system type */}
+                        {(() => {
+                            const cfg = getScaleConfig(system);
+                            return (
+                                <View style={styles.fieldWrap}>
+                                    <Text style={styles.fieldLabel}>{cfg.label}</Text>
+                                    <View style={styles.scaleInputRow}>
+                                        <TextInput
+                                            style={[styles.scaleInput, styles.input]}
+                                            value={area}
+                                            onChangeText={setArea}
+                                            keyboardType={cfg.keyboardType}
+                                            placeholder={cfg.placeholder}
+                                            placeholderTextColor={theme.colors.textMuted}
+                                        />
+                                        <View style={styles.scaleSuffix}>
+                                            <Text style={styles.scaleSuffixText}>{cfg.suffix}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.scaleHint}>{cfg.hint}</Text>
+                                </View>
+                            );
+                        })()}
+                    </View>
+
+                    {/* ── Section: Water source ── */}
+                    <SectionHeader label={t('addEditPond.fields.waterSource').toUpperCase()} styles={styles} />
                     <View style={styles.chipRow}>
                         {WATER_SOURCES.map(item => (
                             <TouchableOpacity
@@ -376,20 +493,7 @@ export default function AddEditPondScreen({ route }: any) {
                         ))}
                     </View>
 
-                    <SectionHeader label="SYSTEM TYPE" styles={styles} />
-                    <View style={styles.chipRow}>
-                        {SYSTEMS.map(item => (
-                            <TouchableOpacity
-                                key={item}
-                                style={[styles.chip, system === item && styles.chipActive]}
-                                onPress={() => setSystem(item)}
-                            >
-                                <Text style={[styles.chipText, system === item && styles.chipTextActive]}>{item}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    <SectionHeader label="STATUS" styles={styles} />
+                    <SectionHeader label={t('addEditPond.fields.status').toUpperCase()} styles={styles} />
                     <View style={styles.chipRow}>
                         {['ACTIVE', 'FALLOW'].map(item => (
                             <TouchableOpacity
@@ -403,7 +507,7 @@ export default function AddEditPondScreen({ route }: any) {
                     </View>
 
                     {/* ── Section: Culture details ── */}
-                    <SectionHeader label="CULTURE DETAILS" styles={styles} />
+                    <SectionHeader label={t('addEditPond.speciesAndStocking').toUpperCase()} styles={styles} />
                     <View style={styles.sectionCard}>
                         {/* Species selector */}
                         <View style={styles.fieldWrap}>
@@ -458,7 +562,7 @@ export default function AddEditPondScreen({ route }: any) {
                     </View>
 
                     {/* ── Section: Pond Panchayat ── */}
-                    <SectionHeader label="POND PANCHAYAT" styles={styles} />
+                    <SectionHeader label={t('personalInfo.fields.panchayat').toUpperCase()} styles={styles} />
                     <Text style={styles.helperText}>
                         If this pond is in a different location than your home, set its panchayat here.
                         The doctor assigned to this panchayat will handle this pond.
@@ -471,10 +575,10 @@ export default function AddEditPondScreen({ route }: any) {
 
                     {/* ── Section: GPS Coordinates ── */}
                     <View style={styles.locationHeader}>
-                        <SectionHeader label="GPS COORDINATES" styles={styles} />
+                        <SectionHeader label={t('addEditPond.fields.locationCoords').toUpperCase()} styles={styles} />
                         <TouchableOpacity onPress={handleGetLocation} disabled={isGettingLocation}>
                             <Text style={styles.autoLocate}>
-                                {isGettingLocation ? 'Getting...' : 'Auto-Locate'}
+                                {isGettingLocation ? t('common.loading') : t('addEditPond.fields.useMyLocation')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -493,7 +597,7 @@ export default function AddEditPondScreen({ route }: any) {
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
                     {isSaving
                         ? <ActivityIndicator color={theme.colors.textInverse} />
-                        : <Text style={styles.saveButtonText}>{existingPondId ? 'Save Changes' : 'Save Pond'}</Text>
+                        : <Text style={styles.saveButtonText}>{existingPondId ? t('common.save') : t('addEditPond.save')}</Text>
                     }
                 </TouchableOpacity>
             </View>
@@ -534,8 +638,8 @@ export default function AddEditPondScreen({ route }: any) {
                     <View style={styles.calendarCard}>
                         <View style={styles.calendarHeader}>
                             <View>
-                                <Text style={styles.modalTitle}>Choose Stocking Date</Text>
-                                <Text style={styles.calendarSubtitle}>Pick the day your pond was stocked.</Text>
+                                <Text style={styles.modalTitle}>{t('addEditPond.fields.stockingDate')}</Text>
+                                <Text style={styles.calendarSubtitle}>{t('addEditPond.fields.selectDate')}</Text>
                             </View>
                             <TouchableOpacity style={styles.calendarIconButton} onPress={() => setCalendarVisible(false)}>
                                 <Ionicons name="close" size={18} color={theme.colors.textPrimary} />
@@ -774,6 +878,37 @@ const getStyles = (theme: any) => StyleSheet.create({
         fontSize: 12,
         lineHeight: 18,
         marginBottom: 10,
+    },
+
+    // Scale input row (number + suffix badge)
+    scaleInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    scaleInput: {
+        flex: 1,
+    },
+    scaleSuffix: {
+        height: 52,
+        paddingHorizontal: 14,
+        borderRadius: theme.borderRadius.md,
+        backgroundColor: theme.colors.primaryLight,
+        borderWidth: 1,
+        borderColor: theme.colors.primary + '40',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    scaleSuffixText: {
+        color: theme.colors.primary,
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    scaleHint: {
+        color: theme.colors.textMuted,
+        fontSize: 11,
+        lineHeight: 16,
+        marginTop: 6,
     },
 
     // Location

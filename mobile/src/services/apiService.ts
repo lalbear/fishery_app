@@ -264,8 +264,13 @@ export const marketService = {
         }
     },
     getTrends: async () => {
-        const response = await api.get('/api/v1/market/trends');
-        return response.data;
+        try {
+            const response = await api.get('/api/v1/market/trends');
+            return response.data;
+        } catch (error) {
+            console.warn('[Offline Mode] Market trends unavailable');
+            return { success: true, data: [] };
+        }
     },
 };
 
@@ -303,6 +308,27 @@ export const waterQualityService = {
     },
 };
 
+const FALLBACK_DISEASES = [
+    { id: 'd_01', slug: 'columnaris', name: 'Columnaris', category: 'BACTERIAL', severity: 'HIGH', mortality_rate: 35, affected_species: ['Tilapia', 'Catla', 'Rohu'], symptoms: ['White patches', 'Frayed fins', 'Skin lesions'], causes: ['Stress', 'Poor water quality'], prevention: ['Maintain DO above 5 mg/L', 'Avoid overstocking'], treatment: ['Salt bath', 'Antibacterial treatment'], seasonality: ['summer', 'monsoon'] },
+    { id: 'd_02', slug: 'aeromonas-septicemia', name: 'Aeromonas (Hemorrhagic Septicemia)', category: 'BACTERIAL', severity: 'HIGH', mortality_rate: 40, affected_species: ['Catla', 'Rohu', 'Mrigal', 'Tilapia'], symptoms: ['Hemorrhage', 'Ulcers', 'Abdominal swelling'], causes: ['Injury', 'Temperature stress', 'High ammonia'], prevention: ['Stable temperature', 'Biosecurity'], treatment: ['Doctor-supervised antimicrobial plan'], seasonality: ['pre-monsoon', 'monsoon'] },
+    { id: 'd_03', slug: 'white-spot-syndrome', name: 'White Spot Syndrome', category: 'VIRAL', severity: 'HIGH', mortality_rate: 80, affected_species: ['Vannamei Shrimp'], symptoms: ['White spots on shell', 'Lethargy', 'Rapid mortality'], causes: ['Viral exposure', 'Poor biosecurity'], prevention: ['PCR-screened seed', 'Strict pond disinfection'], treatment: ['Emergency harvest', 'Specialist consultation'], seasonality: ['all'] },
+    { id: 'd_04', slug: 'ich-white-spot', name: 'White Spot Disease (Ich)', category: 'PARASITIC', severity: 'MEDIUM', mortality_rate: 20, affected_species: ['Tilapia', 'Catla', 'Rohu', 'All freshwater'], symptoms: ['Pinhead white spots', 'Flashing against surfaces', 'Gasping'], causes: ['Protozoan parasite', 'Temperature shock'], prevention: ['Quarantine new stock', 'Avoid temperature changes'], treatment: ['Quick lime 300-500 kg/ha', 'Formalin bath'], seasonality: ['winter', 'spring'] },
+    { id: 'd_05', slug: 'saprolegniasis', name: 'Saprolegniasis (Cotton Wool Disease)', category: 'FUNGAL', severity: 'MEDIUM', mortality_rate: 18, affected_species: ['Catla', 'Rohu', 'Tilapia', 'Trout'], symptoms: ['Cotton-like growth', 'Skin damage', 'Egg fungal growth'], causes: ['Injury', 'Cold stress', 'Organic debris'], prevention: ['Good hygiene', 'Remove dead biomass'], treatment: ['3% salt solution', 'Formalin + Malachite Green'], seasonality: ['winter'] },
+    { id: 'd_06', slug: 'oxygen-depletion', name: 'Oxygen Depletion', category: 'ENVIRONMENTAL', severity: 'HIGH', mortality_rate: 55, affected_species: ['All'], symptoms: ['Surface gasping', 'Crowding near inlet', 'Sudden dawn mortality'], causes: ['Low aeration', 'Algal crash', 'Overfeeding'], prevention: ['Continuous aeration', 'Feed discipline'], treatment: ['Run aerators immediately', 'Stop feed', 'Water exchange'], seasonality: ['summer', 'monsoon'] },
+    { id: 'd_07', slug: 'ammonia-toxicity', name: 'Ammonia Toxicity', category: 'ENVIRONMENTAL', severity: 'HIGH', mortality_rate: 45, affected_species: ['All'], symptoms: ['Gill irritation', 'Surface piping', 'Reduced feeding'], causes: ['Overfeeding', 'High biomass', 'Weak nitrification'], prevention: ['Regular sludge removal', 'Probiotics'], treatment: ['Reduce feed', 'Apply zeolite', 'Water exchange'], seasonality: ['all'] },
+    { id: 'd_08', slug: 'eus-red-spot', name: 'EUS / Red Spot Disease', category: 'FUNGAL', severity: 'HIGH', mortality_rate: 50, affected_species: ['Rohu', 'Catla', 'Mrigal', 'Grass Carp', 'Silver Carp', 'Singhi', 'Mangur'], symptoms: ['Red spot wounds on body', 'Deep wounds with skin falling off', 'Fish jumping at surface', 'Reduced feeding'], causes: ['Fungus Aphanomyces invadans', 'Mixed infection', 'Contaminated water in monsoon'], prevention: ['Block contaminated water', 'Apply quick lime', 'Stock disease-free seed'], treatment: ['CIFAX 3-4 L/ha', 'Sokrina WS 5-10 L/ha', 'Quick lime 200-600 kg/ha'], seasonality: ['monsoon', 'winter'] },
+    { id: 'd_09', slug: 'dropsy', name: 'Dropsy (Bacterial Hemorrhagic Septicemia)', category: 'BACTERIAL', severity: 'HIGH', mortality_rate: 45, affected_species: ['Rohu', 'Catla', 'Mrigal', 'Grass Carp', 'Common Carp', 'Silver Carp'], symptoms: ['Swollen body and abdomen', 'Scales standing out like pinecone', 'Bulging eyes', 'Disrupted blood vessels'], causes: ['Aeromonas hydrophila', 'Aeromonas punctata', 'Stress from poor water'], prevention: ['Maintain good water quality', 'Avoid rough handling', 'Disinfect equipment'], treatment: ['KMnO4 bath 1-4 mg/L for 2 min daily', 'Antibiotic under doctor supervision'], seasonality: ['pre-monsoon', 'monsoon'] },
+    { id: 'd_10', slug: 'tail-fin-rot', name: 'Tail Rot / Fin Rot', category: 'BACTERIAL', severity: 'MEDIUM', mortality_rate: 25, affected_species: ['Rohu', 'Catla', 'Mrigal', 'Grass Carp', 'Common Carp', 'Tilapia'], symptoms: ['Tail and fins rotting', 'White lines on fins', 'Frayed fin margins', 'Fish stay near bottom'], causes: ['Aeromonas salmonicida', 'Pseudomonas sp.', 'Poor water hygiene'], prevention: ['Keep DO above 5 mg/L', 'Avoid overstocking', 'Disinfect equipment'], treatment: ['KMnO4 bath 10-20 mg/L for 1 hour', 'Copper Sulphate 500 mg/L bath'], seasonality: ['summer', 'monsoon'] },
+    { id: 'd_11', slug: 'argulosis', name: 'Argulosis (Fish Louse)', category: 'PARASITIC', severity: 'MEDIUM', mortality_rate: 15, affected_species: ['All freshwater fish', 'Rohu', 'Catla', 'Breeders'], symptoms: ['Visible disc-shaped parasites on body', 'Excessive mucus', 'Fish rubbing on pond edges', 'Small red wounds'], causes: ['External parasite Argulus', 'Muddy polluted ponds', 'Infected fish or nets'], prevention: ['Quarantine new fish', 'Net regularly', 'Dry pond every 3 years'], treatment: ['Dipterex 0.2 mg/L', 'Manual removal', 'KMnO4 bath'], seasonality: ['summer', 'monsoon'] },
+    { id: 'd_12', slug: 'lernaeosis', name: 'Lernaeosis (Anchor Worm)', category: 'PARASITIC', severity: 'MEDIUM', mortality_rate: 20, affected_species: ['All freshwater fish', 'Rohu', 'Catla', 'Mrigal'], symptoms: ['Thread-like worms on body and fins', 'Skin rotting at attachment', 'Fish rubbing on bottom', 'Red wounds'], causes: ['Lernaea parasite', 'Polluted water entry', 'Infected wild fish'], prevention: ['Block contaminated water', 'Filter incoming water', 'Net regularly'], treatment: ['Gammexane 1 mg/L', 'Dipterex 0.2 mg/L', 'Manual removal for broodstock'], seasonality: ['monsoon', 'post-monsoon'] },
+    { id: 'd_13', slug: 'leech-infection', name: 'Leech Infection', category: 'PARASITIC', severity: 'MEDIUM', mortality_rate: 18, affected_species: ['All freshwater fish'], symptoms: ['Brown/black leeches on body, gills, mouth', 'Excessive mucus', 'Fish rubbing on objects', 'Weight loss'], causes: ['External parasitic leeches', 'Muddy polluted pond bottom', 'Heavy organic sludge'], prevention: ['Dry pond every 3 years', 'Apply lime regularly', 'Block sewage water'], treatment: ['Glacial Acetic Acid 1.0 ml/L', 'Copper Sulphate 500 g/ha', 'Drain and dry pond'], seasonality: ['monsoon', 'post-monsoon'] },
+    { id: 'd_14', slug: 'gill-rot', name: 'Gill Rot Disease', category: 'FUNGAL', severity: 'HIGH', mortality_rate: 35, affected_species: ['Rohu', 'Catla', 'Mrigal', 'Common Carp', 'Tilapia'], symptoms: ['Gills lose red colour, become pale', 'Necrotic gill filaments', 'Surface gasping', 'Reduced feeding'], causes: ['Fungus Branchiomyces demigrans', 'Stagnant polluted water', 'High temperature + low oxygen'], prevention: ['Maintain water exchange', 'Reduce overfeeding', 'Apply lime'], treatment: ['Increase aeration immediately', 'KMnO4 as advised', 'Reduce stocking density'], seasonality: ['summer'] },
+    { id: 'd_15', slug: 'brown-blood-disease', name: 'Brown Blood Disease (Nitrite Toxicity)', category: 'ENVIRONMENTAL', severity: 'HIGH', mortality_rate: 35, affected_species: ['All', 'Catla', 'Rohu', 'Mrigal', 'Tilapia'], symptoms: ['Brownish gills and blood', 'Slow movement', 'Reduced feeding', 'Weak despite good oxygen'], causes: ['Nitrite above 1.0 ppm', 'Methemoglobin formation', 'Overfeeding and weak nitrification'], prevention: ['Test nitrite weekly', 'Avoid overfeeding', 'Apply pond probiotics'], treatment: ['Sodium chloride 40 kg/acre', 'Reduce feed', 'Exchange 25-50% water', 'Increase aeration'], seasonality: ['summer', 'pre-monsoon'] },
+    { id: 'd_16', slug: 'hydrogen-sulfide-toxicity', name: 'Hydrogen Sulfide (H₂S) Toxicity', category: 'ENVIRONMENTAL', severity: 'HIGH', mortality_rate: 40, affected_species: ['All'], symptoms: ['Rotten egg smell', 'Black sludge at bottom', 'Fish gasping and avoiding bottom', 'Sudden mortality after stirring'], causes: ['Toxic H₂S buildup at bottom', 'High vegetation blocking circulation', 'Heavy organic sludge'], prevention: ['Remove excess vegetation', 'Aerate in early morning', 'Dry pond every 3 years'], treatment: ['Increase aeration', 'Apply lime 200-500 kg/ha', 'Exchange 25-50% water', 'Stop feeding'], seasonality: ['summer'] },
+    { id: 'd_17', slug: 'algal-toxicosis', name: 'Algal Toxicosis / Algal Bloom', category: 'ENVIRONMENTAL', severity: 'HIGH', mortality_rate: 50, affected_species: ['All'], symptoms: ['Water turns deep green/brown', 'Foul smell', 'Sudden dawn mortality', 'Fish gasping and refusing feed'], causes: ['Excessive algal growth', 'Overfeeding', 'Stagnant water', 'Bloom crash causes oxygen depletion'], prevention: ['Avoid overfeeding', 'Regular water exchange', 'Stop feeding when water turns green', 'Apply lime periodically'], treatment: ['Stop feeding immediately', 'Increase nighttime aeration', 'Exchange 25-50% water', 'Apply pond probiotics'], seasonality: ['summer', 'monsoon'] },
+    { id: 'd_18', slug: 'gas-bubble-disease', name: 'Gas Bubble Disease (Super-saturation)', category: 'ENVIRONMENTAL', severity: 'MEDIUM', mortality_rate: 20, affected_species: ['All', 'Fingerlings', 'Larvae'], symptoms: ['Gas bubbles under skin or in eyes', 'Erratic swimming or belly-up', 'Eye protrusion', 'Sudden fingerling mortality'], causes: ['Excessively high dissolved oxygen', 'Heavy algal photosynthesis', 'Sudden temperature changes'], prevention: ['Avoid extreme algal blooms', 'Aerate gently in peak sun', 'Provide shade for fingerlings'], treatment: ['Increase water exchange', 'Reduce algal density with lime', 'Move fish to deeper cooler water'], seasonality: ['summer', 'monsoon'] },
+];
+
 export const diseaseService = {
     list: async (params?: {
         category?: 'BACTERIAL' | 'VIRAL' | 'PARASITIC' | 'FUNGAL' | 'NUTRITIONAL' | 'ENVIRONMENTAL';
@@ -311,12 +337,33 @@ export const diseaseService = {
         severity?: 'LOW' | 'MEDIUM' | 'HIGH';
         q?: string;
     }) => {
-        const response = await api.get('/api/v1/diseases', { params });
-        return response.data;
+        let backendDiseases: any[] = [];
+        try {
+            const response = await api.get('/api/v1/diseases', { params });
+            if (response.data?.success && response.data?.data?.length > 0) {
+                backendDiseases = response.data.data;
+            }
+        } catch {
+            console.warn('[Offline Mode] Backend unreachable for diseases');
+        }
+
+        // Merge: backend diseases + any fallback diseases not already present (by slug)
+        const existingSlugs = new Set(backendDiseases.map((d: any) => d.slug));
+        const missingFallbacks = FALLBACK_DISEASES.filter(d => !existingSlugs.has(d.slug));
+        const merged = [...backendDiseases, ...missingFallbacks];
+
+        // Apply filters to the merged list
+        const filtered = filterFallbackDiseases(merged, params);
+        return { success: true, count: filtered.length, data: filtered };
     },
     getById: async (id: string) => {
-        const response = await api.get(`/api/v1/diseases/${id}`);
-        return response.data;
+        try {
+            const response = await api.get(`/api/v1/diseases/${id}`);
+            return response.data;
+        } catch {
+            const found = FALLBACK_DISEASES.find(d => d.id === id || d.slug === id);
+            return found ? { success: true, data: found } : { success: false, error: 'Not found' };
+        }
     },
     suggest: async (data: {
         symptoms: string[];
@@ -328,10 +375,33 @@ export const diseaseService = {
             temperature?: number;
         };
     }) => {
-        const response = await api.post('/api/v1/diseases/suggest', data);
-        return response.data;
+        try {
+            const response = await api.post('/api/v1/diseases/suggest', data);
+            return response.data;
+        } catch {
+            return { success: true, data: { urgency: 'LOW', recommendations: [], advisory: 'Could not reach server for disease suggestion.' } };
+        }
     },
 };
+
+function filterFallbackDiseases(diseases: typeof FALLBACK_DISEASES, params?: any) {
+    let result = diseases;
+    if (params?.category) {
+        result = result.filter(d => d.category === params.category);
+    }
+    if (params?.severity) {
+        result = result.filter(d => d.severity === params.severity);
+    }
+    if (params?.q) {
+        const q = params.q.toLowerCase();
+        result = result.filter(d =>
+            d.name.toLowerCase().includes(q) ||
+            d.symptoms.some((s: string) => s.toLowerCase().includes(q)) ||
+            d.affected_species.some((s: string) => s.toLowerCase().includes(q))
+        );
+    }
+    return result;
+}
 
 export const locationService = {
     getDistricts: async (stateCode: string) => {

@@ -62,7 +62,7 @@ export default function ProfileScreen({ navigation }: any) {
 
   const handleSync = async () => {
     if (!profile.userId) {
-      Alert.alert('Profile Incomplete', 'Please save your profile before syncing.');
+      Alert.alert(t('common.warning'), t('personalInfo.saveError'));
       return;
     }
     if (isSyncing) return;
@@ -76,12 +76,12 @@ export default function ProfileScreen({ navigation }: any) {
           minute: '2-digit',
         });
         setLastSynced(now);
-        Alert.alert('Sync Complete', 'Your data is now up to date.');
+        Alert.alert(t('profile.syncSuccess'), '');
       } else {
-        Alert.alert('Sync Failed', res.error || 'Please check your internet connection.');
+        Alert.alert(t('profile.syncFailed'), res.error || t('common.offline'));
       }
     } catch {
-      Alert.alert('Sync Error', 'An unexpected error occurred. Please try again.');
+      Alert.alert(t('profile.syncFailed'), t('common.tryAgain'));
     } finally {
       setIsSyncing(false);
     }
@@ -96,10 +96,12 @@ export default function ProfileScreen({ navigation }: any) {
     .slice(0, 2);
 
   const farmerCategoryLabel: Record<string, string> = {
-    GENERAL: 'General Farmer',
-    SC: 'SC Farmer',
-    ST: 'ST Farmer',
-    OBC: 'OBC Farmer',
+    GENERAL: t('economics.categories.GENERAL') + ' ' + t('profile.farmerCategory'),
+    // Fix #12: WOMEN was missing — it's a valid farmerCategory used throughout the app
+    WOMEN: t('economics.categories.WOMEN') + ' ' + t('profile.farmerCategory'),
+    SC: t('economics.categories.SC') + ' ' + t('profile.farmerCategory'),
+    ST: t('economics.categories.ST') + ' ' + t('profile.farmerCategory'),
+    OBC: 'OBC ' + t('profile.farmerCategory'),
   };
   const categoryLabel = farmerCategoryLabel[profile.farmerCategory] || profile.farmerCategory;
 
@@ -107,14 +109,14 @@ export default function ProfileScreen({ navigation }: any) {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.topBar}>
-        <Text style={styles.topBarTitle}>Profile</Text>
+        <Text style={styles.topBarTitle}>{t('profile.title')}</Text>
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => navigation.navigate('PersonalInfo')}
           activeOpacity={0.8}
         >
           <Ionicons name="pencil-outline" size={16} color={theme.colors.primary} />
-          <Text style={styles.editButtonText}>Edit</Text>
+          <Text style={styles.editButtonText}>{t('common.edit')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -143,11 +145,11 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* ── Section: Account & Location ── */}
-        <Text style={styles.sectionLabel}>ACCOUNT &amp; LOCATION</Text>
+        <Text style={styles.sectionLabel}>{t('profile.account').toUpperCase()} & {t('profile.location').toUpperCase()}</Text>
         <View style={styles.sectionPanel}>
           <MenuRow
             icon="person-outline"
-            title={t('profile.personalInfo') || 'Personal Info'}
+            title={t('profile.personalInfo')}
             onPress={() => navigation.navigate('PersonalInfo')}
             theme={theme}
             isFirst
@@ -155,8 +157,8 @@ export default function ProfileScreen({ navigation }: any) {
           <SectionDivider theme={theme} />
           <MenuRow
             icon="location-outline"
-            title="State / District"
-            value={profile.stateCode || 'Not set'}
+            title={t('personalInfo.fields.state') + ' / ' + t('personalInfo.fields.district')}
+            value={profile.stateCode || t('common.notSpecified')}
             onPress={() => navigation.navigate('PersonalInfo')}
             theme={theme}
             isLast
@@ -164,12 +166,12 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* ── Section: My Ponds ── */}
-        <Text style={styles.sectionLabel}>MY PONDS</Text>
+        <Text style={styles.sectionLabel}>{t('profile.myPonds').toUpperCase()}</Text>
         <View style={styles.sectionPanel}>
           <MenuRow
             icon="water-outline"
-            title={t('profile.myPonds') || 'My Ponds'}
-            value={pondCount > 0 ? `${pondCount} pond${pondCount === 1 ? '' : 's'}` : undefined}
+            title={t('profile.myPonds')}
+            value={pondCount > 0 ? `${pondCount} ${pondCount === 1 ? t('ponds.title').replace('मेरे ', '').replace('My ', '') : t('ponds.title').replace('मेरे ', '').replace('My ', '')}` : undefined}
             onPress={() => navigation.navigate('PondsList')}
             theme={theme}
             isFirst
@@ -178,22 +180,22 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* ── Section: Preferences ── */}
-        <Text style={styles.sectionLabel}>PREFERENCES</Text>
+        <Text style={styles.sectionLabel}>{t('profile.preferences').toUpperCase()}</Text>
         <View style={styles.sectionPanel}>
           <MenuRow
             icon="language-outline"
-            title={t('profile.language') || 'Language'}
-            value={i18n.language === 'hi' ? 'Hindi' : 'English'}
+            title={t('profile.language')}
+            value={i18n.language === 'hi' ? t('profile.languageHindi') : t('profile.languageEnglish')}
             onPress={() => {
               const isHindi = i18n.language === 'hi';
               const targetLangCode = isHindi ? 'en' : 'hi';
-              const targetLangName = isHindi ? 'English' : 'Hindi';
+              const targetLangName = isHindi ? t('profile.languageEnglish') : t('profile.languageHindi');
               Alert.alert(
-                'Change Language',
-                `Are you sure you want to change the language to ${targetLangName}?`,
+                t('profile.changeLanguage'),
+                t('profile.changeLanguageConfirm', { lang: targetLangName }),
                 [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Confirm', onPress: () => i18n.changeLanguage(targetLangCode) },
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('common.confirm'), onPress: () => i18n.changeLanguage(targetLangCode) },
                 ]
               );
             }}
@@ -203,7 +205,7 @@ export default function ProfileScreen({ navigation }: any) {
           <SectionDivider theme={theme} />
           <SwitchRow
             icon={isDark ? 'moon-outline' : 'sunny-outline'}
-            title="Dark Mode"
+            title={t('profile.darkMode')}
             value={isDark}
             onValueChange={toggleTheme}
             theme={theme}
@@ -211,7 +213,7 @@ export default function ProfileScreen({ navigation }: any) {
           <SectionDivider theme={theme} />
           <SwitchRow
             icon="cloud-offline-outline"
-            title={t('profile.offlineMode') || 'Offline Mode'}
+            title={t('profile.offlineMode')}
             value={offlineMode}
             onValueChange={setOfflineMode}
             theme={theme}
@@ -220,11 +222,11 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* ── Section: Notifications ── */}
-        <Text style={styles.sectionLabel}>NOTIFICATIONS &amp; DATA</Text>
+        <Text style={styles.sectionLabel}>{t('notifications.title').toUpperCase()} & {t('common.update').toUpperCase()}</Text>
         <View style={styles.sectionPanel}>
           <MenuRow
             icon="notifications-outline"
-            title="Notifications"
+            title={t('notifications.title')}
             onPress={() => navigation.navigate('Notifications')}
             theme={theme}
             isFirst
@@ -232,7 +234,7 @@ export default function ProfileScreen({ navigation }: any) {
           <SectionDivider theme={theme} />
           <MenuRow
             icon="sync-outline"
-            title={t('profile.syncData') || 'Sync Data'}
+            title={t('profile.syncData')}
             value={lastSynced ?? undefined}
             trailing={
               isSyncing ? (
@@ -247,7 +249,7 @@ export default function ProfileScreen({ navigation }: any) {
           <SectionDivider theme={theme} />
           <MenuRow
             icon="school-outline"
-            title="Learning Center"
+            title={t('learning.title')}
             onPress={() => navigation.navigate('LearningCenter')}
             theme={theme}
             isLast
@@ -260,11 +262,11 @@ export default function ProfileScreen({ navigation }: any) {
             style={styles.signOutButton}
             onPress={() =>
               Alert.alert(
-                'Logout',
-                'Are you sure you want to log out?',
+                t('profile.logout'),
+                t('profile.logoutConfirm'),
                 [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Logout', style: 'destructive', onPress: () => logout() },
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('profile.logout'), style: 'destructive', onPress: () => logout() },
                 ]
               )
             }
@@ -273,7 +275,7 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={styles.signOutIconWrap}>
               <Ionicons name="log-out-outline" size={18} color={theme.colors.error} />
             </View>
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>{t('profile.logout')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.error} style={{ opacity: 0.6 }} />
           </TouchableOpacity>
         </View>

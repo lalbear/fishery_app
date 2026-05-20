@@ -6,6 +6,8 @@
 import { Router } from 'express';
 import { query } from '../db';
 import { logger } from '../utils/logger';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { validateBody, marketPriceSchema } from '../middleware/validate';
 
 const router = Router();
 
@@ -33,8 +35,10 @@ router.get('/prices', async (req, res, next) => {
       params.push(state.toString().toUpperCase());
     }
     
+    const parsedLimit = parseInt(limit as string, 10);
+    const safeLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 500) : 50;
     sql += ` ORDER BY date DESC LIMIT $${params.length + 1}`;
-    params.push(parseInt(limit as string, 10));
+    params.push(safeLimit);
     
     const result = await query(sql, params);
     
@@ -113,9 +117,9 @@ router.get('/trends', async (req, res, next) => {
 
 /**
  * POST /api/v1/market/prices
- * Add new market price (admin/ingestion)
+ * Add new market price (admin/ingestion only)
  */
-router.post('/prices', async (req, res, next) => {
+router.post('/prices', requireAuth, requireRole('ADMIN'), validateBody(marketPriceSchema), async (req, res, next) => {
   try {
     const { speciesId, speciesName, marketName, stateCode, price, grade, date, source, volume } = req.body;
     

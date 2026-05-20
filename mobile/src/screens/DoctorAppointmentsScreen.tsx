@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import {
   type DecoratedDoctorAppointment,
@@ -23,6 +25,7 @@ type VisitFilter = 'ACTIVE' | 'COMPLETED' | 'MISSED' | 'ALL';
 export default function DoctorAppointmentsScreen() {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const styles = getStyles(theme);
 
@@ -75,33 +78,47 @@ export default function DoctorAppointmentsScreen() {
       return;
     }
 
-    await updateDoctorAppointmentStatus(appointment.id, nextStatus);
-    await loadAppointments();
+    // Fix #10: wrap in try/catch so network failures surface to the user
+    try {
+      await updateDoctorAppointmentStatus(appointment.id, nextStatus);
+      await loadAppointments();
+    } catch (error: any) {
+      Alert.alert(
+        'Status update failed',
+        error?.message || 'Could not update the appointment status right now.'
+      );
+    }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Visit Queue</Text>
+        <Text style={styles.headerTitle}>{t('doctor.appointments')}</Text>
         <TouchableOpacity
           style={styles.headerAction}
           onPress={() => navigation.navigate('DoctorAlerts')}
         >
           <Ionicons name="notifications-outline" size={18} color={c.primary} />
-          <Text style={styles.headerActionText}>Alerts</Text>
+          <Text style={styles.headerActionText}>{t('doctor.alerts')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.filterRow}>
         {(['ACTIVE', 'COMPLETED', 'MISSED', 'ALL'] as VisitFilter[]).map((item) => {
           const active = filter === item;
+          const labelMap: Record<string, string> = {
+            ACTIVE: t('doctor.filterActive'),
+            COMPLETED: t('doctor.statusValues.COMPLETED'),
+            MISSED: t('doctor.filterMissed'),
+            ALL: t('common.all'),
+          };
           return (
             <TouchableOpacity
               key={item}
               style={[styles.filterChip, active && styles.filterChipActive]}
               onPress={() => setFilter(item)}
             >
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{item}</Text>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{labelMap[item]}</Text>
             </TouchableOpacity>
           );
         })}
@@ -123,8 +140,8 @@ export default function DoctorAppointmentsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="medical-outline" size={28} color={c.textMuted} />
-              <Text style={styles.emptyTitle}>No appointments in this bucket</Text>
-              <Text style={styles.emptyText}>Try another filter or create a doctor booking from the farmer side to see the queue fill up.</Text>
+              <Text style={styles.emptyTitle}>{t('doctor.noAppointmentsTitle')}</Text>
+              <Text style={styles.emptyText}>{t('doctor.noAppointmentsBody')}</Text>
             </View>
           }
           renderItem={({ item }) => {
@@ -152,27 +169,27 @@ export default function DoctorAppointmentsScreen() {
                     <Text style={styles.cardSubtitle}>{item.farmerName} · {item.location.addressLine}</Text>
                   </View>
                   <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
-                    <Text style={[styles.statusPillText, { color: statusColor }]}>{item.derivedStatus}</Text>
+                    <Text style={[styles.statusPillText, { color: statusColor }]}>{t(`doctor.derivedStatus.${item.derivedStatus}`, { defaultValue: item.derivedStatus })}</Text>
                   </View>
                 </View>
 
                 <Text style={styles.cardBody} numberOfLines={2}>{item.issueDescription}</Text>
 
                 <View style={styles.metaGrid}>
-                  <MetaItem icon="time-outline" label={item.timeRemainingHours >= 0 ? `${item.timeRemainingHours}h left` : `${Math.abs(item.timeRemainingHours)}h overdue`} />
-                  <MetaItem icon="location-outline" label={item.location.panchayatName || item.location.blockName || 'Location pending'} />
-                  <MetaItem icon="images-outline" label={`${item.images.length} farmer image${item.images.length === 1 ? '' : 's'}`} />
-                  <MetaItem icon="flask-outline" label={item.waterQualitySnapshot ? 'Water log attached' : 'No water log'} />
+                  <MetaItem icon="time-outline" label={item.timeRemainingHours >= 0 ? t('doctor.timeLeft', { hours: item.timeRemainingHours }) : t('doctor.timeOverdue', { hours: Math.abs(item.timeRemainingHours) })} />
+                  <MetaItem icon="location-outline" label={item.location.panchayatName || item.location.blockName || t('doctor.locationPending')} />
+                  <MetaItem icon="images-outline" label={t('doctor.farmerImages', { count: item.images.length })} />
+                  <MetaItem icon="flask-outline" label={item.waterQualitySnapshot ? t('doctor.waterLogAttached') : t('doctor.noWaterLog')} />
                 </View>
 
                 <View style={styles.actionRow}>
                   <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('DoctorAppointmentDetail', { appointmentId: item.id })}>
-                    <Text style={styles.secondaryButtonText}>Details</Text>
+                    <Text style={styles.secondaryButtonText}>{t('doctor.details')}</Text>
                   </TouchableOpacity>
                   {item.derivedStatus !== 'COMPLETED' && item.derivedStatus !== 'MISSED' ? (
                     <TouchableOpacity style={styles.primaryButton} onPress={() => void handleStatusAction(item)}>
                       <Text style={styles.primaryButtonText}>
-                        {item.derivedStatus === 'NEW' ? 'Accept' : item.derivedStatus === 'ACKNOWLEDGED' ? 'Start Visit' : 'Open Report'}
+                        {item.derivedStatus === 'NEW' ? t('doctor.actionAccept') : item.derivedStatus === 'ACKNOWLEDGED' ? t('doctor.actionStartVisit') : t('doctor.actionOpenReport')}
                       </Text>
                     </TouchableOpacity>
                   ) : null}

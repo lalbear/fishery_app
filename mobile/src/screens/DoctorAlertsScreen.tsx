@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import {
   type DoctorAlert,
@@ -22,6 +23,7 @@ import {
 export default function DoctorAlertsScreen() {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const styles = getStyles(theme);
 
@@ -64,11 +66,11 @@ export default function DoctorAlertsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Reminder Center</Text>
-          <Text style={styles.headerSubtitle}>{unreadCount} unread alerts waiting for review</Text>
+          <Text style={styles.headerTitle}>{t('doctor.alerts')}</Text>
+          <Text style={styles.headerSubtitle}>{t('doctor.unreadAlerts', { count: unreadCount })}</Text>
         </View>
         <TouchableOpacity style={styles.markAllButton} onPress={() => void handleMarkAllRead()}>
-          <Text style={styles.markAllButtonText}>Mark all</Text>
+          <Text style={styles.markAllButtonText}>{t('notifications.markAll')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -77,8 +79,8 @@ export default function DoctorAlertsScreen() {
           <Ionicons name="alarm-outline" size={22} color={c.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.summaryTitle}>12-hour revisit reminders active</Text>
-          <Text style={styles.summaryText}>Every open booking gets reminder alerts at 12-hour intervals until it is completed or reaches the 48-hour SLA threshold.</Text>
+          <Text style={styles.summaryTitle}>{t('doctor.alerts')}</Text>
+          <Text style={styles.summaryText}>{t('doctor.weeklyHelp')}</Text>
         </View>
       </View>
 
@@ -98,8 +100,8 @@ export default function DoctorAlertsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="notifications-off-outline" size={28} color={c.textMuted} />
-              <Text style={styles.emptyTitle}>No alerts yet</Text>
-              <Text style={styles.emptyText}>Once a farmer booking is assigned to this doctor, reminders and SLA alerts will appear here.</Text>
+              <Text style={styles.emptyTitle}>{t('doctor.noAlertsTitle')}</Text>
+              <Text style={styles.emptyText}>{t('doctor.noAlertsBody')}</Text>
             </View>
           }
           renderItem={({ item }) => {

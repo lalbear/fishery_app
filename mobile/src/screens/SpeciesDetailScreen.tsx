@@ -20,7 +20,7 @@ export default function SpeciesDetailScreen() {
     return (
       <View style={styles.emptyWrap}>
         <Ionicons name="fish-outline" size={48} color={theme.colors.textMuted} />
-        <Text style={styles.emptyText}>No species data available.</Text>
+        <Text style={styles.emptyText}>{t('species.noData')}</Text>
       </View>
     );
   }
@@ -73,7 +73,7 @@ export default function SpeciesDetailScreen() {
         {/* Description card */}
         {d.description ? (
           <View style={styles.descCard}>
-            <Text style={styles.sectionLabel}>ABOUT</Text>
+            <Text style={styles.sectionLabel}>{t('species.about')}</Text>
             <Text style={styles.descText}>{d.description}</Text>
           </View>
         ) : null}
@@ -82,28 +82,28 @@ export default function SpeciesDetailScreen() {
         <InfoSection title={t('species.biologicalParameters') || 'BIOLOGICAL PARAMETERS'} styles={styles} theme={theme}>
           <ParamRow
             icon="thermometer-outline"
-            label="Temperature"
+            label={t('species.temperature')}
             value={`${params.temperature_celsius?.min ?? '–'}°C – ${params.temperature_celsius?.max ?? '–'}°C`}
             theme={theme}
             styles={styles}
           />
           <ParamRow
             icon="water-outline"
-            label="Min. DO"
+            label={t('species.dissolvedOxygen')}
             value={`> ${params.dissolved_oxygen_mg_l?.min ?? params.min_do ?? '5.0'} mg/L`}
             theme={theme}
             styles={styles}
           />
           <ParamRow
             icon="flask-outline"
-            label="pH Range"
+            label={t('species.ph')}
             value={`${params.ph_range?.min ?? '6.5'} – ${params.ph_range?.max ?? '8.5'}`}
             theme={theme}
             styles={styles}
           />
           <ParamRow
             icon="water"
-            label="Salinity"
+            label={t('species.salinity')}
             value={`${params.salinity_tolerance_ppt?.min ?? 0} – ${params.salinity_tolerance_ppt?.max ?? 5} ppt`}
             theme={theme}
             styles={styles}
@@ -113,11 +113,11 @@ export default function SpeciesDetailScreen() {
 
         {/* Water Quality — Ammonia / Nitrite if available */}
         {(params.ammonia_mg_l != null || params.nitrite_mg_l != null) ? (
-          <InfoSection title="WATER QUALITY" styles={styles} theme={theme}>
+          <InfoSection title={t('waterQuality.title')} styles={styles} theme={theme}>
             {params.ammonia_mg_l != null ? (
               <ParamRow
                 icon="warning-outline"
-                label="Max Ammonia"
+                label={t('waterQuality.ammonia')}
                 value={`< ${params.ammonia_mg_l} mg/L`}
                 theme={theme}
                 styles={styles}
@@ -126,7 +126,7 @@ export default function SpeciesDetailScreen() {
             {params.nitrite_mg_l != null ? (
               <ParamRow
                 icon="alert-circle-outline"
-                label="Max Nitrite"
+                label={t('waterQuality.nitrite')}
                 value={`< ${params.nitrite_mg_l} mg/L`}
                 theme={theme}
                 styles={styles}
@@ -142,7 +142,7 @@ export default function SpeciesDetailScreen() {
             <>
               <ParamRow
                 icon="cash-outline"
-                label="Benchmark Market Price"
+                label={t('species.marketPrice')}
                 value={`₹${d.excel_economics.market_price_inr_kg}/kg`}
                 theme={theme}
                 styles={styles}
@@ -174,28 +174,28 @@ export default function SpeciesDetailScreen() {
             <>
               <ParamRow
                 icon="nutrition-outline"
-                label="Avg. FCR"
+                label={t('species.feedConversionRatio')}
                 value={`${econ.feed_conversion_ratio?.min ?? 1.2} – ${econ.feed_conversion_ratio?.max ?? 1.8}`}
                 theme={theme}
                 styles={styles}
               />
               <ParamRow
                 icon="trending-up-outline"
-                label="Expected Yield"
+                label={t('species.expectedYield')}
                 value={`${econ.expected_yield_mt_per_acre?.min ?? 3}–${econ.expected_yield_mt_per_acre?.max ?? 5} MT/Acre`}
                 theme={theme}
                 styles={styles}
               />
               <ParamRow
                 icon="cash-outline"
-                label="Market Price"
+                label={t('species.marketPrice')}
                 value={`₹${econ.market_price_per_kg_inr?.min ?? 100}–${econ.market_price_per_kg_inr?.max ?? 150}/kg`}
                 theme={theme}
                 styles={styles}
               />
               <ParamRow
                 icon="time-outline"
-                label="Culture Period"
+                label={t('species.culturePeriod')}
                 value={`${d.culture_period_months?.min ?? 8}–${d.culture_period_months?.max ?? 10} months`}
                 theme={theme}
                 styles={styles}
@@ -207,10 +207,10 @@ export default function SpeciesDetailScreen() {
 
         {/* Seasonality */}
         {(d.best_stocking_months?.length || d.harvest_months?.length) ? (
-          <InfoSection title="SEASONALITY" styles={styles} theme={theme}>
+          <InfoSection title={t('species.seasonality')} styles={styles} theme={theme}>
             {d.best_stocking_months?.length ? (
               <View style={styles.tagSection}>
-                <Text style={styles.tagSectionLabel}>Best Stocking Months</Text>
+                <Text style={styles.tagSectionLabel}>{t('species.bestStockingMonths')}</Text>
                 <View style={styles.tagsRow}>
                   {d.best_stocking_months.map((m: string, i: number) => (
                     <View key={i} style={styles.tagBadge}>
@@ -222,7 +222,7 @@ export default function SpeciesDetailScreen() {
             ) : null}
             {d.harvest_months?.length ? (
               <View style={[styles.tagSection, styles.tagSectionBorder]}>
-                <Text style={styles.tagSectionLabel}>Harvest Months</Text>
+                <Text style={styles.tagSectionLabel}>{t('species.harvestMonths')}</Text>
                 <View style={styles.tagsRow}>
                   {d.harvest_months.map((m: string, i: number) => (
                     <View key={i} style={[styles.tagBadge, styles.tagBadgeAccent]}>
@@ -237,7 +237,7 @@ export default function SpeciesDetailScreen() {
 
         {/* Optimal Systems */}
         {d.optimal_systems?.length ? (
-          <InfoSection title="OPTIMAL SYSTEMS" styles={styles} theme={theme}>
+          <InfoSection title={t('species.optimalSystems')} styles={styles} theme={theme}>
             <View style={styles.systemsRow}>
               {d.optimal_systems.map((s: string, idx: number) => (
                 <View key={idx} style={styles.systemBadge}>
@@ -251,10 +251,10 @@ export default function SpeciesDetailScreen() {
         {/* Breeding Guide */}
         {d.breeding_guide ? (
           <View style={[styles.section, { marginTop: 18 }]}>
-            <Text style={styles.sectionTitle}>HOW TO RAISE THEM 🌾</Text>
+            <Text style={styles.sectionTitle}>{t('species.howToRaise')}</Text>
             <View style={styles.sectionCard}>
               <View style={styles.sectionCardHeader}>
-                <Text style={styles.sectionCardHeaderText}>BREEDING & GROW-OUT GUIDE</Text>
+                <Text style={styles.sectionCardHeaderText}>{t('species.breedingGuide')}</Text>
               </View>
               <View style={styles.sectionCardBody}>
                 {/* Overview */}
@@ -267,7 +267,7 @@ export default function SpeciesDetailScreen() {
                 {/* Steps */}
                 {d.breeding_guide.steps?.length ? (
                   <View style={styles.breedingSteps}>
-                    <Text style={styles.breedingStepsTitle}>Step-by-Step</Text>
+                    <Text style={styles.breedingStepsTitle}>{t('species.stepByStep')}</Text>
                     {d.breeding_guide.steps.map((step: string, i: number) => (
                       <View key={i} style={styles.breedingStep}>
                         <View style={styles.stepNum}>
@@ -301,7 +301,7 @@ export default function SpeciesDetailScreen() {
         {/* YouTube Watch & Learn */}
         {d.youtube_links?.length ? (
           <View style={[styles.section, { marginTop: 18 }]}>
-            <Text style={styles.sectionTitle}>WATCH & LEARN 🎥</Text>
+            <Text style={styles.sectionTitle}>{t('species.watchAndLearn')}</Text>
             <View style={{ gap: 0 }}>
               {d.youtube_links.map((link: YouTubeLinkItem, i: number) => (
                 <YouTubeCard key={i} item={link} />

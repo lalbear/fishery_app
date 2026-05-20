@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import LocationCascadePicker, { LocationSelection } from '../components/LocationCascadePicker';
 import { authService } from '../services/authService';
@@ -99,10 +100,11 @@ const STATES: { code: string; name: string }[] = [
 ];
 
 export default function PersonalInfoScreen({ navigation }: any) {
+    const { t } = useTranslation();
     const { theme } = useTheme();
     const c = theme.colors;
-    const r = theme.borderRadius;
     const styles = getStyles(theme);
+    const r = theme.borderRadius;
 
     const [userId, setUserId] = useState('');
     const [name, setName] = useState('');
@@ -142,7 +144,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
 
     const handleSave = async () => {
         if (!name.trim()) {
-            Alert.alert('Name required', 'Please enter your name before saving.');
+            Alert.alert(t('auth.errors.nameRequired'), t('auth.errors.nameRequiredBody'));
             return;
         }
         setSaving(true);
@@ -194,14 +196,14 @@ export default function PersonalInfoScreen({ navigation }: any) {
             }
 
             const message = syncResult.success
-                ? 'Your profile has been updated.'
-                : 'Saved on this device. It will sync automatically when internet is back.';
+                ? t('personalInfo.saveSuccess')
+                : t('common.offline');
 
-            Alert.alert('Saved', message, [
-                { text: 'OK', onPress: () => navigation.navigate('Main') },
+            Alert.alert(t('common.success'), message, [
+                { text: t('common.ok'), onPress: () => navigation.navigate('Main') },
             ]);
         } catch {
-            Alert.alert('Error', 'Could not save profile. Please try again.');
+            Alert.alert(t('common.error'), t('personalInfo.saveError'));
         } finally {
             setSaving(false);
         }
@@ -228,7 +230,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
                 >
                     <Ionicons name="arrow-back" size={22} color={c.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Personal Info</Text>
+                <Text style={styles.headerTitle}>{t('personalInfo.title')}</Text>
                 <View style={{ width: 38 }} />
             </View>
 
@@ -241,7 +243,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
                             <Ionicons name="person" size={30} color={c.textInverse} />
                         </View>
                     </View>
-                    <Text style={styles.heroName}>{name || 'Your Name'}</Text>
+                    <Text style={styles.heroName}>{name || t('personalInfo.fields.name')}</Text>
                     <Text style={styles.heroMeta}>{phone || '+91 —'}</Text>
                     {locationComplete ? (
                         <View style={styles.heroBadge}>
@@ -254,21 +256,21 @@ export default function PersonalInfoScreen({ navigation }: any) {
                         <View style={[styles.heroBadge, styles.heroBadgeWarn]}>
                             <Ionicons name="alert-circle-outline" size={12} color={c.error} />
                             <Text style={[styles.heroBadgeText, { color: c.error }]}>
-                                Location incomplete — required for doctor booking
+                                {t('auth.errors.locationRequiredBody')}
                             </Text>
                         </View>
                     )}
                 </View>
 
                 {/* ── Basic info ─────────────────────────────────── */}
-                <Text style={styles.sectionLabel}>BASIC INFORMATION</Text>
+                <Text style={styles.sectionLabel}>{t('addEditPond.basicInfo').toUpperCase()}</Text>
                 <View style={styles.fieldsCard}>
                     <LabeledInput
-                        label="Full Name"
+                        label={t('personalInfo.fields.name')}
                         icon="person-outline"
                         value={name}
                         onChangeText={setName}
-                        placeholder="Your full name"
+                        placeholder={t('personalInfo.fields.namePlaceholder')}
                         isFocused={nameFocused}
                         onFocus={() => setNameFocused(true)}
                         onBlur={() => setNameFocused(false)}
@@ -278,12 +280,12 @@ export default function PersonalInfoScreen({ navigation }: any) {
                     />
                     <View style={styles.fieldDivider} />
                     <LabeledInput
-                        label="Phone Number"
+                        label={t('personalInfo.fields.phone')}
                         icon="phone-portrait-outline"
                         value={phone}
                         onChangeText={setPhone}
                         keyboardType="phone-pad"
-                        placeholder="+91 00000 00000"
+                        placeholder={t('auth.phonePlaceholder')}
                         isFocused={phoneFocused}
                         onFocus={() => setPhoneFocused(true)}
                         onBlur={() => setPhoneFocused(false)}
@@ -294,7 +296,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
                 </View>
 
                 {/* ── Farmer category ────────────────────────────── */}
-                <Text style={styles.sectionLabel}>FARMER CATEGORY</Text>
+                <Text style={styles.sectionLabel}>{t('profile.farmerCategory').toUpperCase()}</Text>
                 <View style={styles.segmentRow}>
                     {FARMER_CATEGORIES.map(cat => (
                         <TouchableOpacity
@@ -303,14 +305,14 @@ export default function PersonalInfoScreen({ navigation }: any) {
                             onPress={() => setFarmerCategory(cat)}
                         >
                             <Text style={[styles.segmentText, farmerCategory === cat && styles.segmentTextActive]}>
-                                {cat}
+                                {t(`economics.categories.${cat}`)}
                             </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
                 {/* ── Home state ─────────────────────────────────── */}
-                <Text style={styles.sectionLabel}>HOME STATE</Text>
+                <Text style={styles.sectionLabel}>{t('personalInfo.fields.state').toUpperCase()}</Text>
                 <View style={styles.dropdownWrap}>
                     <TouchableOpacity
                         style={[styles.dropdownTrigger, stateOpen && styles.dropdownTriggerOpen]}
@@ -321,7 +323,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
                         <Text style={[styles.dropdownTriggerText, stateCode && styles.dropdownTriggerTextSelected]}>
                             {stateCode
                                 ? STATES.find(s => s.code === stateCode)?.name ?? stateCode
-                                : 'Select your state'}
+                                : t('addEditPond.fields.selectStatus')}
                         </Text>
                         <Ionicons
                             name={stateOpen ? 'chevron-up' : 'chevron-down'}
@@ -368,12 +370,12 @@ export default function PersonalInfoScreen({ navigation }: any) {
                 {/* ── Location cascade ───────────────────────────── */}
                 {stateCode ? (
                     <>
-                        <Text style={styles.sectionLabel}>HOME LOCATION</Text>
+                        <Text style={styles.sectionLabel}>{t('profile.location').toUpperCase()}</Text>
                         <View style={styles.locationCard}>
                             <View style={styles.locationHintRow}>
                                 <Ionicons name="information-circle-outline" size={15} color={c.primary} />
                                 <Text style={styles.locationHint}>
-                                    Your panchayat determines which doctor is assigned to you.
+                                    {t('auth.doctorAreaHelp')}
                                 </Text>
                             </View>
                             <LocationCascadePicker
@@ -383,7 +385,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
                             />
                             {stateCode && !['BR'].includes(stateCode) && (
                                 <Text style={styles.comingSoonText}>
-                                    District/block/panchayat data for {stateCode} coming soon.
+                                    {t('common.comingSoon')}
                                 </Text>
                             )}
                         </View>
@@ -402,7 +404,7 @@ export default function PersonalInfoScreen({ navigation }: any) {
                     ) : (
                         <>
                             <Ionicons name="checkmark-circle-outline" size={20} color={c.textInverse} />
-                            <Text style={styles.saveButtonText}>Save Profile</Text>
+                            <Text style={styles.saveButtonText}>{t('common.save')}</Text>
                         </>
                     )}
                 </TouchableOpacity>

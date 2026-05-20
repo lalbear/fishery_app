@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { authService, type AuthUser, type BackendUserRole } from '../services/authService';
 import { useTheme } from '../ThemeContext';
 import LocationCascadePicker, { type LocationSelection } from '../components/LocationCascadePicker';
@@ -58,10 +59,10 @@ function normalizeStateCode(value: string): string | null {
     return STATE_CODE_BY_LABEL[normalized] || null;
 }
 
-function mapRoleLabel(role: BackendUserRole) {
-    if (role === 'DOCTOR') return 'doctor';
-    if (role === 'ADMIN') return 'admin';
-    return 'farmer';
+function mapRoleLabel(role: BackendUserRole, t: (k: string) => string) {
+    if (role === 'DOCTOR') return t('auth.roles.doctor');
+    if (role === 'ADMIN') return t('auth.roles.admin');
+    return t('auth.roles.farmer');
 }
 
 function isDoctorLocationComplete(location: Partial<LocationSelection>) {
@@ -73,11 +74,15 @@ function normalizePhoneNumber(value: string) {
     const hasPlus = trimmed.startsWith('+');
     const digitsOnly = trimmed.replace(/[^\d]/g, '');
 
+    // If the user already typed a + prefix, trust their full international number
     if (hasPlus) {
         return `+${digitsOnly}`;
     }
 
-    if (digitsOnly.startsWith('91')) {
+    // Fix #7: Only treat as an already-prefixed Indian number when the digit string
+    // is exactly 12 digits AND starts with '91'. A 10-digit number that happens to
+    // start with '91' (e.g. 9123456789) is a local Indian number — prepend +91.
+    if (digitsOnly.startsWith('91') && digitsOnly.length === 12) {
         return `+${digitsOnly}`;
     }
 
@@ -87,14 +92,17 @@ function normalizePhoneNumber(value: string) {
 function hasValidPhoneNumber(value: string) {
     const digitsOnly = value.replace(/[^\d]/g, '');
     if (!digitsOnly) return false;
-    if (digitsOnly.startsWith('91')) {
-        return digitsOnly.length === 12;
+    // Fix #7: A valid Indian number is exactly 10 local digits, or 12 digits with
+    // the 91 country code already included. Reject anything else.
+    if (digitsOnly.startsWith('91') && digitsOnly.length === 12) {
+        return true;
     }
     return digitsOnly.length === 10;
 }
 
 export default function AuthScreen({ onLoginSuccess }: Props) {
     const { theme } = useTheme();
+    const { t } = useTranslation();
     const c = theme.colors;
     const styles = getStyles(theme);
 
@@ -111,13 +119,13 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
     const subtitle = useMemo(() => {
         if (isLogin) {
             return selectedRole === 'DOCTOR'
-                ? 'Doctor access for visit queue, alerts, and appointment completion'
-                : 'Farmer access for ponds, bookings, and aquaculture support';
+                ? t('auth.subtitleLoginDoctor')
+                : t('auth.subtitleLoginFarmer');
         }
         return selectedRole === 'DOCTOR'
-            ? 'Create a doctor account with your assigned block and panchayat'
-            : 'Create a farmer account and complete your profile after signup';
-    }, [isLogin, selectedRole]);
+            ? t('auth.subtitleSignupDoctor')
+            : t('auth.subtitleSignupFarmer');
+    }, [isLogin, selectedRole, t]);
 
     const handleRoleSwitch = (role: AppRole) => {
         setSelectedRole(role);
@@ -134,7 +142,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
         const formattedPhone = normalizePhoneNumber(phone);
 
         if (!hasValidPhoneNumber(phone) || !password.trim()) {
-            Alert.alert('Missing fields', 'Please enter a valid 10-digit phone number and password.');
+            Alert.alert(t('auth.errors.missingFields'), t('auth.errors.missingFieldsBody'));
             return;
         }
 
@@ -143,15 +151,15 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
             if (isLogin) {
                 const res = await authService.login(formattedPhone, password.trim());
                 if (!res.success || !res.user) {
-                    Alert.alert('Login failed', res.error || 'Unable to login right now.');
+                    Alert.alert(t('auth.errors.loginFailed'), res.error || t('auth.errors.loginFailedBody'));
                     return;
                 }
 
                 if (res.user.role !== selectedRole) {
                     await authService.logout();
                     Alert.alert(
-                        'Wrong account type',
-                        `This number is registered as a ${mapRoleLabel(res.user.role)} account. Switch the role selector and try again.`
+                        t('auth.errors.wrongAccountType'),
+                        t('auth.errors.wrongAccountTypeBody', { role: mapRoleLabel(res.user.role, t) })
                     );
                     return;
                 }
@@ -161,19 +169,19 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
             }
 
             if (!name.trim()) {
-                Alert.alert('Name required', 'Please enter your full name.');
+                Alert.alert(t('auth.errors.nameRequired'), t('auth.errors.nameRequiredBody'));
                 return;
             }
 
             const normalizedStateCode = normalizeStateCode(stateCode);
             if (!normalizedStateCode) {
-                Alert.alert('State required', 'Please enter a valid 2-letter state code or a supported state name.');
+                Alert.alert(t('auth.errors.stateRequired'), t('auth.errors.stateRequiredBody'));
                 return;
             }
 
             if (selectedRole === 'DOCTOR') {
                 if (!isDoctorLocationComplete(location)) {
-                    Alert.alert('Location required', 'Doctor signup requires district, block, and panchayat details.');
+                    Alert.alert(t('auth.errors.locationRequired'), t('auth.errors.locationRequiredBody'));
                     return;
                 }
 
@@ -192,11 +200,11 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                 });
 
                 if (!res.success) {
-                    Alert.alert('Signup failed', res.error || 'Unable to create the doctor account.');
+                    Alert.alert(t('auth.errors.signupFailed'), res.error || t('auth.errors.signupFailedDoctorBody'));
                     return;
                 }
 
-                Alert.alert('Doctor account created', 'Your doctor account is ready.');
+                Alert.alert(t('auth.errors.doctorAccountCreated'), t('auth.errors.doctorAccountCreatedBody'));
                 await onLoginSuccess(res.user!);
                 return;
             }
@@ -211,14 +219,14 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
             });
 
             if (!res.success) {
-                Alert.alert('Signup failed', res.error || 'Unable to create the farmer account.');
+                Alert.alert(t('auth.errors.signupFailed'), res.error || t('auth.errors.signupFailedFarmerBody'));
                 return;
             }
 
-            Alert.alert('Account created', 'Welcome to MatsyaMitra.');
+            Alert.alert(t('auth.errors.accountCreated'), t('auth.errors.accountCreatedBody'));
             await onLoginSuccess(res.user!);
         } catch {
-            Alert.alert('Error', 'Something went wrong while processing your request.');
+            Alert.alert(t('auth.errors.genericError'), t('auth.errors.genericErrorBody'));
         } finally {
             setLoading(false);
         }
@@ -267,7 +275,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                             color={active ? c.textInverse : c.primary}
                                         />
                                         <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>
-                                            {role === 'DOCTOR' ? 'Doctor' : 'Farmer'}
+                                            {role === 'DOCTOR' ? t('auth.roleDoctor') : t('auth.roleFarmer')}
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -279,13 +287,13 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                 style={[styles.authTab, isLogin && styles.authTabActive]}
                                 onPress={() => handleAuthModeSwitch(true)}
                             >
-                                <Text style={[styles.authTabText, isLogin && styles.authTabTextActive]}>Sign In</Text>
+                                <Text style={[styles.authTabText, isLogin && styles.authTabTextActive]}>{t('auth.tabSignIn')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.authTab, !isLogin && styles.authTabActive]}
                                 onPress={() => handleAuthModeSwitch(false)}
                             >
-                                <Text style={[styles.authTabText, !isLogin && styles.authTabTextActive]}>Sign Up</Text>
+                                <Text style={[styles.authTabText, !isLogin && styles.authTabTextActive]}>{t('auth.tabSignUp')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -293,17 +301,17 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                             {!isLogin ? (
                                 <>
                                     <FormField
-                                        label="Full Name"
+                                        label={t('auth.fullName')}
                                         icon="person-outline"
-                                        placeholder={selectedRole === 'DOCTOR' ? 'Dr. Full Name' : 'Full Name'}
+                                        placeholder={selectedRole === 'DOCTOR' ? t('auth.fullNamePlaceholderDoctor') : t('auth.fullNamePlaceholderFarmer')}
                                         value={name}
                                         onChangeText={setName}
                                         autoCapitalize="words"
                                     />
                                     <FormField
-                                        label="State"
+                                        label={t('auth.state')}
                                         icon="location-outline"
-                                        placeholder="Bihar or BR"
+                                        placeholder={t('auth.statePlaceholder')}
                                         value={stateCode}
                                         onChangeText={setStateCode}
                                         autoCapitalize="characters"
@@ -311,9 +319,9 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                     />
                                     {selectedRole === 'DOCTOR' ? (
                                         <View style={styles.locationCard}>
-                                            <Text style={styles.locationTitle}>Assigned service area</Text>
+                                            <Text style={styles.locationTitle}>{t('auth.assignedServiceArea')}</Text>
                                             <Text style={styles.locationHelp}>
-                                                Doctor booking routes are created from the panchayat you choose here.
+                                                {t('auth.doctorAreaHelp')}
                                             </Text>
                                             <LocationCascadePicker
                                                 stateCode={normalizeStateCode(stateCode) || 'BR'}
@@ -326,9 +334,9 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                             ) : null}
 
                             <FormField
-                                label="Phone Number"
+                                label={t('auth.phoneNumber')}
                                 icon="call-outline"
-                                placeholder="+91 00000 00000"
+                                placeholder={t('auth.phonePlaceholder')}
                                 value={phone}
                                 onChangeText={setPhone}
                                 autoCorrect={false}
@@ -338,9 +346,9 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                             />
 
                             <FormField
-                                label="Password"
+                                label={t('auth.password')}
                                 icon="lock-closed-outline"
-                                placeholder="Enter password"
+                                placeholder={t('auth.passwordPlaceholder')}
                                 value={password}
                                 onChangeText={setPassword}
                                 autoCorrect={false}
@@ -355,7 +363,7 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                 <View style={styles.infoBanner}>
                                     <Ionicons name="alarm-outline" size={16} color={c.primary} />
                                     <Text style={styles.infoBannerText}>
-                                        Doctors receive live visit queue alerts and 12-hour reminder tracking for open appointments.
+                                        {t('auth.doctorAlertBanner')}
                                     </Text>
                                 </View>
                             ) : null}
@@ -373,11 +381,11 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                         <Text style={styles.primaryButtonText}>
                                             {isLogin
                                                 ? selectedRole === 'DOCTOR'
-                                                    ? 'Login as Doctor'
-                                                    : 'Login as Farmer'
+                                                    ? t('auth.loginAsDoctor')
+                                                    : t('auth.loginAsFarmer')
                                                 : selectedRole === 'DOCTOR'
-                                                ? 'Create Doctor Account'
-                                                : 'Create Farmer Account'}
+                                                ? t('auth.createDoctorAccount')
+                                                : t('auth.createFarmerAccount')}
                                         </Text>
                                         <Ionicons name="arrow-forward" size={18} color={c.textInverse} />
                                     </>
@@ -395,14 +403,14 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                     color={c.primary}
                                 />
                                 <Text style={styles.secondaryButtonText}>
-                                    {isLogin ? 'Need a new account?' : 'Already have an account?'}
+                                    {isLogin ? t('auth.needNewAccount') : t('auth.alreadyHaveAccount')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     <Text style={styles.footer}>
-                        By continuing, you agree to our Terms of Service and Privacy Policy.
+                        {t('auth.termsFooter')}
                     </Text>
                 </ScrollView>
             </KeyboardAvoidingView>

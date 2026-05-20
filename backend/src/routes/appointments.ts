@@ -1,19 +1,24 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { query, transaction } from '../db';
+import { requireAuth } from '../middleware/auth';
+import { imageUriSchema } from '../middleware/validate';
 
 const router = Router();
+
+// All appointment routes require authentication
+router.use(requireAuth);
 
 const createSchema = z.object({
   farmerId: z.string().uuid(),
   doctorId: z.string().uuid(),
   pondId: z.string().uuid().optional(),
-  issueDescription: z.string().min(5),
+  issueDescription: z.string().min(5).max(2000),
   suspectedDiseaseId: z.string().uuid().optional(),
   scheduledDate: z.string().datetime(),
   consultationType: z.enum(['VISIT', 'CALL']),
   emergencyFlag: z.boolean().optional().default(false),
-  photoUri: z.string().min(5).optional(),
+  photoUri: imageUriSchema.optional(),
 });
 
 const visitReportSchema = z.object({

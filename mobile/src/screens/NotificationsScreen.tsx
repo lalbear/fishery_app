@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import {
   FarmNotification,
@@ -21,6 +22,7 @@ import {
 export default function NotificationsScreen() {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const styles = getStyles(theme);
 
@@ -88,14 +90,14 @@ export default function NotificationsScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={c.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         <TouchableOpacity
           style={styles.markAllBtn}
           onPress={handleMarkAllRead}
           disabled={unreadCount === 0}
         >
           <Text style={[styles.markAllText, unreadCount === 0 && styles.markAllTextDisabled]}>
-            Mark all
+            {t('notifications.markAll')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -111,11 +113,11 @@ export default function NotificationsScreen() {
           )}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.summaryTitle}>Farm Alerts</Text>
+          <Text style={styles.summaryTitle}>{t('notifications.farmAlerts')}</Text>
           <Text style={styles.summaryText}>
             {unreadCount > 0
-              ? `${unreadCount} unread update${unreadCount === 1 ? '' : 's'} based on your ponds and recent readings`
-              : 'You are caught up. New harvest and water-quality alerts will show here.'}
+              ? t(unreadCount === 1 ? 'notifications.unreadSummaryOne' : 'notifications.unreadSummaryMany', { count: unreadCount })
+              : t('notifications.caughtUp')}
           </Text>
         </View>
       </View>
@@ -125,15 +127,15 @@ export default function NotificationsScreen() {
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: c.error }]} />
-            <Text style={styles.legendLabel}>Critical</Text>
+            <Text style={styles.legendLabel}>{t('notifications.critical')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: c.accent }]} />
-            <Text style={styles.legendLabel}>Warning</Text>
+            <Text style={styles.legendLabel}>{t('notifications.warning')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: c.secondary }]} />
-            <Text style={styles.legendLabel}>Info</Text>
+            <Text style={styles.legendLabel}>{t('notifications.info')}</Text>
           </View>
         </View>
       )}
@@ -148,9 +150,9 @@ export default function NotificationsScreen() {
           <View style={styles.emptyIconWrap}>
             <Ionicons name="notifications-off-outline" size={36} color={c.textMuted} />
           </View>
-          <Text style={styles.emptyTitle}>No notifications yet</Text>
+          <Text style={styles.emptyTitle}>{t('notifications.noNotificationsTitle')}</Text>
           <Text style={styles.emptyText}>
-            Add ponds, log water quality, and keep active crops updated to start receiving useful alerts.
+            {t('notifications.noNotificationsBody')}
           </Text>
         </View>
       ) : (

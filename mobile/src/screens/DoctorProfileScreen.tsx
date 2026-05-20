@@ -12,12 +12,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import { useAuth } from '../AuthContext';
 import { type DoctorDashboardSnapshot, getDoctorDashboardSnapshot } from '../services/doctorDashboardService';
 
 export default function DoctorProfileScreen() {
   const { theme, isDark, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const { logout } = useAuth();
   const styles = getStyles(theme);
   const c = theme.colors;
@@ -64,18 +66,18 @@ export default function DoctorProfileScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>FIELD SETTINGS</Text>
+        <Text style={styles.sectionLabel}>{t('profile.preferences').toUpperCase()}</Text>
         <View style={styles.panel}>
-          <SettingsRow icon="call-outline" title="Phone" value={snapshot.doctor.phone} />
+          <SettingsRow icon="call-outline" title={t('personalInfo.fields.phone')} value={snapshot.doctor.phone} />
           <Divider theme={theme} />
-          <SettingsRow icon="language-outline" title="Languages" value={snapshot.doctor.languages.join(', ')} />
+          <SettingsRow icon="language-outline" title={t('profile.language')} value={snapshot.doctor.languages.join(', ')} />
           <Divider theme={theme} />
           <View style={styles.switchRow}>
             <View style={styles.switchLeft}>
               <Ionicons name="walk-outline" size={18} color={c.textSecondary} />
               <View>
-                <Text style={styles.switchTitle}>Available for field visits</Text>
-                <Text style={styles.switchMeta}>Local availability toggle for appointment planning</Text>
+                <Text style={styles.switchTitle}>{t('doctor.visit')}</Text>
+                <Text style={styles.switchMeta}>{t('doctor.consultationType')}</Text>
               </View>
             </View>
             <Switch value={availableForField} onValueChange={setAvailableForField} trackColor={{ false: c.border, true: c.primaryLight }} thumbColor={availableForField ? c.primary : c.textMuted} />
@@ -85,15 +87,15 @@ export default function DoctorProfileScreen() {
             <View style={styles.switchLeft}>
               <Ionicons name={isDark ? 'moon-outline' : 'sunny-outline'} size={18} color={c.textSecondary} />
               <View>
-                <Text style={styles.switchTitle}>Dark mode</Text>
-                <Text style={styles.switchMeta}>Preview how the doctor UI reads in both themes</Text>
+                <Text style={styles.switchTitle}>{t('profile.darkMode')}</Text>
+                <Text style={styles.switchMeta}>{t('profile.appearance')}</Text>
               </View>
             </View>
             <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: c.border, true: c.primaryLight }} thumbColor={isDark ? c.primary : c.textMuted} />
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>SERVICE AREAS</Text>
+        <Text style={styles.sectionLabel}>{t('auth.assignedServiceArea').toUpperCase()}</Text>
         <View style={styles.panel}>
           {snapshot.doctor.serviceAreas.map((area) => (
             <View key={area} style={styles.serviceAreaRow}>
@@ -103,16 +105,16 @@ export default function DoctorProfileScreen() {
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>ACCOUNT ACTIONS</Text>
+        <Text style={styles.sectionLabel}>{t('profile.account').toUpperCase()}</Text>
         <View style={styles.panel}>
           <TouchableOpacity style={styles.actionButton} onPress={() => void loadProfile()}>
             <Ionicons name="refresh-outline" size={18} color={c.primary} />
-            <Text style={styles.actionText}>Refresh doctor dashboard data</Text>
+            <Text style={styles.actionText}>{t('common.refresh')}</Text>
           </TouchableOpacity>
           <Divider theme={theme} />
           <TouchableOpacity style={styles.actionButton} onPress={() => void logout()}>
             <Ionicons name="log-out-outline" size={18} color={c.error} />
-            <Text style={[styles.actionText, { color: c.error }]}>Logout doctor account</Text>
+            <Text style={[styles.actionText, { color: c.error }]}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

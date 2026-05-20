@@ -3,6 +3,8 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { query, transaction } from '../db';
+import { requireAuth, assertOwnership } from '../middleware/auth';
+import { auditLog } from '../middleware/audit';
 
 const router = Router();
 
@@ -50,76 +52,103 @@ const profileUpdateSchema = z.object({
     panchayatCode: z.string().min(2).max(200).optional().nullable(),
 });
 
+// Module-level flag — schema alignment only needs to run once per process startup.
+// This prevents lock contention and deadlocks under concurrent login/signup load.
+let _authSchemaEnsured = false;
+
 async function ensureAuthRuntimeSchema(): Promise<void> {
-    await query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)
-    `);
+    if (_authSchemaEnsured) return;
 
-    await query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS role VARCHAR(20)
-    `);
+    // Wrap all DDL in a single transaction so partial failures don't leave the
+    // schema in an inconsistent state.
+    await transaction(async (client) => {
+        await client.query(`
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)
+        `);
 
-    await query(`
-        UPDATE users
-        SET role = COALESCE(role, 'FARMER')
-    `);
+        await client.query(`
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS role VARCHAR(20)
+        `);
 
-    await query(`
-        ALTER TABLE users
-        ALTER COLUMN role SET DEFAULT 'FARMER'
-    `);
+        await client.query(`
+            UPDATE users
+            SET role = COALESCE(role, 'FARMER')
+        `);
 
-    await query(`
-        ALTER TABLE users
-        ALTER COLUMN district_code DROP NOT NULL
-    `);
+        await client.query(`
+            ALTER TABLE users
+            ALTER COLUMN role SET DEFAULT 'FARMER'
+        `);
 
-    await query(`
-        ALTER TABLE users
-        ALTER COLUMN state_code TYPE VARCHAR(100)
-    `);
+        await client.query(`
+            ALTER TABLE users
+            ALTER COLUMN district_code DROP NOT NULL
+        `);
 
-    await query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS block_code VARCHAR(160),
-        ADD COLUMN IF NOT EXISTS panchayat_code VARCHAR(200)
-    `);
+        await client.query(`
+            ALTER TABLE users
+            ALTER COLUMN state_code TYPE VARCHAR(100)
+        `);
 
-    await query(`
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1
-                FROM pg_constraint
-                WHERE conname = 'users_role_check'
-            ) THEN
-                ALTER TABLE users
-                ADD CONSTRAINT users_role_check CHECK (role IN ('FARMER', 'DOCTOR', 'ADMIN'));
-            END IF;
-        END $$;
-    `);
+        await client.query(`
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS block_code VARCHAR(160),
+            ADD COLUMN IF NOT EXISTS panchayat_code VARCHAR(200)
+        `);
 
-    await query(`
-        ALTER TABLE doctors
-        ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        ADD COLUMN IF NOT EXISTS district_code VARCHAR(120),
-        ADD COLUMN IF NOT EXISTS district_name VARCHAR(120),
-        ADD COLUMN IF NOT EXISTS block_code VARCHAR(160),
-        ADD COLUMN IF NOT EXISTS block_name VARCHAR(120),
-        ADD COLUMN IF NOT EXISTS panchayat_code VARCHAR(200),
-        ADD COLUMN IF NOT EXISTS panchayat_name VARCHAR(120)
-    `);
+        await client.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'users_role_check'
+                ) THEN
+                    ALTER TABLE users
+                    ADD CONSTRAINT users_role_check CHECK (role IN ('FARMER', 'DOCTOR', 'ADMIN'));
+                END IF;
+            END $$;
+        `);
 
-    await query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id_unique
-        ON doctors(user_id)
-        WHERE user_id IS NOT NULL
-    `);
+        await client.query(`
+            ALTER TABLE doctors
+            ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+            ADD COLUMN IF NOT EXISTS district_code VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS district_name VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS block_code VARCHAR(160),
+            ADD COLUMN IF NOT EXISTS block_name VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS panchayat_code VARCHAR(200),
+            ADD COLUMN IF NOT EXISTS panchayat_name VARCHAR(120)
+        `);
+
+        await client.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id_unique
+            ON doctors(user_id)
+            WHERE user_id IS NOT NULL
+        `);
+    });
+
+    _authSchemaEnsured = true;
 }
 
-async function fetchAuthenticatedUserByColumn(column: 'u.phone_number' | 'u.id', value: string) {
+/**
+ * Safely fetches an authenticated user by a whitelisted column.
+ * Uses a strict column map to prevent SQL injection — the column
+ * parameter is never interpolated directly from user input.
+ */
+const SAFE_USER_COLUMNS: Record<string, string> = {
+    phone: 'u.phone_number',
+    id: 'u.id',
+};
+
+async function fetchAuthenticatedUserByColumn(columnKey: 'phone' | 'id', value: string) {
+    const column = SAFE_USER_COLUMNS[columnKey];
+    if (!column) {
+        throw new Error(`Invalid column key: ${columnKey}`);
+    }
+
     const result = await query(`
       SELECT
         u.id,
@@ -150,11 +179,11 @@ async function fetchAuthenticatedUserByColumn(column: 'u.phone_number' | 'u.id',
 }
 
 async function fetchAuthenticatedUser(phone: string) {
-    return fetchAuthenticatedUserByColumn('u.phone_number', phone);
+    return fetchAuthenticatedUserByColumn('phone', phone);
 }
 
 async function fetchAuthenticatedUserById(userId: string) {
-    return fetchAuthenticatedUserByColumn('u.id', userId);
+    return fetchAuthenticatedUserByColumn('id', userId);
 }
 
 router.post('/signup', async (req, res) => {
@@ -252,9 +281,20 @@ router.post('/signup', async (req, res) => {
         });
 
         const resolvedUser = await fetchAuthenticatedUser(createdPhone);
-        const token = jwt.sign({ userId: resolvedUser?.id, role: resolvedUser?.role }, JWT_SECRET, { expiresIn: '30d' });
+        // Strip password_hash before sending — must use destructuring (not delete)
+        // to guarantee the field is absent from the serialized response object.
+        const { password_hash: _pw, ...safeResolvedUser } = resolvedUser ?? {};
+        const token = jwt.sign({ userId: safeResolvedUser?.id, role: safeResolvedUser?.role }, JWT_SECRET, { expiresIn: '30d' });
 
-        res.json({ success: true, token, user: resolvedUser });
+        auditLog({
+            action: 'AUTH_SIGNUP',
+            userId: safeResolvedUser?.id,
+            ip: req.ip || req.socket.remoteAddress,
+            details: { role: data.role, stateCode: data.stateCode },
+            outcome: 'success',
+        });
+
+        res.json({ success: true, token, user: safeResolvedUser });
     } catch (error: any) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ success: false, error: 'Validation Error', details: error.issues });
@@ -274,18 +314,40 @@ router.post('/login', async (req, res) => {
 
         const user = await fetchAuthenticatedUser(data.phone);
         if (!user || !user.password_hash) {
+            auditLog({
+                action: 'AUTH_LOGIN_FAILED',
+                ip: req.ip || req.socket.remoteAddress,
+                details: { phone: data.phone, reason: 'user_not_found' },
+                outcome: 'failure',
+            });
             return res.status(401).json({ success: false, error: 'Invalid phone or password' });
         }
 
         const valid = await bcrypt.compare(data.password, user.password_hash);
         if (!valid) {
+            auditLog({
+                action: 'AUTH_LOGIN_FAILED',
+                userId: user.id,
+                ip: req.ip || req.socket.remoteAddress,
+                details: { phone: data.phone, reason: 'wrong_password' },
+                outcome: 'failure',
+            });
             return res.status(401).json({ success: false, error: 'Invalid phone or password' });
         }
 
-        delete user.password_hash;
-        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+        // Remove password_hash before sending — must be done before building the response object
+        const { password_hash: _removed, ...safeUser } = user;
+        const token = jwt.sign({ userId: safeUser.id, role: safeUser.role }, JWT_SECRET, { expiresIn: '30d' });
 
-        res.json({ success: true, token, user });
+        auditLog({
+            action: 'AUTH_LOGIN_SUCCESS',
+            userId: safeUser.id,
+            ip: req.ip || req.socket.remoteAddress,
+            details: { role: safeUser.role },
+            outcome: 'success',
+        });
+
+        res.json({ success: true, token, user: safeUser });
     } catch (error: any) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ success: false, error: 'Validation Error', details: error.issues });
@@ -297,8 +359,11 @@ router.post('/login', async (req, res) => {
     }
 });
 
-router.patch('/profile/:userId', async (req, res) => {
+router.patch('/profile/:userId', requireAuth, async (req, res) => {
     try {
+        // Ensure the requester owns this profile (or is admin)
+        if (!assertOwnership(req, res, req.params.userId)) return;
+
         await ensureAuthRuntimeSchema();
         const payload = profileUpdateSchema.parse(req.body);
 

@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import database from '../database';
 import Pond from '../database/models/Pond';
@@ -27,7 +28,7 @@ const formatStockingDate = (timestamp?: number) => {
 
 function PondCard({
     item, theme, styles, speciesLookup,
-    onEdit, onDelete, onPickImage,
+    onEdit, onDelete, onPickImage, t,
 }: {
     item: Pond;
     theme: any;
@@ -36,6 +37,7 @@ function PondCard({
     onEdit: () => void;
     onDelete: () => void;
     onPickImage: () => void;
+    t: (k: string, opts?: any) => string;
 }) {
     const species = getSpeciesDisplay(item.speciesId, speciesLookup);
     const stockingDate = formatStockingDate(item.stockingDate);
@@ -54,7 +56,7 @@ function PondCard({
                 ) : (
                     <View style={styles.heroPlaceholder}>
                         <Ionicons name="camera-outline" size={32} color={theme.colors.textMuted} />
-                        <Text style={styles.heroPlaceholderText}>Tap to add pond photo</Text>
+                        <Text style={styles.heroPlaceholderText}>{t('ponds.tapAddPhoto')}</Text>
                     </View>
                 )}
                 {/* gradient overlay — simulated with layered semi-transparent Views */}
@@ -65,7 +67,7 @@ function PondCard({
                     <Text style={styles.heroTitle} numberOfLines={1}>{item.name}</Text>
                     <View style={[styles.statusBadge, isActive ? styles.statusBadgeActive : styles.statusBadgeFallow]}>
                         <Text style={[styles.statusBadgeText, isActive ? styles.statusBadgeTextActive : styles.statusBadgeTextFallow]}>
-                            {(item.status || 'UNKNOWN').toUpperCase()}
+                            {t(`ponds.status.${(item.status || 'UNKNOWN').toUpperCase()}`)}
                         </Text>
                     </View>
                 </View>
@@ -74,7 +76,7 @@ function PondCard({
                 {item.imageUri ? (
                     <View style={styles.cameraChip}>
                         <Ionicons name="camera" size={13} color="#fff" />
-                        <Text style={styles.cameraChipText}>Update</Text>
+                        <Text style={styles.cameraChipText}>{t('ponds.update')}</Text>
                     </View>
                 ) : null}
             </TouchableOpacity>
@@ -84,17 +86,17 @@ function PondCard({
                 {/* Section: Stats row */}
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>AREA</Text>
-                        <Text style={styles.statValue}>{item.areaHectares ?? '—'}<Text style={styles.statUnit}> ha</Text></Text>
+                        <Text style={styles.statLabel}>{t('ponds.area')}</Text>
+                        <Text style={styles.statValue}>{item.areaHectares ?? '—'}<Text style={styles.statUnit}> {t('common.ha')}</Text></Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>SOURCE</Text>
+                        <Text style={styles.statLabel}>{t('ponds.source')}</Text>
                         <Text style={styles.statValue}>{item.waterSourceType || '—'}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>SYSTEM</Text>
+                        <Text style={styles.statLabel}>{t('ponds.system')}</Text>
                         <Text style={styles.statValue}>{item.systemType || '—'}</Text>
                     </View>
                 </View>
@@ -111,7 +113,7 @@ function PondCard({
                 ) : (
                     <View style={styles.infoRow}>
                         <Ionicons name="fish-outline" size={14} color={theme.colors.textMuted} />
-                        <Text style={styles.infoMeta}>Species not added yet</Text>
+                        <Text style={styles.infoMeta}>{t('ponds.speciesNotAdded')}</Text>
                     </View>
                 )}
 
@@ -119,12 +121,12 @@ function PondCard({
                 {stockingDate ? (
                     <View style={styles.infoRow}>
                         <Ionicons name="calendar-outline" size={14} color={theme.colors.primary} />
-                        <Text style={styles.infoMeta}>Stocked {stockingDate}</Text>
+                        <Text style={styles.infoMeta}>{t('ponds.stockedOn', { date: stockingDate })}</Text>
                     </View>
                 ) : (
                     <View style={styles.infoRow}>
                         <Ionicons name="calendar-outline" size={14} color={theme.colors.textMuted} />
-                        <Text style={styles.infoMeta}>Add stocking date to unlock harvest tracking</Text>
+                        <Text style={styles.infoMeta}>{t('ponds.addStockingHelp')}</Text>
                     </View>
                 )}
 
@@ -132,11 +134,11 @@ function PondCard({
                 <View style={styles.actionRow}>
                     <TouchableOpacity style={styles.editButton} onPress={onEdit}>
                         <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
-                        <Text style={styles.editButtonText}>Edit Pond</Text>
+                        <Text style={styles.editButtonText}>{t('ponds.editPondBtn')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
                         <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
-                        <Text style={styles.deleteButtonText}>Delete</Text>
+                        <Text style={styles.deleteButtonText}>{t('ponds.deleteBtn')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -149,6 +151,7 @@ function PondCard({
 const PondsList = ({ ponds }: { ponds: Pond[] }) => {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
+    const { t } = useTranslation();
     const styles = getStyles(theme);
     const [speciesLookup, setSpeciesLookup] = useState<SpeciesLookup>({});
 
@@ -158,12 +161,12 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
 
     const handleDelete = (pond: Pond) => {
         Alert.alert(
-            'Delete pond?',
-            `This will remove ${pond.name} from your pond list.${pond.status === 'ACTIVE' ? ' You can add it again later if needed.' : ''}`,
+            t('ponds.deletePondTitle'),
+            t('ponds.deletePondBody', { name: pond.name }) + (pond.status === 'ACTIVE' ? t('ponds.deletePondActiveSuffix') : ''),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -175,7 +178,7 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                                 await pond.markAsDeleted();
                             });
                         } catch (error: any) {
-                            Alert.alert('Delete failed', error?.message || 'Could not remove this pond right now.');
+                            Alert.alert(t('ponds.deleteFailed'), error?.message || t('ponds.deleteFailedBody'));
                         }
                     },
                 },
@@ -189,22 +192,22 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                 await pond.update((p) => { p.imageUri = uri; });
             });
         } catch {
-            Alert.alert('Error', 'Failed to update pond photo.');
+            Alert.alert(t('ponds.photoErrorTitle'), t('ponds.photoErrorBody'));
         }
     };
 
     const handlePickImage = async (pond: Pond) => {
         Alert.alert(
-            'Update Pond Photo',
-            'Take a photo of the pond or how the stock looks right now.',
+            t('ponds.updatePhoto'),
+            t('ponds.updatePhotoBody'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Take Photo',
+                    text: t('ponds.takePhoto'),
                     onPress: async () => {
                         const permission = await ImagePicker.requestCameraPermissionsAsync();
                         if (!permission.granted) {
-                            Alert.alert('Permission Denied', 'Camera access is required.');
+                            Alert.alert(t('common.error'), t('ponds.photoErrorBody'));
                             return;
                         }
                         const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
@@ -214,11 +217,11 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                     },
                 },
                 {
-                    text: 'Choose from Gallery',
+                    text: t('ponds.fromGallery'),
                     onPress: async () => {
                         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
                         if (!permission.granted) {
-                            Alert.alert('Permission Denied', 'Gallery access is required.');
+                            Alert.alert(t('common.error'), t('ponds.photoErrorBody'));
                             return;
                         }
                         const result = await ImagePicker.launchImageLibraryAsync({
@@ -244,7 +247,7 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                 >
                     <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>My Ponds</Text>
+                <Text style={styles.headerTitle}>{t('ponds.title')}</Text>
                 <TouchableOpacity
                     style={[styles.headerIconBtn, styles.headerAddBtn]}
                     onPress={() => navigation.navigate('AddEditPond')}
@@ -259,16 +262,16 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                     <View style={styles.emptyIconWrap}>
                         <Ionicons name="water-outline" size={52} color={theme.colors.primary} />
                     </View>
-                    <Text style={styles.emptyTitle}>No Ponds Yet</Text>
+                    <Text style={styles.emptyTitle}>{t('ponds.noPondsTitle')}</Text>
                     <Text style={styles.emptySub}>
-                        Add your first pond to start tracking operations, water quality, and harvest progress.
+                        {t('ponds.noPondsBody')}
                     </Text>
                     <TouchableOpacity
                         style={styles.primaryButton}
                         onPress={() => navigation.navigate('AddEditPond')}
                     >
                         <Ionicons name="add" size={18} color={theme.colors.textInverse} />
-                        <Text style={styles.primaryButtonText}>Add Pond</Text>
+                        <Text style={styles.primaryButtonText}>{t('ponds.addFirstPond')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
@@ -282,6 +285,7 @@ const PondsList = ({ ponds }: { ponds: Pond[] }) => {
                             theme={theme}
                             styles={styles}
                             speciesLookup={speciesLookup}
+                            t={t}
                             onEdit={() => navigation.navigate('AddEditPond', { pondId: item.id })}
                             onDelete={() => handleDelete(item)}
                             onPickImage={() => handlePickImage(item)}

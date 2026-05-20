@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { query } from '../db';
 import { logger } from '../utils/logger';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -24,15 +25,17 @@ function fromClientTimestamp(value: number | null | undefined): Date | null {
  * GET /api/v1/sync/changes
  * Pull changes from server since a given timestamp.
  * Returns data in WatermelonDB synchronize() pull format.
+ * Requires authentication — userId is taken from the JWT, not query params.
  */
-router.get('/changes', async (req, res, next) => {
+router.get('/changes', requireAuth, async (req, res, next) => {
   try {
-    const { userId, since } = req.query;
+    const { since } = req.query;
+    const userId = req.auth!.userId; // Secure: from JWT, not user-supplied query
 
-    if (!userId || !since) {
+    if (!since) {
       return res.status(400).json({
         success: false,
-        error: 'userId and since parameters are required'
+        error: 'since parameter is required'
       });
     }
 
@@ -182,13 +185,15 @@ router.get('/changes', async (req, res, next) => {
  * POST /api/v1/sync
  * Push local changes to server (ponds, water quality logs).
  * Accepts WatermelonDB synchronize() push format.
+ * Requires authentication — userId is taken from the JWT.
  */
-router.post('/', async (req, res, next) => {
+router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const { userId, changes } = req.body;
+    const { changes } = req.body;
+    const userId = req.auth!.userId; // Secure: from JWT
 
-    if (!userId) {
-      return res.status(400).json({ success: false, error: 'userId is required' });
+    if (!changes) {
+      return res.status(400).json({ success: false, error: 'changes object is required' });
     }
 
     const conflicts: any[] = [];

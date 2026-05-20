@@ -85,12 +85,13 @@ function safeRangeProgress(key: string, value?: number): number {
 // ─── MetricCard ───────────────────────────────────────────────────────────────
 
 function MetricCard({
-  paramKey, value, theme, styles,
+  paramKey, value, theme, styles, t,
 }: {
   paramKey: string;
   value?: number;
   theme: any;
   styles: ReturnType<typeof getStyles>;
+  t: (k: string) => string;
 }) {
   const range = PARAM_RANGES[paramKey];
   if (!range) return null;
@@ -122,7 +123,7 @@ function MetricCard({
       {/* Status chip top-right */}
       <View style={[styles.metricBadge, { backgroundColor: badgeBg }]}>
         <Text style={[styles.metricBadgeText, { color: badgeText }]}>
-          {status === 'error' ? 'ALERT' : status === 'warning' ? 'WARN' : 'OK'}
+          {status === 'error' ? t('waterQuality.status.ALERT') : status === 'warning' ? t('waterQuality.status.WARN') : t('waterQuality.status.OK')}
         </Text>
       </View>
 
@@ -268,7 +269,7 @@ export default function WaterQualityScreen({ route }: any) {
       setIsLoadingHistory(true);
       const logs = await database.collections
         .get<WaterQualityLog>('water_quality_logs')
-        .query(Q.where('pond_id', selectedPondId), Q.sortBy('timestamp', Q.desc))
+        .query(Q.where('pond_id', selectedPondId), Q.sortBy('timestamp', Q.desc), Q.take(100))
         .fetch();
 
       const pondMap = new Map(ponds.map(p => [p.id, p.name]));
@@ -307,11 +308,38 @@ export default function WaterQualityScreen({ route }: any) {
 
   const saveReading = async () => {
     if (!selectedPondId) {
-      Alert.alert('Add a pond first', 'Create a pond before logging water quality.');
+      Alert.alert(t('waterQuality.noPondTitle'), t('waterQuality.noPondBody'));
       return;
     }
     if (!temperature && !dissolvedOxygen && !ph && !salinity && !ammonia) {
-      Alert.alert('No Data', 'Please enter at least one measurement.');
+      Alert.alert(t('waterQuality.noDataTitle'), t('waterQuality.noDataBody'));
+      return;
+    }
+
+    // Validate numeric ranges before saving
+    const validationErrors: string[] = [];
+    const ranges: Record<string, { min: number; max: number; label: string }> = {
+      temperature: { min: -10, max: 60, label: 'Temperature' },
+      dissolvedOxygen: { min: 0, max: 30, label: 'Dissolved Oxygen' },
+      ph: { min: 0, max: 14, label: 'pH' },
+      salinity: { min: 0, max: 60, label: 'Salinity' },
+      ammonia: { min: 0, max: 20, label: 'Ammonia' },
+    };
+    const rawValues: Record<string, string> = { temperature, dissolvedOxygen, ph, salinity, ammonia };
+
+    for (const [key, raw] of Object.entries(rawValues)) {
+      if (!raw) continue;
+      const num = parseFloat(raw);
+      const range = ranges[key];
+      if (isNaN(num)) {
+        validationErrors.push(`${range.label}: must be a valid number`);
+      } else if (num < range.min || num > range.max) {
+        validationErrors.push(`${range.label}: must be between ${range.min} and ${range.max}`);
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      Alert.alert(t('waterQuality.invalidValuesTitle'), validationErrors.join('\n'));
       return;
     }
 
@@ -350,6 +378,10 @@ export default function WaterQualityScreen({ route }: any) {
           log.ph = payload.ph ?? undefined;
           log.salinity = payload.salinity ?? undefined;
           log.ammonia = payload.ammonia ?? undefined;
+          // Fix #11: persist nitrite and turbidity when present — the model and
+          // backend both support these fields; they were previously silently dropped.
+          log.nitrite = payload.nitrite ?? undefined;
+          log.turbidity = payload.turbidity ?? undefined;
           log.alerts = JSON.stringify(alerts);
           log.localSyncStatus = 'NEW';
         });
@@ -366,7 +398,7 @@ export default function WaterQualityScreen({ route }: any) {
       await loadHistory();
       await loadNotificationCount();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not save this pond reading.');
+      Alert.alert(t('waterQuality.saveErrorTitle'), err?.message || t('waterQuality.saveErrorBody'));
     } finally {
       setIsSaving(false);
     }
@@ -406,7 +438,7 @@ export default function WaterQualityScreen({ route }: any) {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'log' ? 'Add Reading' : 'History'}
+              {tab === 'log' ? t('waterQuality.tabLog') : t('waterQuality.tabHistory')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -447,13 +479,13 @@ export default function WaterQualityScreen({ route }: any) {
             <View style={styles.emptyIconWrap}>
               <Ionicons name="water-outline" size={36} color={theme.colors.primary} />
             </View>
-            <Text style={styles.emptyTitle}>Add a pond first</Text>
+            <Text style={styles.emptyTitle}>{t('waterQuality.needPondTitle')}</Text>
             <Text style={styles.emptyText}>
-              Water quality is tracked pond by pond so each reading can be tied to the right harvest and alerts.
+              {t('waterQuality.needPondBody')}
             </Text>
             <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('AddEditPond')}>
               <Ionicons name="add" size={16} color={theme.colors.textInverse} />
-              <Text style={styles.primaryButtonText}>Add Pond</Text>
+              <Text style={styles.primaryButtonText}>{t('waterQuality.addPond')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -465,9 +497,9 @@ export default function WaterQualityScreen({ route }: any) {
                   <Ionicons name="water" size={16} color={theme.colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pondSelectorFieldLabel}>SELECTED POND</Text>
-                  <Text style={styles.pondSelectorTitle}>{selectedPond?.name || 'Choose pond'}</Text>
-                  <Text style={styles.pondSelectorMeta}>{selectedPond?.subtitle || 'Pick the pond for this reading'}</Text>
+                  <Text style={styles.pondSelectorFieldLabel}>{t('waterQuality.selectedPond')}</Text>
+                  <Text style={styles.pondSelectorTitle}>{selectedPond?.name || t('waterQuality.choosePond')}</Text>
+                  <Text style={styles.pondSelectorMeta}>{selectedPond?.subtitle || t('waterQuality.pickPondHelp')}</Text>
                 </View>
               </View>
               <Ionicons name="chevron-down" size={18} color={theme.colors.textMuted} />
@@ -476,7 +508,7 @@ export default function WaterQualityScreen({ route }: any) {
             {activeTab === 'log' ? (
               /* ── Log tab ── */
               <>
-                <Text style={styles.sectionLabel}>CURRENT VALUES</Text>
+                <Text style={styles.sectionLabel}>{t('waterQuality.currentValues')}</Text>
 
                 {/* Metric cards (live preview from form values) */}
                 <View style={styles.metricGrid}>
@@ -495,13 +527,14 @@ export default function WaterQualityScreen({ route }: any) {
                         value={isNaN(parsed as number) ? undefined : parsed}
                         theme={theme}
                         styles={styles}
+                        t={t}
                       />
                     );
                   })}
                 </View>
 
                 {/* Log reading form */}
-                <Text style={styles.sectionLabel}>LOG READING</Text>
+                <Text style={styles.sectionLabel}>{t('waterQuality.logReading')}</Text>
                 <View style={styles.formCard}>
                   <View style={styles.formGrid}>
                     <Field label="TEMPERATURE (°C)" value={temperature} onChangeText={setTemperature} theme={theme} styles={styles} />
@@ -513,13 +546,13 @@ export default function WaterQualityScreen({ route }: any) {
 
                   {/* Notes */}
                   <View style={styles.fullField}>
-                    <Text style={styles.fieldLabel}>FIELD NOTES</Text>
+                    <Text style={styles.fieldLabel}>{t('waterQuality.fieldNotes')}</Text>
                     <TextInput
                       style={[styles.notesInput, notesFocused && styles.notesInputFocused]}
                       value={notes}
                       onChangeText={setNotes}
                       multiline
-                      placeholder="Optional note about water color, feed, smell, or pond condition..."
+                      placeholder={t('waterQuality.fieldNotesPlaceholder')}
                       placeholderTextColor={theme.colors.textMuted}
                       onFocus={() => setNotesFocused(true)}
                       onBlur={() => setNotesFocused(false)}
@@ -531,7 +564,7 @@ export default function WaterQualityScreen({ route }: any) {
                 <TouchableOpacity style={styles.saveButton} onPress={saveReading} disabled={isSaving}>
                   {isSaving
                     ? <ActivityIndicator color={theme.colors.textInverse} />
-                    : <Text style={styles.saveButtonText}>Save Pond Reading</Text>
+                    : <Text style={styles.saveButtonText}>{t('waterQuality.saveReading')}</Text>
                   }
                 </TouchableOpacity>
               </>
@@ -547,9 +580,9 @@ export default function WaterQualityScreen({ route }: any) {
                     <View style={styles.emptyIconWrap}>
                       <Ionicons name="analytics-outline" size={32} color={theme.colors.primary} />
                     </View>
-                    <Text style={styles.emptyTitle}>No readings for this pond yet</Text>
+                    <Text style={styles.emptyTitle}>{t('waterQuality.noReadingsTitle')}</Text>
                     <Text style={styles.emptyText}>
-                      Add the first pond-specific reading to unlock trend analysis and alerts.
+                      {t('waterQuality.noReadingsBody')}
                     </Text>
                   </View>
                 ) : (
@@ -557,7 +590,7 @@ export default function WaterQualityScreen({ route }: any) {
                     {/* Latest metric cards */}
                     {latestReading && (
                       <>
-                        <Text style={styles.sectionLabel}>LATEST READING</Text>
+                        <Text style={styles.sectionLabel}>{t('waterQuality.latestReading')}</Text>
                         <Text style={styles.latestReadingDate}>{formatDate(latestReading.recorded_at)}</Text>
                         <View style={styles.metricGrid}>
                           {(['temperature', 'dissolved_oxygen', 'ph', 'salinity', 'ammonia'] as const).map(key => (
@@ -567,6 +600,7 @@ export default function WaterQualityScreen({ route }: any) {
                               value={(latestReading as any)[key]}
                               theme={theme}
                               styles={styles}
+                              t={t}
                             />
                           ))}
                         </View>
@@ -574,7 +608,7 @@ export default function WaterQualityScreen({ route }: any) {
                     )}
 
                     {/* Chart */}
-                    <Text style={styles.sectionLabel}>TREND ANALYSIS</Text>
+                    <Text style={styles.sectionLabel}>{t('waterQuality.trendAnalysis')}</Text>
                     <View style={styles.chartCard}>
                       <WaterQualityChart
                         readings={history.map(r => ({
@@ -588,7 +622,7 @@ export default function WaterQualityScreen({ route }: any) {
                     </View>
 
                     {/* History list */}
-                    <Text style={styles.sectionLabel}>RECENT READINGS</Text>
+                    <Text style={styles.sectionLabel}>{t('waterQuality.recentReadings')}</Text>
                     {history.map(item => {
                       const st = statusFor(item);
                       const borderColor =
@@ -608,7 +642,7 @@ export default function WaterQualityScreen({ route }: any) {
                             </View>
                             <View style={[styles.historyBadge, { backgroundColor: badgeBg }]}>
                               <Text style={[styles.historyBadgeText, { color: borderColor }]}>
-                                {st === 'alert' ? 'ALERT' : st === 'warning' ? 'WARN' : 'NORMAL'}
+                                {st === 'alert' ? t('waterQuality.status.ALERT') : st === 'warning' ? t('waterQuality.status.WARN') : t('waterQuality.status.NORMAL')}
                               </Text>
                             </View>
                           </View>
@@ -647,7 +681,7 @@ export default function WaterQualityScreen({ route }: any) {
       <Modal visible={pondSelectorVisible} transparent animationType="slide" onRequestClose={() => setPondSelectorVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Choose Pond</Text>
+            <Text style={styles.modalTitle}>{t('waterQuality.chooseMode')}</Text>
             <FlatList
               data={ponds}
               keyExtractor={item => item.id}
@@ -662,7 +696,7 @@ export default function WaterQualityScreen({ route }: any) {
               )}
             />
             <TouchableOpacity style={styles.modalCloseButton} onPress={() => setPondSelectorVisible(false)}>
-              <Text style={styles.modalCloseText}>Close</Text>
+              <Text style={styles.modalCloseText}>{t('common.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>

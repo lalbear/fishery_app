@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db';
+import { requireAuth, optionalAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -123,7 +124,7 @@ router.get('/mapping/:farmerId', async (req, res, next) => {
   }
 });
 
-router.post('/mapping', async (req, res, next) => {
+router.post('/mapping', requireAuth, async (req, res, next) => {
   try {
     const payload = mappingSchema.parse(req.body);
     const result = await query(`

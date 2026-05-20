@@ -120,7 +120,7 @@ const SpeciesCard = ({ species, onPress, theme, styles }: { species: any; onPres
         </View>
 
         <TouchableOpacity style={styles.ctaButton} onPress={onPress} activeOpacity={0.82}>
-          <Text style={styles.ctaText}>View Species Profile</Text>
+          <Text style={styles.ctaText}>{t('species.viewProfile')}</Text>
           <Ionicons name="arrow-forward" size={15} color={theme.colors.textInverse} />
         </TouchableOpacity>
       </View>
@@ -155,13 +155,13 @@ export default function SpeciesScreen() {
         } else if (speciesList.length === 0) {
           setSpeciesList(res.data);
           setFiltered(res.data);
-          setLoadError('Showing offline data. Pull down to refresh when connected.');
+          setLoadError('species.offlineData');
         }
       }
     } catch (err: any) {
       console.error('Failed to load species', err);
       if (speciesList.length === 0) {
-        setLoadError('Could not load species. Check your connection and pull down to retry.');
+        setLoadError('species.loadError');
       }
     } finally {
       setIsLoading(false);
@@ -197,7 +197,7 @@ export default function SpeciesScreen() {
     return (
       <SafeAreaView style={[styles.container, styles.center]} edges={['top']}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading species data...</Text>
+        <Text style={styles.loadingText}>{t('common.loading')}</Text>
       </SafeAreaView>
     );
   }
@@ -210,7 +210,7 @@ export default function SpeciesScreen() {
           <View style={styles.headerIcon}>
             <Ionicons name="fish-outline" size={20} color={theme.colors.primary} />
           </View>
-          <Text style={styles.headerTitle}>Species Catalog</Text>
+          <Text style={styles.headerTitle}>{t('species.title')}</Text>
         </View>
         <TouchableOpacity style={styles.filterButton}>
           <Ionicons name="options-outline" size={18} color={theme.colors.textPrimary} />
@@ -226,7 +226,7 @@ export default function SpeciesScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search fish or shrimp species..."
+          placeholder={t('species.searchPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -255,7 +255,7 @@ export default function SpeciesScreen() {
             activeOpacity={0.75}
           >
             <Text style={[styles.filterChipText, activeFilter === filter && styles.filterChipTextActive]}>
-              {filter}
+              {t(`species.filters.${filter.toLowerCase()}`, { defaultValue: filter })}
             </Text>
           </TouchableOpacity>
         ))}
@@ -264,14 +264,14 @@ export default function SpeciesScreen() {
       {/* Section header — uppercase, textMuted, letterSpacing 2 */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeader}>
-          {filtered.length} {filtered.length === 1 ? 'SPECIES' : 'SPECIES'}
+          {t('species.speciesCount', { count: filtered.length })}
         </Text>
       </View>
 
       {loadError ? (
         <View style={styles.errorBanner}>
           <Ionicons name="cloud-offline-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.errorBannerText}>{loadError}</Text>
+          <Text style={styles.errorBannerText}>{loadError ? t(loadError) : ''}</Text>
         </View>
       ) : null}
 
@@ -297,7 +297,7 @@ export default function SpeciesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="fish-outline" size={54} color={theme.colors.textMuted} />
-            <Text style={styles.emptyText}>No species match your search.</Text>
+            <Text style={styles.emptyText}>{t('species.noResults')}</Text>
           </View>
         }
         contentContainerStyle={styles.listContent}
@@ -378,14 +378,16 @@ const getStyles = (theme: any) => StyleSheet.create({
   // Filter chips — pill, active=primary bg+textInverse, inactive=surfaceAlt+border+textSecondary
   filtersRow: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 4,
+    paddingBottom: 12,
     flexDirection: 'row',
     gap: 8,
   },
   filterChip: {
-    height: 34,
+    minHeight: 36,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: 16,
+    paddingVertical: 8,
     backgroundColor: theme.colors.surfaceAlt,
     borderWidth: 1.5,
     borderColor: theme.colors.border,

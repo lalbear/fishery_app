@@ -252,7 +252,7 @@ export default function MapScreen() {
         if (cancelled || !isMounted.current) return;
 
         if (status !== 'granted') {
-          Alert.alert('Permission denied', 'Location permission is required for maps to automatically find your district.');
+          Alert.alert(t('maps.permissionDenied'), t('maps.locationPermissionMaps'));
           setIsGettingLocation(false);
           setHasLocationPermission(false);
           return;
@@ -328,7 +328,7 @@ export default function MapScreen() {
       setIsGettingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required.');
+        Alert.alert(t('maps.permissionDenied'), t('maps.locationPermissionRequired'));
         setIsGettingLocation(false);
         setHasLocationPermission(false);
         return;
@@ -345,7 +345,7 @@ export default function MapScreen() {
       }
     } catch (err) {
       console.warn('[MapScreen] handleDetectLocation error:', err);
-      Alert.alert('Error', 'Could not detect your location.');
+      Alert.alert(t('common.error'), t('maps.locationError'));
     } finally {
       if (isMounted.current) setIsGettingLocation(false);
     }
@@ -371,12 +371,12 @@ export default function MapScreen() {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
       } else {
-        Alert.alert("Analysis Failed", result.message || "Failed to analyze location data.");
+        Alert.alert(t('maps.analysisFailed'), result.message || t('maps.analysisFailedBody'));
       }
     } catch (error: any) {
       const apiErrorMsg = error.response?.data?.message || error.response?.data?.error;
-      const genericMsg = error?.message || "Failed to connect to backend service.";
-      Alert.alert("Analysis Error", apiErrorMsg || genericMsg);
+      const genericMsg = error?.message || t('maps.analysisErrorBody');
+      Alert.alert(t('maps.analysisError'), apiErrorMsg || genericMsg);
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -453,14 +453,14 @@ export default function MapScreen() {
             </View>
             <TouchableOpacity style={styles.mapOverlayBtn} onPress={openInMaps}>
               <Ionicons name="navigate" size={13} color="#fff" />
-              <Text style={styles.mapOverlayBtnText}>Open in Maps</Text>
+              <Text style={styles.mapOverlayBtnText}>{t('maps.title')}</Text>
             </TouchableOpacity>
           </View>
         </>
       ) : (
         <>
           <Ionicons name="map-outline" size={48} color={theme.colors.primary} />
-          <Text style={[styles.loadingText, { textAlign: 'center', marginTop: 12 }]}>Map not available</Text>
+          <Text style={[styles.loadingText, { textAlign: 'center', marginTop: 12 }]}>{t('common.notAvailable')}</Text>
         </>
       )}
     </View>
@@ -468,7 +468,7 @@ export default function MapScreen() {
     <View style={[styles.loadingMap, { borderRadius: theme.borderRadius.lg }]}>
       <Ionicons name="map-outline" size={48} color={theme.colors.primary} />
       <Text style={[styles.loadingText, { textAlign: 'center', marginTop: 12 }]}>
-        {mapAvailable ? 'Map view unavailable' : 'Map not available in this build'}
+        {mapAvailable ? t('maps.mapViewUnavailable') : t('maps.mapNotAvailable')}
       </Text>
     </View>
   );
@@ -485,7 +485,7 @@ export default function MapScreen() {
           {isGettingLocation && !location ? (
             <View style={styles.loadingMap}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
+              <Text style={styles.loadingText}>{t('common.loading')}</Text>
             </View>
           ) : location && MapView ? (
             // Try native Google MapView; if blank/crashed, ErrorBoundary shows OSM fallback
@@ -514,7 +514,7 @@ export default function MapScreen() {
               {/* "Open in Maps" button always visible on top of MapView */}
               <TouchableOpacity style={styles.openMapsBtn} onPress={openInMaps}>
                 <Ionicons name="navigate-outline" size={14} color="#fff" />
-                <Text style={styles.openMapsBtnText}>Open in Maps</Text>
+                <Text style={styles.openMapsBtnText}>{t('maps.title')}</Text>
               </TouchableOpacity>
             </MapErrorBoundary>
           ) : (
@@ -524,16 +524,16 @@ export default function MapScreen() {
 
         <View style={styles.formCard}>
           <View style={styles.formHeaderRow}>
-            <Text style={styles.formTitle}>Environment Details</Text>
+            <Text style={styles.formTitle}>{t('maps.environmentDetails')}</Text>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
               <TouchableOpacity onPress={handleDetectLocation} style={styles.detectBtn} disabled={isGettingLocation}>
                 {isGettingLocation
                   ? <ActivityIndicator size="small" color={theme.colors.primary} />
                   : <Ionicons name="locate" size={16} color={theme.colors.primary} />
                 }
-                <Text style={styles.detectBtnText}>{isGettingLocation ? 'Locating...' : 'Auto-Locate'}</Text>
+                <Text style={styles.detectBtnText}>{isGettingLocation ? t('maps.locating') : t('maps.autoLocate')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => Alert.alert("Why this is needed?", "Fisheries policies, subsidies, and climate data are mapped by administrative zones. Your selection helps us provide accurate species and system recommendations for your region.")}>
+              <TouchableOpacity onPress={() => Alert.alert(t('maps.whyNeededTitle'), t('maps.whyNeededBody'))}>
                 <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary} />
               </TouchableOpacity>
             </View>
@@ -541,7 +541,7 @@ export default function MapScreen() {
 
           <View style={styles.row}>
             <View style={styles.inputHalf}>
-              <Text style={styles.label}>State</Text>
+              <Text style={styles.label}>{t('personalInfo.fields.state')}</Text>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setIsStateOpen(true)}>
                 <Text style={styles.pickerText}>{selectedStateName}</Text>
                 <Ionicons name="chevron-down" size={20} color={theme.colors.textMuted} />
@@ -549,16 +549,16 @@ export default function MapScreen() {
             </View>
 
             <View style={styles.inputHalf}>
-              <Text style={styles.label}>District</Text>
+              <Text style={styles.label}>{t('personalInfo.fields.district')}</Text>
               <TouchableOpacity style={styles.pickerButton} onPress={() => setIsDistrictOpen(true)}>
-                <Text style={styles.pickerText}>{districtCode || 'Select'}</Text>
+                <Text style={styles.pickerText}>{districtCode || t('common.all')}</Text>
                 <Ionicons name="chevron-down" size={20} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputFull}>
-            <Text style={styles.label}>Water Source</Text>
+            <Text style={styles.label}>{t('addEditPond.fields.waterSource')}</Text>
             <TouchableOpacity style={styles.pickerButton} onPress={() => setIsWaterOpen(true)}>
               <Text style={styles.pickerText}>{WATER_SOURCES.find(s => s.value === waterSource)?.label}</Text>
               <Ionicons name="chevron-down" size={20} color={theme.colors.textMuted} />
@@ -566,7 +566,7 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.inputFull}>
-            <Text style={styles.label}>Measured Salinity (μS/cm) - Optional</Text>
+            <Text style={styles.label}>{t('maps.measuredSalinity')}</Text>
             <TextInput
               style={styles.input}
               value={salinity}
@@ -589,7 +589,7 @@ export default function MapScreen() {
               <Ionicons name="analytics-outline" size={24} color={theme.colors.textInverse} />
             )}
             <Text style={styles.buttonText}>
-              {isLoading ? 'Analyzing...' : (t('maps.checkSuitability') || 'Analyze Environment')}
+              {isLoading ? t('maps.analyzing') : t('maps.checkSuitability')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -602,7 +602,7 @@ export default function MapScreen() {
             </View>
 
             <View style={styles.scoreContainer}>
-              <Text style={styles.resultLabel}>Suitability Index</Text>
+              <Text style={styles.resultLabel}>{t('maps.suitabilityScore')}</Text>
               <Text style={[styles.score, {
                 color: suitabilityData.suitabilityScore > 70 ? theme.colors.success :
                   suitabilityData.suitabilityScore > 50 ? theme.colors.accent :
@@ -615,7 +615,7 @@ export default function MapScreen() {
 
             {suitabilityData.recommendedSystems && (
               <View style={styles.resultsSection}>
-                <Text style={styles.sectionTitle}>Recommended Systems</Text>
+                <Text style={styles.sectionTitle}>{t('maps.recommendedSystems')}</Text>
                 {suitabilityData.recommendedSystems.slice(0, 3).map((sys: any, idx: number) => (
                   <View key={idx} style={styles.systemItem}>
                     <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
@@ -628,8 +628,8 @@ export default function MapScreen() {
 
             {suitabilityData.restrictedSpecies && suitabilityData.restrictedSpecies.length > 0 && (
               <View style={styles.resultsSection}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.error }]}>Restricted Species</Text>
-                <Text style={styles.smallText}>Not recommended for current salinity levels:</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.error }]}>{t('maps.restrictedSpecies')}</Text>
+                <Text style={styles.smallText}>{t('maps.warnings')}</Text>
                 <View style={styles.tagCloud}>
                   {suitabilityData.restrictedSpecies.map((s: string, idx: number) => (
                     <View key={idx} style={styles.tag}>
@@ -642,7 +642,7 @@ export default function MapScreen() {
 
             {suitabilityData.warnings && suitabilityData.warnings.length > 0 && (
               <View style={styles.resultsSection}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.accent }]}>Critical Warnings</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.accent }]}>{t('maps.criticalWarnings')}</Text>
                 {suitabilityData.warnings.map((w: string, idx: number) => (
                   <View key={idx} style={styles.warningItem}>
                     <Ionicons name="warning" size={16} color={theme.colors.accent} />
@@ -661,7 +661,7 @@ export default function MapScreen() {
         items={statesList}
         onSelect={(val: string) => { setStateCode(val); setIsStateOpen(false); }}
         onClose={() => setIsStateOpen(false)}
-        title="Select State"
+        title={t('personalInfo.fields.state')}
         styles={styles}
         theme={theme}
       />
@@ -670,7 +670,7 @@ export default function MapScreen() {
         items={relevantDistricts.map((d: string) => ({ label: d, value: d }))}
         onSelect={(val: string) => { setDistrictCode(val); setIsDistrictOpen(false); }}
         onClose={() => setIsDistrictOpen(false)}
-        title="Select District"
+        title={t('personalInfo.fields.district')}
         styles={styles}
         theme={theme}
       />
@@ -679,7 +679,7 @@ export default function MapScreen() {
         items={WATER_SOURCES}
         onSelect={(val: string) => { setWaterSource(val); setIsWaterOpen(false); }}
         onClose={() => setIsWaterOpen(false)}
-        title="Water Source"
+        title={t('addEditPond.fields.waterSource')}
         styles={styles}
         theme={theme}
       />

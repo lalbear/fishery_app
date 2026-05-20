@@ -33,13 +33,22 @@ function describeError(error: unknown) {
   };
 }
 
-// Database configuration
+// Database configuration — fail fast if credentials are missing in production.
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
+    throw new Error(
+      'FATAL: Database credentials must be set via environment variables in production. ' +
+      'Required: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME'
+    );
+  }
+}
+
 const poolConfig: PoolConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  user: process.env.DB_USER || 'fishinggod',
-  password: process.env.DB_PASSWORD || 'aquaculture2024',
-  database: process.env.DB_NAME || 'fishing_god',
+  user: process.env.DB_USER || (process.env.NODE_ENV === 'production' ? undefined : 'fishinggod'),
+  password: process.env.DB_PASSWORD || (process.env.NODE_ENV === 'production' ? undefined : 'aquaculture2024'),
+  database: process.env.DB_NAME || (process.env.NODE_ENV === 'production' ? undefined : 'fishing_god'),
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return error after 2 seconds if connection not established

@@ -42,6 +42,42 @@ const SALINITY_THRESHOLDS = {
   SALINE_MIN: 3000
 };
 
+// Biofloc fixed constants — Bihar market rate estimates (update via DB if needed)
+const BIOFLOC_CAPEX_PER_TANK = 22000; // Rs 22,000 — all 21 equipment items included
+
+const BIOFLOC_WATER_PREP_PER_TANK = 500; // Salt + CaCO3 + Molasses + Probiotics per cycle
+
+const BIOFLOC_SPECIES_CONSTANTS = {
+  PANGASIUS: {
+    stockingAvg:         1350,   // fish per 10,000-litre tank
+    survivalRate:        0.80,
+    harvestWeightKg:     0.50,   // 500 grams
+    salePrice:           85,     // Rs/kg wholesale Bihar
+    seedCostEach:        3,      // Rs per fingerling
+    fcr:                 1.2,    // lower due to floc supplementation
+    feedCostPerKg:       35,     // Rs/kg feed
+    cycleMonths:         6,
+    electricityPerMonth: 700,
+    probioticsPerMonth:  400,
+    carbonPerMonth:      200,
+    miscPerCycle:        1000,
+  },
+  MANGUR: {
+    stockingAvg:         4500,   // fish per 10,000-litre tank
+    survivalRate:        0.75,
+    harvestWeightKg:     0.25,   // 250 grams
+    salePrice:           180,    // Rs/kg premium catfish
+    seedCostEach:        5,      // Rs per fingerling
+    fcr:                 1.5,
+    feedCostPerKg:       40,     // Rs/kg feed
+    cycleMonths:         5,
+    electricityPerMonth: 700,
+    probioticsPerMonth:  400,
+    carbonPerMonth:      200,
+    miscPerCycle:        1500,
+  },
+};
+
 export class EconomicsSimulatorService {
   /**
    * Main simulation entry point
@@ -53,6 +89,21 @@ export class EconomicsSimulatorService {
       salinity: input.waterSourceSalinityUsCm
     });
 
+    // ── RAS uses a fixed-constant model — bypass the generic pond flow entirely ──
+    if ((input as any).systemType === 'RAS') {
+      return this.simulateRAS(input);
+    }
+
+    // ── Biofloc uses a tank-count model — bypass the generic pond flow entirely ──
+    if ((input as any).systemType === 'BIOFLOC') {
+      return this.simulateBiofloc(input);
+    }
+
+    // ── Cage uses a per-cage fixed-constant model (NFDB/ICAR-CIFRI specs) ──
+    if ((input as any).systemType === 'CAGES') {
+      return this.simulateCage(input);
+    }
+
     const recommendationId = uuidv4();
 
     // Step 1: Determine water classification
@@ -62,10 +113,13 @@ export class EconomicsSimulatorService {
     const eligibleSpecies = await this.getEligibleSpecies(waterType, input.preferredSpecies);
 
     // Step 3: Determine optimal cultivation system (scaled per hectare)
+    const capitalPerHectare = input.landSizeHectares > 0
+      ? input.availableCapitalInr / input.landSizeHectares
+      : 0;
     const recommendedSystem = input.systemType || this.determineOptimalSystem(
       waterType,
       input.riskTolerance,
-      input.availableCapitalInr / input.landSizeHectares
+      capitalPerHectare
     );
 
     // Step 4: Get economic model for recommended system
@@ -212,10 +266,12 @@ export class EconomicsSimulatorService {
     waterType: WaterType,
     preferredSpecies?: string[]
   ): Promise<SpeciesData[]> {
+    // Build the base query — salinity filter uses only hardcoded values, no user input
     let queryText = `
       SELECT data FROM knowledge_nodes 
       WHERE node_type = 'SPECIES'
     `;
+    const params: unknown[] = [];
 
     if (waterType === WaterType.BRACKISH || waterType === WaterType.SALINE) {
       queryText += `
@@ -227,12 +283,13 @@ export class EconomicsSimulatorService {
       `;
     }
 
+    // Fix #1: Use parameterized ANY($N) instead of string interpolation to prevent SQL injection
     if (preferredSpecies && preferredSpecies.length > 0) {
-      const speciesList = preferredSpecies.map(s => `'${s}'`).join(',');
-      queryText += ` AND data->>'scientific_name' IN (${speciesList})`;
+      params.push(preferredSpecies);
+      queryText += ` AND data->>'scientific_name' = ANY($${params.length}::text[])`;
     }
 
-    const result = await query<{ data: SpeciesData }>(queryText);
+    const result = await query<{ data: SpeciesData }>(queryText, params.length > 0 ? params : undefined);
     return result.rows.map(r => r.data);
   }
 
@@ -486,8 +543,10 @@ export class EconomicsSimulatorService {
       // Start with a lower base score
       let score = 55;
 
-      // 1. Capital Alignment
-      const capitalPerHa = input.availableCapitalInr / input.landSizeHectares;
+      // 1. Capital Alignment — guard against landSizeHectares = 0
+      const capitalPerHa = input.landSizeHectares > 0
+        ? input.availableCapitalInr / input.landSizeHectares
+        : 0;
       if (capitalPerHa < 120000 && (avgFcr < 1.3 || s.scientific_name.includes('vannamei'))) {
         score -= 20;
       } else if (capitalPerHa > 500000) {
@@ -620,7 +679,11 @@ export class EconomicsSimulatorService {
     cultureMonths: number
   ): MonthlyCashFlow[] {
     const cashFlow: MonthlyCashFlow[] = [];
-    let cumulativeCashFlow = -capex;
+    // Fix #13: Start cumulative at 0 (not -capex). Month 1 expenses include capex,
+    // so the cumulative correctly becomes -(capex) after month 1 is processed.
+    // The old code started at -capex AND subtracted capex again in month 1,
+    // producing -2×capex which made the chart look twice as bad as reality.
+    let cumulativeCashFlow = 0;
 
     for (let month = 1; month <= cultureMonths; month++) {
       const revenue = month === cultureMonths ? projectedRevenue : 0;
@@ -665,6 +728,684 @@ export class EconomicsSimulatorService {
       priceIncrease10Percent: Math.round(revenue * 1.1 - capex - opex),
       yieldDrop15Percent: Math.round(revenue * 0.85 - capex - opex),
       feedCostIncrease20Percent: Math.round(revenue - capex - (opex * 1.2))
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RAS SIMULATION — Fixed-constant backyard unit model
+  // Standard unit: 90,000-litre tank, 100 sqm footprint, 3 floating cages
+  // Source: ICAR/NFDB backyard RAS unit specifications
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  private static async simulateRAS(input: any): Promise<EconomicsSimulatorOutput> {
+    const units: number = (input as any).numberOfRasUnits || 1;
+    const recommendationId = uuidv4();
+
+    // ── Fixed constants per unit ──────────────────────────────────────────────
+    const CAPEX_PER_UNIT          = 560000;    // Rs 5,60,000 (tank + equipment)
+    const OPEX_PER_CYCLE          = 140000;    // Rs 1,40,000 per cycle
+    const CYCLES_PER_YEAR         = 2;
+    const FINGERLINGS_PER_UNIT    = 4500;
+    const SURVIVAL_RATE           = 0.80;      // 80%
+    const HARVEST_WEIGHT_KG       = 0.45;      // 450 grams per fish
+    const YIELD_PER_CYCLE_KG      = FINGERLINGS_PER_UNIT * SURVIVAL_RATE * HARVEST_WEIGHT_KG; // 1,620 kg
+    const SALE_PRICE_PER_KG       = 150;       // Rs 150/kg live sale
+    const CYCLE_MONTHS            = 6;         // 6-month culture period
+    const LAND_SQM_PER_UNIT       = 100;       // 100 square meters per unit
+
+    // ── Scale to N units ──────────────────────────────────────────────────────
+    const totalCapex              = CAPEX_PER_UNIT * units;
+    const opexPerCycle            = OPEX_PER_CYCLE * units;
+    const annualOpex              = opexPerCycle * CYCLES_PER_YEAR;               // Rs 2,80,000 × N
+    const yieldPerCycleKg         = YIELD_PER_CYCLE_KG * units;                  // 1,620 × N kg
+    const annualYieldKg           = yieldPerCycleKg * CYCLES_PER_YEAR;           // 3,240 × N kg
+    const annualRevenue           = annualYieldKg * SALE_PRICE_PER_KG;           // Rs 4,86,000 × N
+    const annualGrossProfit       = annualRevenue - annualOpex;                   // Rs 2,06,000 × N
+    const firstCycleWorkingCap    = opexPerCycle;                                 // Rs 1,40,000 × N
+    const landRequiredSqm         = units * LAND_SQM_PER_UNIT;
+
+    // ── Apply PMMSY subsidy on CAPEX ──────────────────────────────────────────
+    const landHectares = landRequiredSqm / 10000;
+    const { effectiveCapex, subsidyAmount, knowledgeContext } =
+      await PMMSYSubsidyService.calculateEffectiveCapex(
+        totalCapex,
+        input.farmerCategory,
+        'RAS',
+        landHectares,
+        input.stateCode,
+        undefined
+      );
+
+    // ── Derived metrics ───────────────────────────────────────────────────────
+    const totalProjectCost  = effectiveCapex + firstCycleWorkingCap;
+    // Operational BCR: how many rupees of revenue per rupee of running cost
+    const bcr               = annualOpex > 0 ? annualRevenue / annualOpex : 0;
+    // Break-even: months to recover subsidised CAPEX from annual gross profit
+    const breakEvenMonths   = annualGrossProfit > 0
+      ? Math.ceil((effectiveCapex / annualGrossProfit) * 12)
+      : 999;
+
+    // ── Species recommendations — RAS-specific ────────────────────────────────
+    const rasSpecies: SpeciesRecommendation[] = [
+      {
+        speciesId: 'Oreochromis niloticus',
+        commonName: 'Monosex GIFT Tilapia',
+        scientificName: 'Oreochromis niloticus',
+        compatibilityScore: 95,
+        expectedYieldKg: Math.round(annualYieldKg),
+        expectedRevenueInr: Math.round(annualRevenue),
+        netProfitInr: Math.round(annualGrossProfit - effectiveCapex),
+        benefitCostRatio: Math.round(bcr * 100) / 100,
+        fcr: 1.4,
+        compatibilityReasons: [
+          'Primary recommended species for RAS in India',
+          'FCR 1.4 — excellent feed efficiency',
+          'Monosex culture gives uniform growth across all 3 floating cages',
+          '80% survival rate in controlled recirculating environment',
+          `Standard yield: ${YIELD_PER_CYCLE_KG} kg/cycle × 2 = ${YIELD_PER_CYCLE_KG * 2} kg/year per unit`,
+        ],
+      },
+      {
+        speciesId: 'Pangasianodon hypophthalmus',
+        commonName: 'Pangasius',
+        scientificName: 'Pangasianodon hypophthalmus',
+        compatibilityScore: 80,
+        expectedYieldKg: Math.round(annualYieldKg * 0.88),
+        expectedRevenueInr: Math.round(annualYieldKg * 0.88 * 130),
+        netProfitInr: Math.round(annualYieldKg * 0.88 * 130 - annualOpex - effectiveCapex),
+        benefitCostRatio: Math.round(((annualYieldKg * 0.88 * 130) / annualOpex) * 100) / 100,
+        fcr: 1.6,
+        compatibilityReasons: [
+          'High tolerance for elevated stocking density in RAS tanks',
+          'FCR 1.6 — efficient',
+          'Fast-growing with consistent wholesale market demand',
+          'Slightly lower yield than Tilapia in the same RAS setup',
+        ],
+      },
+      {
+        // Pearlspot (Etroplus suratensis) REMOVED — coastal estuarine species
+        // native to southern India; cannot survive North Indian winters; no
+        // seed hatcheries in Bihar/UP. Replaced with Pabda (Ompok pabda),
+        // a high-value freshwater catfish native to the Gangetic plains.
+        speciesId: 'Ompok pabda',
+        commonName: 'Pabda / Butter Catfish',
+        scientificName: 'Ompok pabda',
+        compatibilityScore: 72,
+        expectedYieldKg: Math.round(annualYieldKg * 0.68),
+        expectedRevenueInr: Math.round(annualYieldKg * 0.68 * 280),
+        netProfitInr: Math.round(annualYieldKg * 0.68 * 280 - annualOpex - effectiveCapex),
+        benefitCostRatio: Math.round(((annualYieldKg * 0.68 * 280) / annualOpex) * 100) / 100,
+        fcr: 1.75,
+        compatibilityReasons: [
+          'High-value Gangetic plains catfish — Rs 200–400/kg farm gate in Bihar/UP',
+          'FCR 1.5–2.0 in RAS — moderate feed efficiency',
+          'Air-breathing capability gives tolerance to brief DO fluctuations',
+          'Strong local demand; prized as a delicacy in Bihar and Bengal',
+          'Seed available from ICAR-CIFA and state fisheries hatcheries',
+        ],
+      },
+    ];
+
+    // ── Monthly cash flow — 2 full cycles (12 months shown) ──────────────────
+    const monthlyCashFlow = this.generateRASCashFlow(
+      effectiveCapex,
+      opexPerCycle,
+      yieldPerCycleKg * SALE_PRICE_PER_KG,
+      CYCLE_MONTHS
+    );
+
+    return {
+      recommendationId,
+      recommendedSpecies: rasSpecies,
+      recommendedSystem: CultivationSystem.RAS,
+      projectedGrossRevenueInr:       Math.round(annualRevenue),
+      projectedNetProfitInr:          Math.round(annualGrossProfit),
+      breakevenTimelineMonths:        breakEvenMonths,
+      totalCapitalExpenditureInr:     Math.round(totalCapex),
+      subsidizedCapitalExpenditureInr: Math.round(effectiveCapex),
+      subsidyAmountInr:               Math.round(subsidyAmount),
+      benefitCostRatio:               Math.round(bcr * 100) / 100,
+      firstCycleWorkingCapitalInr:    Math.round(firstCycleWorkingCap),
+      totalProjectCostInr:            Math.round(totalProjectCost),
+      availableCapitalInr:            input.availableCapitalInr,
+      knowledgeInsights:              knowledgeContext,
+      riskAnalysisProfile: {
+        overallRisk: RiskTolerance.HIGH,
+        riskFactors: [
+          {
+            category: 'Technical',
+            probability: 0.35,
+            impact: 0.9,
+            description: 'RAS requires uninterrupted power supply — fish can die within hours of aeration failure',
+          },
+          {
+            category: 'Financial',
+            probability: 0.20,
+            impact: 0.70,
+            description: `High upfront CAPEX of Rs ${totalCapex.toLocaleString('en-IN')} — apply for PMMSY subsidy to reduce burden`,
+          },
+          {
+            category: 'Operational',
+            probability: 0.25,
+            impact: 0.60,
+            description: 'Bio-filter management and ammonia control require daily monitoring expertise',
+          },
+        ],
+        mitigationStrategies: [
+          'Install backup generator — power failure is the #1 risk in RAS',
+          'Apply for PMMSY subsidy: 40% for General, 60% for Women/SC/ST category',
+          'Complete NFDB or KVK-certified RAS management training before stocking',
+          'Maintain 2-week emergency feed stock at all times',
+          'Daily water quality checks: DO > 4 ppm, pH 7–8, Ammonia < 0.05 ppm',
+          'Keep spare pump and aerator parts on hand',
+        ],
+        mortalityRiskPercent: 20,
+        marketPriceVolatility: 0.10,
+      },
+      monthlyCashFlow,
+      sensitivityAnalysis: {
+        bestCase: {
+          netProfit:          Math.round(annualGrossProfit * 1.20),
+          breakEvenMonths:    Math.max(6, Math.round(breakEvenMonths * 0.80)),
+          benefitCostRatio:   Math.round(bcr * 1.15 * 100) / 100,
+        },
+        worstCase: {
+          netProfit:          Math.round(annualGrossProfit * 0.65),
+          breakEvenMonths:    Math.round(breakEvenMonths * 1.35),
+          benefitCostRatio:   Math.round(bcr * 0.78 * 100) / 100,
+        },
+        priceDrop10Percent:         Math.round(annualRevenue * 0.90 - annualOpex),
+        priceIncrease10Percent:     Math.round(annualRevenue * 1.10 - annualOpex),
+        yieldDrop15Percent:         Math.round(annualRevenue * 0.85 - annualOpex),
+        feedCostIncrease20Percent:  Math.round(annualRevenue - annualOpex * 1.14), // feed ~70% of opex
+      },
+    };
+  }
+
+  private static generateRASCashFlow(
+    capex: number,
+    opexPerCycle: number,
+    cycleRevenue: number,
+    cycleMonths: number
+  ): MonthlyCashFlow[] {
+    // Show 2 complete cycles = 1 full year of operation
+    const totalMonths = cycleMonths * 2;
+    const cashFlow: MonthlyCashFlow[] = [];
+    let cumulativeCashFlow = 0;
+
+    for (let month = 1; month <= totalMonths; month++) {
+      const isCycleEnd   = month % cycleMonths === 0;
+      const isFirstMonth = month === 1;
+      const isCycleStart = !isFirstMonth && (month - 1) % cycleMonths === 0;
+
+      // Revenue arrives at end of each 6-month cycle on harvest day
+      const revenue = isCycleEnd ? cycleRevenue : 0;
+      // CAPEX is a one-time hit on month 1 combined with first cycle OPEX
+      // Each subsequent cycle start triggers its OPEX spend
+      const expenses = isFirstMonth
+        ? capex + opexPerCycle
+        : isCycleStart
+          ? opexPerCycle
+          : 0;
+
+      const netCashFlow = revenue - expenses;
+      cumulativeCashFlow += netCashFlow;
+
+      cashFlow.push({
+        month,
+        revenue:            Math.round(revenue),
+        expenses:           Math.round(expenses),
+        netCashFlow:        Math.round(netCashFlow),
+        cumulativeCashFlow: Math.round(cumulativeCashFlow),
+      });
+    }
+    return cashFlow;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // BIOFLOC SIMULATION — Tank-count model
+  // Unit: 10,000-litre circular tarpaulin tank
+  // Species: Pangasius (1,350 fish/tank) or Desi Mangur/Singhi (4,500 fish/tank)
+  // Source: Bihar Government Biofloc Technology Guidelines
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  private static async simulateBiofloc(input: any): Promise<EconomicsSimulatorOutput> {
+    const tanks: number    = (input as any).numberOfBioflocTanks || 1;
+    const speciesKey       = (((input as any).bioflocSpecies as 'PANGASIUS' | 'MANGUR') || 'PANGASIUS');
+    const sc               = BIOFLOC_SPECIES_CONSTANTS[speciesKey];
+    const recommendationId = uuidv4();
+
+    // ── Per-tank production ───────────────────────────────────────────────────
+    const fishStocked        = sc.stockingAvg;
+    const fishSurviving      = Math.round(fishStocked * sc.survivalRate);
+    const yieldPerCycleKg    = fishSurviving * sc.harvestWeightKg;           // kg per tank per cycle
+
+    // ── Per-tank OPEX per cycle ───────────────────────────────────────────────
+    const seedCost           = fishStocked * sc.seedCostEach;
+    const feedCost           = yieldPerCycleKg * sc.fcr * sc.feedCostPerKg;
+    const electricityCost    = sc.electricityPerMonth * sc.cycleMonths;
+    const probioticsCost     = sc.probioticsPerMonth * sc.cycleMonths;
+    const carbonCost         = sc.carbonPerMonth * sc.cycleMonths;
+    const opexPerTankPerCycle = seedCost + feedCost + electricityCost +
+                                probioticsCost + carbonCost +
+                                BIOFLOC_WATER_PREP_PER_TANK + sc.miscPerCycle;
+
+    // ── Scale to T tanks ──────────────────────────────────────────────────────
+    const CYCLES_PER_YEAR      = 2;
+    const totalCapex           = BIOFLOC_CAPEX_PER_TANK * tanks;
+    const opexPerCycleTotal    = opexPerTankPerCycle * tanks;
+    const annualOpex           = opexPerCycleTotal * CYCLES_PER_YEAR;
+    const annualYieldKg        = yieldPerCycleKg * CYCLES_PER_YEAR * tanks;
+    const annualRevenue        = annualYieldKg * sc.salePrice;
+    const annualGrossProfit    = annualRevenue - annualOpex;
+    const firstCycleWorkingCap = opexPerCycleTotal;
+
+    // ── PMMSY subsidy on CAPEX ────────────────────────────────────────────────
+    const landHectares = (tanks * 5) / 10000; // ~5 sqm per tank converted to ha
+    const { effectiveCapex, subsidyAmount, knowledgeContext } =
+      await PMMSYSubsidyService.calculateEffectiveCapex(
+        totalCapex,
+        input.farmerCategory,
+        'FRESHWATER',
+        landHectares,
+        input.stateCode,
+        undefined
+      );
+
+    // ── Derived metrics ───────────────────────────────────────────────────────
+    const totalProjectCost = effectiveCapex + firstCycleWorkingCap;
+    const bcr              = annualOpex > 0 ? annualRevenue / annualOpex : 0;
+    const breakEvenMonths  = annualGrossProfit > 0
+      ? Math.ceil((effectiveCapex / annualGrossProfit) * 12)
+      : 999;
+
+    // ── Species recommendation cards ──────────────────────────────────────────
+    const primarySpecies: SpeciesRecommendation = speciesKey === 'PANGASIUS'
+      ? {
+          speciesId:          'Pangasianodon hypophthalmus',
+          commonName:         'Pangasius',
+          scientificName:     'Pangasianodon hypophthalmus',
+          compatibilityScore: 90,
+          expectedYieldKg:    Math.round(annualYieldKg),
+          expectedRevenueInr: Math.round(annualRevenue),
+          netProfitInr:       Math.round(annualGrossProfit - effectiveCapex),
+          benefitCostRatio:   Math.round(bcr * 100) / 100,
+          fcr:                sc.fcr,
+          compatibilityReasons: [
+            `Stocking: ${sc.stockingAvg} fish per tank (avg), 80% survival`,
+            `FCR ${sc.fcr} in Biofloc — lower feed cost vs conventional (floc supplements diet)`,
+            `Yield: ${yieldPerCycleKg} kg/tank/cycle × 2 cycles = ${yieldPerCycleKg * 2} kg/tank/year`,
+            `Sale price Rs ${sc.salePrice}/kg wholesale Bihar farm-gate`,
+            'Fast-growing, tolerates high-density Biofloc environment well',
+          ],
+        }
+      : {
+          speciesId:          'Clarias batrachus',
+          commonName:         'Desi Mangur / Singhi (Catfish)',
+          scientificName:     'Clarias batrachus / Heteropneustes fossilis',
+          compatibilityScore: 88,
+          expectedYieldKg:    Math.round(annualYieldKg),
+          expectedRevenueInr: Math.round(annualRevenue),
+          netProfitInr:       Math.round(annualGrossProfit - effectiveCapex),
+          benefitCostRatio:   Math.round(bcr * 100) / 100,
+          fcr:                sc.fcr,
+          compatibilityReasons: [
+            `Stocking: ${sc.stockingAvg} fish per tank (avg), 75% survival`,
+            `FCR ${sc.fcr} in Biofloc — catfish actively consume floc`,
+            `Yield: ${yieldPerCycleKg} kg/tank/cycle × 2 cycles = ${yieldPerCycleKg * 2} kg/tank/year`,
+            `Premium sale price Rs ${sc.salePrice}/kg — significantly higher value than Pangasius`,
+            'Desi Mangur commands strong local market demand in Bihar',
+            'Higher seed cost (Rs 5/seed) and higher stocking density than Pangasius',
+          ],
+        };
+
+    // Show the other species as a secondary recommendation with a note
+    const secondarySpecies: SpeciesRecommendation = speciesKey === 'PANGASIUS'
+      ? {
+          speciesId:          'Clarias batrachus',
+          commonName:         'Desi Mangur / Singhi (alternative)',
+          scientificName:     'Clarias batrachus',
+          compatibilityScore: 72,
+          expectedYieldKg:    0,
+          expectedRevenueInr: 0,
+          netProfitInr:       0,
+          benefitCostRatio:   0,
+          fcr:                1.5,
+          compatibilityReasons: [
+            'You selected Pangasius — switch to Mangur for premium Rs 180/kg price',
+            'Mangur needs 4,500 fish/tank — higher seed investment upfront',
+            'Suitable for Biofloc if you have access to quality Mangur fingerlings',
+          ],
+        }
+      : {
+          speciesId:          'Pangasianodon hypophthalmus',
+          commonName:         'Pangasius (alternative)',
+          scientificName:     'Pangasianodon hypophthalmus',
+          compatibilityScore: 70,
+          expectedYieldKg:    0,
+          expectedRevenueInr: 0,
+          netProfitInr:       0,
+          benefitCostRatio:   0,
+          fcr:                1.2,
+          compatibilityReasons: [
+            'You selected Mangur — Pangasius has lower seed cost (Rs 3/seed vs Rs 5)',
+            'Pangasius is lower risk for first-time Biofloc farmers',
+            'Lower revenue per kg (Rs 85) but also lower total OPEX',
+          ],
+        };
+
+    // ── Monthly cash flow — 2 full cycles ────────────────────────────────────
+    const monthlyCashFlow = this.generateBioflocCashFlow(
+      effectiveCapex,
+      opexPerCycleTotal,
+      yieldPerCycleKg * tanks * sc.salePrice,
+      sc.cycleMonths
+    );
+
+    return {
+      recommendationId,
+      recommendedSpecies:              [primarySpecies, secondarySpecies],
+      recommendedSystem:               CultivationSystem.BIOFLOC,
+      projectedGrossRevenueInr:        Math.round(annualRevenue),
+      projectedNetProfitInr:           Math.round(annualGrossProfit),
+      breakevenTimelineMonths:         breakEvenMonths,
+      totalCapitalExpenditureInr:      Math.round(totalCapex),
+      subsidizedCapitalExpenditureInr: Math.round(effectiveCapex),
+      subsidyAmountInr:                Math.round(subsidyAmount),
+      benefitCostRatio:                Math.round(bcr * 100) / 100,
+      firstCycleWorkingCapitalInr:     Math.round(firstCycleWorkingCap),
+      totalProjectCostInr:             Math.round(totalProjectCost),
+      availableCapitalInr:             input.availableCapitalInr,
+      knowledgeInsights:               knowledgeContext,
+      riskAnalysisProfile: {
+        overallRisk: RiskTolerance.MEDIUM,
+        riskFactors: [
+          {
+            category: 'Technical',
+            probability: 0.40,
+            impact: 0.95,
+            description: 'Power failure stops aeration — total fish mortality can occur within hours without backup inverter',
+          },
+          {
+            category: 'Operational',
+            probability: 0.30,
+            impact: 0.60,
+            description: 'Floc management requires daily monitoring — ammonia spikes if carbon:nitrogen balance is off',
+          },
+          {
+            category: 'Financial',
+            probability: 0.15,
+            impact: 0.40,
+            description: speciesKey === 'MANGUR'
+              ? 'High seed cost (Rs 5/fish × 4,500 = Rs 22,500/tank) — source fingerlings before committing capital'
+              : 'Low profit margin per tank — scale to minimum 5 tanks for viable income',
+          },
+        ],
+        mitigationStrategies: [
+          '⚠️ Power failure emergency: remove 50% tank water and add 50% fresh water immediately',
+          'Install inverter and battery — non-negotiable for 24/7 aeration',
+          'Check DO every morning — target above 6.0 ppm',
+          'Add molasses when ammonia exceeds 0.5 ppm to feed heterotrophic bacteria',
+          'Apply for PMMSY subsidy: 40% for General, 60% for Women/SC/ST category',
+          'Start with 3–5 tanks to learn system before scaling up',
+        ],
+        mortalityRiskPercent: 25,
+        marketPriceVolatility: 0.12,
+      },
+      monthlyCashFlow,
+      sensitivityAnalysis: {
+        bestCase: {
+          netProfit:        Math.round(annualGrossProfit * 1.20),
+          breakEvenMonths:  Math.max(3, Math.round(breakEvenMonths * 0.82)),
+          benefitCostRatio: Math.round(bcr * 1.15 * 100) / 100,
+        },
+        worstCase: {
+          netProfit:        Math.round(annualGrossProfit * 0.60),
+          breakEvenMonths:  Math.round(breakEvenMonths * 1.40),
+          benefitCostRatio: Math.round(bcr * 0.75 * 100) / 100,
+        },
+        priceDrop10Percent:        Math.round(annualRevenue * 0.90 - annualOpex),
+        priceIncrease10Percent:    Math.round(annualRevenue * 1.10 - annualOpex),
+        yieldDrop15Percent:        Math.round(annualRevenue * 0.85 - annualOpex),
+        feedCostIncrease20Percent: Math.round(annualRevenue - (annualOpex * 1.16)), // feed ~80% of opex
+      },
+    };
+  }
+
+  private static generateBioflocCashFlow(
+    capex: number,
+    opexPerCycle: number,
+    cycleRevenue: number,
+    cycleMonths: number
+  ): MonthlyCashFlow[] {
+    // Show 2 full cycles
+    const totalMonths = cycleMonths * 2;
+    const cashFlow: MonthlyCashFlow[] = [];
+    let cumulativeCashFlow = 0;
+
+    for (let month = 1; month <= totalMonths; month++) {
+      const isCycleEnd   = month % cycleMonths === 0;
+      const isFirstMonth = month === 1;
+      const isCycleStart = !isFirstMonth && (month - 1) % cycleMonths === 0;
+
+      const revenue  = isCycleEnd ? cycleRevenue : 0;
+      const expenses = isFirstMonth
+        ? capex + opexPerCycle   // Month 1: CAPEX + first cycle OPEX
+        : isCycleStart
+          ? opexPerCycle         // Each new cycle: OPEX only
+          : 0;
+
+      const netCashFlow = revenue - expenses;
+      cumulativeCashFlow += netCashFlow;
+
+      cashFlow.push({
+        month,
+        revenue:            Math.round(revenue),
+        expenses:           Math.round(expenses),
+        netCashFlow:        Math.round(netCashFlow),
+        cumulativeCashFlow: Math.round(cumulativeCashFlow),
+      });
+    }
+    return cashFlow;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CAGE SIMULATION — NFDB/ICAR-CIFRI inland cage culture model
+  //
+  // Source: "Cage Culture in Inland Open Water Bodies" — NFDB/ICAR-CIFRI
+  //
+  // Standard cage unit: 6m × 4m × 4m = 96 m³ (rectangular floating cage)
+  // Battery: 6, 12, or 24 cages per battery with catwalks + floating hut
+  // Target species: Pangasius (primary), GIFT Tilapia (secondary)
+  // Site requirement: Reservoir ≥ 1,000 ha, depth ≥ 10 m year-round
+  //
+  // Economics per cage (NFDB official figures):
+  //   Setup cost (GI cage + inputs): Rs 3,00,000
+  //   Yield: 4.608 tonne / 8 months (7,680 fish × 0.6 kg)
+  //   Revenue @ Rs 90/kg: Rs 4,14,720
+  //   Net return: Rs 1,14,720 / cage / 8 months
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  private static async simulateCage(input: any): Promise<EconomicsSimulatorOutput> {
+    const numberOfCages: number = Math.max(1, parseInt((input as any).numberOfCages || '1'));
+    const cageSpecies: 'PANGASIUS' | 'TILAPIA' = (input as any).cageSpecies || 'PANGASIUS';
+    const recommendationId = uuidv4();
+
+    // ── Fixed constants per cage (96 m³ standard unit) ────────────────────────
+    // Source: NFDB "Estimated Project Costs & Returns Per Cage" table
+    const CAGE_SETUP_COST         = 100000;   // Rs 1,00,000 — GI cage frame + net + accessories
+    const CAGE_INPUTS_COST        = 200000;   // Rs 2,00,000 — seed, feed, labour per cycle
+    const CAPEX_PER_CAGE          = CAGE_SETUP_COST;   // One-time setup
+    const OPEX_PER_CAGE_PER_CYCLE = CAGE_INPUTS_COST;  // Per 8-month cycle
+
+    // Species-specific constants
+    const CAGE_SPECIES_CONSTANTS = {
+      PANGASIUS: {
+        // Grow-out stocking: 60–100 fingerlings/m³ × 96 m³ = 5,760–9,600; NFDB uses 9,600
+        stockingPerCage:    9600,
+        survivalRate:       0.80,    // 80% → 7,680 fish
+        harvestWeightKg:    0.60,    // 600g average in 7–8 months
+        salePricePerKg:     90,      // Rs 90/kg (NFDB official)
+        cycleMonths:        8,       // 7–8 months; use 8 for conservative estimate
+        cyclesPerYear:      1,       // 1 full cycle per year (8 months + 4 months fallow/prep)
+        feedingSchedule:    'Rearing: 10% BW 4–5x/day; Grow-out: 5% (mo 1–2), 3% (mo 3–5), 2% (mo 6+) 2x/day',
+        fcr:                1.8,
+        label:              'Pangasius (Basa)',
+      },
+      TILAPIA: {
+        stockingPerCage:    9600,
+        survivalRate:       0.82,
+        harvestWeightKg:    0.50,    // 500g in 6–7 months
+        salePricePerKg:     100,     // Rs 100/kg monosex Tilapia
+        cycleMonths:        7,
+        cyclesPerYear:      1,
+        feedingSchedule:    '5% BW (mo 1–2), 3% (mo 3–5), 2% (mo 6+), 2x/day',
+        fcr:                1.6,
+        label:              'GIFT Tilapia (Monosex)',
+      },
+    };
+
+    const spec = CAGE_SPECIES_CONSTANTS[cageSpecies];
+
+    // ── Scale to N cages ──────────────────────────────────────────────────────
+    const totalCapex              = CAPEX_PER_CAGE * numberOfCages;
+    const opexPerCycle            = OPEX_PER_CAGE_PER_CYCLE * numberOfCages;
+
+    // Yield calculation (NFDB formula)
+    const survivingFishPerCage    = spec.stockingPerCage * spec.survivalRate;
+    const yieldPerCageKg          = survivingFishPerCage * spec.harvestWeightKg;
+    const totalYieldKg            = yieldPerCageKg * numberOfCages;
+    const cycleRevenue            = totalYieldKg * spec.salePricePerKg;
+    const annualRevenue           = cycleRevenue * spec.cyclesPerYear;
+    const annualOpex              = opexPerCycle * spec.cyclesPerYear;
+    const annualGrossProfit       = annualRevenue - annualOpex;
+
+    // ── Apply NFDB/PMMSY subsidy ──────────────────────────────────────────────
+    // Cage culture under Blue Revolution scheme — treated as FRESHWATER project
+    // NFDB provides financial assistance; training cost borne wholly by NFDB
+    const landHectares = numberOfCages * 0.0024; // 96 m³ cage ≈ 24 m² surface footprint
+    const { effectiveCapex, subsidyAmount, knowledgeContext } =
+      await PMMSYSubsidyService.calculateEffectiveCapex(
+        totalCapex,
+        input.farmerCategory,
+        'FRESHWATER',
+        landHectares,
+        input.stateCode,
+        undefined
+      );
+
+    // ── Derived metrics ───────────────────────────────────────────────────────
+    const totalProjectCost  = effectiveCapex + opexPerCycle;
+    const bcr               = annualOpex > 0 ? annualRevenue / annualOpex : 0;
+    const breakEvenMonths   = annualGrossProfit > 0
+      ? Math.ceil((effectiveCapex / annualGrossProfit) * 12)
+      : 999;
+
+    // ── Species recommendations ───────────────────────────────────────────────
+    const speciesRecs: SpeciesRecommendation[] = [
+      {
+        speciesId:           'Pangasianodon hypophthalmus',
+        commonName:          'Pangasius / Basa',
+        scientificName:      'Pangasianodon hypophthalmus',
+        compatibilityScore:  cageSpecies === 'PANGASIUS' ? 92 : 72,
+        expectedYieldKg:     Math.round(yieldPerCageKg * numberOfCages * (cageSpecies === 'PANGASIUS' ? 1 : 0.85)),
+        expectedRevenueInr:  Math.round(cycleRevenue * (cageSpecies === 'PANGASIUS' ? 1 : 0.85)),
+        netProfitInr:        Math.round((cycleRevenue - opexPerCycle) * (cageSpecies === 'PANGASIUS' ? 1 : 0.85)),
+        benefitCostRatio:    Math.round(bcr * 100) / 100,
+        fcr:                 CAGE_SPECIES_CONSTANTS.PANGASIUS.fcr,
+        compatibilityReasons: [
+          'Primary NFDB-recommended species for inland cage culture',
+          `Yield: ${yieldPerCageKg.toFixed(0)} kg/cage/cycle (7,680 fish × 0.6 kg)`,
+          'FCR 1.8 — efficient feed conversion in cage environment',
+          '80% survival rate in floating cage systems',
+          'Harvest before October — cold below 15°C causes distress',
+          `Feeding: ${CAGE_SPECIES_CONSTANTS.PANGASIUS.feedingSchedule}`,
+        ],
+      },
+      {
+        speciesId:           'Oreochromis niloticus',
+        commonName:          'GIFT Tilapia (Monosex)',
+        scientificName:      'Oreochromis niloticus',
+        compatibilityScore:  cageSpecies === 'TILAPIA' ? 88 : 68,
+        expectedYieldKg:     Math.round(CAGE_SPECIES_CONSTANTS.TILAPIA.stockingPerCage * CAGE_SPECIES_CONSTANTS.TILAPIA.survivalRate * CAGE_SPECIES_CONSTANTS.TILAPIA.harvestWeightKg * numberOfCages),
+        expectedRevenueInr:  Math.round(CAGE_SPECIES_CONSTANTS.TILAPIA.stockingPerCage * CAGE_SPECIES_CONSTANTS.TILAPIA.survivalRate * CAGE_SPECIES_CONSTANTS.TILAPIA.harvestWeightKg * numberOfCages * CAGE_SPECIES_CONSTANTS.TILAPIA.salePricePerKg),
+        netProfitInr:        Math.round((CAGE_SPECIES_CONSTANTS.TILAPIA.stockingPerCage * CAGE_SPECIES_CONSTANTS.TILAPIA.survivalRate * CAGE_SPECIES_CONSTANTS.TILAPIA.harvestWeightKg * numberOfCages * CAGE_SPECIES_CONSTANTS.TILAPIA.salePricePerKg) - opexPerCycle),
+        benefitCostRatio:    Math.round(((CAGE_SPECIES_CONSTANTS.TILAPIA.stockingPerCage * CAGE_SPECIES_CONSTANTS.TILAPIA.survivalRate * CAGE_SPECIES_CONSTANTS.TILAPIA.harvestWeightKg * numberOfCages * CAGE_SPECIES_CONSTANTS.TILAPIA.salePricePerKg) / opexPerCycle) * 100) / 100,
+        fcr:                 CAGE_SPECIES_CONSTANTS.TILAPIA.fcr,
+        compatibilityReasons: [
+          'NFDB-recommended species for inland cage culture',
+          'Use ONLY monosex (all-male) seed — prevents uncontrolled breeding in cages',
+          'FCR 1.6 — slightly better feed efficiency than Pangasius',
+          '82% survival rate in cage environment',
+          `Feeding: ${CAGE_SPECIES_CONSTANTS.TILAPIA.feedingSchedule}`,
+        ],
+      },
+    ].sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+
+    // ── Monthly cash flow ─────────────────────────────────────────────────────
+    const cashFlow: MonthlyCashFlow[] = [];
+    let cumulative = 0;
+    for (let month = 1; month <= spec.cycleMonths; month++) {
+      const revenue  = month === spec.cycleMonths ? cycleRevenue : 0;
+      const expenses = month === 1 ? (effectiveCapex + opexPerCycle) : 0;
+      const net      = revenue - expenses;
+      cumulative    += net;
+      cashFlow.push({
+        month,
+        revenue:            Math.round(revenue),
+        expenses:           Math.round(expenses),
+        netCashFlow:        Math.round(net),
+        cumulativeCashFlow: Math.round(cumulative),
+      });
+    }
+
+    // ── Sensitivity analysis ──────────────────────────────────────────────────
+    const baseProfit = cycleRevenue - effectiveCapex - opexPerCycle;
+    const sensitivityAnalysis: SensitivityAnalysis = {
+      bestCase:               { netProfit: Math.round(baseProfit * 1.25), breakEvenMonths: Math.max(1, Math.round(breakEvenMonths * 0.8)), benefitCostRatio: Math.round(bcr * 1.2 * 100) / 100 },
+      worstCase:              { netProfit: Math.round(baseProfit * 0.6),  breakEvenMonths: Math.round(breakEvenMonths * 1.4),              benefitCostRatio: Math.round(bcr * 0.7 * 100) / 100 },
+      priceDrop10Percent:     Math.round(cycleRevenue * 0.9 - effectiveCapex - opexPerCycle),
+      priceIncrease10Percent: Math.round(cycleRevenue * 1.1 - effectiveCapex - opexPerCycle),
+      yieldDrop15Percent:     Math.round(cycleRevenue * 0.85 - effectiveCapex - opexPerCycle),
+      feedCostIncrease20Percent: Math.round(cycleRevenue - effectiveCapex - (opexPerCycle * 1.2)),
+    };
+
+    return {
+      recommendationId,
+      recommendedSpecies:              speciesRecs,
+      recommendedSystem:               'CAGE' as any,
+      projectedGrossRevenueInr:        Math.round(annualRevenue),
+      projectedNetProfitInr:           Math.round(annualGrossProfit),
+      breakevenTimelineMonths:         breakEvenMonths,
+      totalCapitalExpenditureInr:      Math.round(totalCapex),
+      subsidizedCapitalExpenditureInr: Math.round(effectiveCapex),
+      subsidyAmountInr:                Math.round(subsidyAmount),
+      benefitCostRatio:                Math.round(bcr * 100) / 100,
+      firstCycleWorkingCapitalInr:     Math.round(opexPerCycle),
+      totalProjectCostInr:             Math.round(totalProjectCost),
+      availableCapitalInr:             input.availableCapitalInr,
+      knowledgeInsights:               knowledgeContext,
+      riskAnalysisProfile: {
+        overallRisk: 'MEDIUM' as any,
+        riskFactors: [
+          { category: 'Site', probability: 0.2, impact: 0.8, description: 'Requires reservoir ≥ 1,000 ha with ≥ 10 m depth year-round' },
+          { category: 'Weather', probability: 0.3, impact: 0.7, description: 'Pangasius: harvest before October — cold below 15°C causes distress and mortality' },
+          { category: 'Regulatory', probability: 0.15, impact: 0.6, description: 'NFDB/State Fisheries Dept approval required for cage installation in reservoirs' },
+          { category: 'Market', probability: 0.25, impact: 0.5, description: 'Pangasius price volatile — Rs 80–130/kg range in Bihar/UP markets' },
+        ],
+        mitigationStrategies: [
+          'Harvest Pangasius before October to avoid cold-weather mortality',
+          'Use HDPE/PVC floating frames — more durable than bamboo in reservoirs',
+          'Install in caterpillar battery design for better water exchange and DO',
+          'Anchor cages at 4+ corners to prevent drifting during monsoon floods',
+          'Apply for NFDB Blue Revolution subsidy — training cost borne by NFDB',
+          'Engage local fishermen cooperative (SHG/Coop) for cage management',
+        ],
+        mortalityRiskPercent: 20,
+        marketPriceVolatility: 0.18,
+      },
+      monthlyCashFlow:    cashFlow,
+      sensitivityAnalysis,
     };
   }
 }

@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../db';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const router = Router();
+
+// All treatment routes require authentication (doctor or admin only)
+router.use(requireAuth);
+router.use(requireRole('DOCTOR', 'ADMIN'));
 
 const upsertSchema = z.object({
   appointmentId: z.string().uuid(),

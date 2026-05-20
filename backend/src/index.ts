@@ -10,6 +10,8 @@ import dotenv from 'dotenv';
 
 import { logger } from './utils/logger';
 import { checkConnection } from './db';
+import { enforceHttps, sanitizeInput, additionalSecurityHeaders } from './middleware/security';
+import { auditMiddleware } from './middleware/audit';
 
 // Import routes
 import { economicsRouter } from './routes/economics';
@@ -55,29 +57,61 @@ app.use((req, res, next) => {
   next();
 });
 
+// HTTPS enforcement (production only — redirects HTTP to HTTPS)
+app.use(enforceHttps);
+
 // Security middleware
-app.use(helmet());
-// CORS: allow mobile app (no origin header) + explicit web origins.
-// Native mobile apps don't send Origin headers, so '*' is safe for them.
-// Restricting to specific origins only matters for browser clients.
+const cspDirectives: Record<string, string[] | null> = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'"],
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  imgSrc: ["'self'", 'data:', 'https:'],
+  connectSrc: ["'self'"],
+  fontSrc: ["'self'"],
+  objectSrc: ["'none'"],
+  frameSrc: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+};
+if (process.env.NODE_ENV === 'production') {
+  cspDirectives.upgradeInsecureRequests = [];
+}
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: cspDirectives as any,
+  },
+  crossOriginEmbedderPolicy: false, // Required for mobile app image loading
+}));
+
+// Additional security headers (Permissions-Policy, Referrer-Policy, etc.)
+app.use(additionalSecurityHeaders);
+// CORS: strict in production, permissive in development.
+// Native mobile apps don't send Origin headers, so null-origin is always allowed.
+// Browser clients (Expo web, admin dashboards) must be whitelisted.
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:8081',
   'http://localhost:19006',
   'http://10.0.2.2:3000',
-  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
+    // Allow requests with no origin (mobile apps, server-to-server, curl)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    // In dev, allow all; in prod, block unknown web origins
+    // In dev, allow all origins for convenience
     if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    // In production, reject unknown browser origins
+    logger.warn('CORS blocked', { origin });
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+  exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
   credentials: true,
+  maxAge: 86400, // Cache preflight for 24 hours
 }));
 
 // Rate limiting — generous limits for a mobile app whose users may share
@@ -116,6 +150,12 @@ app.use(readLimiter as any); // everything else (species, market, geo, economics
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Input sanitization — strip HTML tags and XSS vectors from all string inputs
+app.use(sanitizeInput);
+
+// Audit logging — attaches req.audit() helper to all requests
+app.use(auditMiddleware);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

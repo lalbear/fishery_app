@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 import YouTubeCard, { YouTubeLinkItem } from '../components/YouTubeCard';
@@ -12,13 +13,13 @@ import YouTubeCard, { YouTubeLinkItem } from '../components/YouTubeCard';
 // ─── Category chip definitions ────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { id: 'all',      label: 'All',          icon: 'apps-outline' as const },
-  { id: 'basics',   label: 'Basics',       icon: 'flag-outline' as const },
-  { id: 'systems',  label: 'Systems',      icon: 'build-outline' as const },
-  { id: 'subsidy',  label: 'Subsidy',      icon: 'ribbon-outline' as const },
-  { id: 'glossary', label: 'Glossary',     icon: 'book-outline' as const },
-  { id: 'results',  label: 'Results',      icon: 'analytics-outline' as const },
-  { id: 'warnings', label: 'Warnings',     icon: 'warning-outline' as const },
+  { id: 'all',      icon: 'apps-outline' as const },
+  { id: 'basics',   icon: 'flag-outline' as const },
+  { id: 'systems',  icon: 'build-outline' as const },
+  { id: 'subsidy',  icon: 'ribbon-outline' as const },
+  { id: 'glossary', icon: 'book-outline' as const },
+  { id: 'results',  icon: 'analytics-outline' as const },
+  { id: 'warnings', icon: 'warning-outline' as const },
 ];
 
 // ─── Lesson / article card metadata ──────────────────────────────────────────
@@ -49,6 +50,7 @@ const LESSONS: LessonItem[] = [
 
 export default function LearningCenterScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -144,7 +146,7 @@ export default function LearningCenterScreen() {
               <BulletItem key={item} index={idx + 1} text={item} styles={styles} theme={theme} />
             ))}
             <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              <Text style={styles.ytSectionLabel}>{t('learning.watchAndLearn').toUpperCase()}</Text>
               {ytBasics.map((link) => <YouTubeCard key={link.title} item={link} />)}
             </View>
           </>
@@ -163,7 +165,7 @@ export default function LearningCenterScreen() {
               Match the system to the land you actually control, the water you can reliably access, and the daily labor you can manage.
             </Text>
             <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              <Text style={styles.ytSectionLabel}>{t('learning.watchAndLearn').toUpperCase()}</Text>
               {ytSystems.slice(0, 1).map((link) => <YouTubeCard key={link.title} item={link} />)}
             </View>
           </>
@@ -181,7 +183,7 @@ export default function LearningCenterScreen() {
             <BulletItem text="Check dissolved oxygen early morning, not only during the day." styles={styles} theme={theme} />
             <BulletItem text="Keep a simple water log before each major stocking or feed increase." styles={styles} theme={theme} />
             <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              <Text style={styles.ytSectionLabel}>{t('learning.watchAndLearn').toUpperCase()}</Text>
               {ytSystems.slice(1).map((link) => <YouTubeCard key={link.title} item={link} />)}
             </View>
           </>
@@ -224,7 +226,7 @@ export default function LearningCenterScreen() {
             <BulletItem text={`The likely beneficiary share in this app is ${subsidyText}.`} styles={styles} theme={theme} />
             <BulletItem text="You still need to arrange the remaining capital through your own funds, loan, or phased execution." styles={styles} theme={theme} />
             <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              <Text style={styles.ytSectionLabel}>{t('learning.watchAndLearn').toUpperCase()}</Text>
               {ytSubsidy.slice(0, 1).map((link) => <YouTubeCard key={link.title} item={link} />)}
             </View>
           </>
@@ -239,7 +241,7 @@ export default function LearningCenterScreen() {
             <BulletItem text={`Current funding split preview: ${fundingPattern}.`} styles={styles} theme={theme} />
             <BulletItem text="Approval timing and release timing can still affect your actual cash flow on the ground." styles={styles} theme={theme} />
             <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              <Text style={styles.ytSectionLabel}>{t('learning.watchAndLearn').toUpperCase()}</Text>
               {ytSubsidy.slice(1).map((link) => <YouTubeCard key={link.title} item={link} />)}
             </View>
           </>
@@ -275,7 +277,7 @@ export default function LearningCenterScreen() {
               <BulletItem key={item} text={item} styles={styles} theme={theme} accent />
             ))}
             <View style={styles.ytSection}>
-              <Text style={styles.ytSectionLabel}>Watch & Learn</Text>
+              <Text style={styles.ytSectionLabel}>{t('learning.watchAndLearn').toUpperCase()}</Text>
               {ytWarnings.map((link) => <YouTubeCard key={link.title} item={link} />)}
             </View>
           </>
@@ -289,7 +291,7 @@ export default function LearningCenterScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScreenHeader title="Learning Center" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={t('learning.title')} onBack={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -303,33 +305,33 @@ export default function LearningCenterScreen() {
               <Ionicons name="school-outline" size={22} color={theme.colors.primary} />
             </View>
             <View style={styles.eyebrowPill}>
-              <Text style={styles.eyebrowText}>BEGINNER GUIDE</Text>
+              <Text style={styles.eyebrowText}>{t('learning.beginnerGuide').toUpperCase()}</Text>
             </View>
           </View>
           <Text style={styles.featuredTitle}>
-            How this business works in simple terms
+            {t('learning.featuredTitle')}
           </Text>
           <Text style={styles.featuredSubtitle}>
-            For first-time users who want to understand aquaculture, subsidy rules, and key economics terms before making decisions.
+            {t('learning.featuredSubtitle')}
           </Text>
           <TouchableOpacity
             style={styles.featuredCta}
             onPress={() => setActiveCategory('basics')}
             activeOpacity={0.82}
           >
-            <Text style={styles.featuredCtaText}>Start learning</Text>
+            <Text style={styles.featuredCtaText}>{t('learning.startLearning')}</Text>
             <Ionicons name="arrow-forward" size={16} color={theme.colors.textInverse} />
           </TouchableOpacity>
         </View>
 
         {/* Subsidy stat cards */}
         <View style={styles.statsRow}>
-          <StatCard label="Likely Subsidy"  value={subsidyText}    icon="gift-outline"      theme={theme} styles={styles} />
-          <StatCard label="Funding Split"   value={fundingPattern} icon="pie-chart-outline" theme={theme} styles={styles} />
+          <StatCard label={t('learning.likelySubsidy')}  value={subsidyText}    icon="gift-outline"      theme={theme} styles={styles} />
+          <StatCard label={t('learning.fundingSplit')}    value={fundingPattern} icon="pie-chart-outline" theme={theme} styles={styles} />
         </View>
 
         {/* Category chips — horizontal scroll, pill shape, active=primary */}
-        <SectionHeader label="BROWSE TOPICS" />
+        <SectionHeader label={t('learning.browseTopics').toUpperCase()} />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -351,7 +353,7 @@ export default function LearningCenterScreen() {
                   color={active ? theme.colors.textInverse : theme.colors.textSecondary}
                 />
                 <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
-                  {cat.label}
+                  {t(`learning.lessonCategories.${cat.id}`, { defaultValue: cat.id })}
                 </Text>
               </TouchableOpacity>
             );
@@ -359,7 +361,7 @@ export default function LearningCenterScreen() {
         </ScrollView>
 
         {/* Lesson / article cards */}
-        <SectionHeader label="LESSONS" />
+        <SectionHeader label={t('learning.lessons').toUpperCase()} />
         <View style={styles.lessonsContainer}>
           {visibleLessons.map((lesson, idx) => (
             <LessonCard
@@ -392,9 +394,9 @@ export default function LearningCenterScreen() {
             <Ionicons name="document-text-outline" size={22} color={theme.colors.primary} />
           </View>
           <View style={styles.linkCopy}>
-            <Text style={styles.linkTitle}>Open policy guidance</Text>
+            <Text style={styles.linkTitle}>{t('learning.openPolicyGuidance')}</Text>
             <Text style={styles.linkText}>
-              See your current state and category subsidy preview in more detail.
+              {t('learning.openPolicyGuidanceText')}
             </Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.primary} />

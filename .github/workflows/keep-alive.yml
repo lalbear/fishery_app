@@ -25,6 +25,7 @@ jobs:
     # Run 4 staggered pings within the same 15-min window:
     # job 0 → immediate, job 1 → ~4 min, job 2 → ~8 min, job 3 → ~12 min
     strategy:
+      fail-fast: false
       matrix:
         delay: [0, 240, 480, 720]   # seconds to sleep before pinging
 
@@ -37,16 +38,29 @@ jobs:
         run: |
           echo "⏰ $(date -u '+%Y-%m-%d %H:%M:%S UTC') — pinging backend..."
 
+          # Run curl and allow it to fail without crashing the shell immediately (set +e)
+          set +e
           HTTP_STATUS=$(curl \
             --silent \
             --output /dev/null \
             --write-out "%{http_code}" \
-            --max-time 30 \
-            --retry 2 \
-            --retry-delay 5 \
+            --max-time 120 \
+            --retry 3 \
+            --retry-delay 10 \
             "${{ secrets.RENDER_BACKEND_URL }}/health")
+          CURL_EXIT_CODE=$?
+          set -e
 
           echo "📡 HTTP status: $HTTP_STATUS"
+          echo "🔌 cURL exit code: $CURL_EXIT_CODE"
+
+          if [ "$CURL_EXIT_CODE" -eq 28 ]; then
+            echo "❌ Request timed out (exit code 28). The Render backend took more than 120 seconds to respond. This is common during a cold start if the database or server was asleep."
+            exit 1
+          elif [ "$CURL_EXIT_CODE" -ne 0 ]; then
+            echo "❌ cURL failed with exit code $CURL_EXIT_CODE. Connection issues or invalid URL."
+            exit 1
+          fi
 
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
             echo "✅ Backend is awake and healthy."

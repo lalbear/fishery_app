@@ -42,6 +42,18 @@ export default function EconomicsScreen() {
   const [knowledgeInsights, setKnowledgeInsights] = useState<any | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [numberOfRasUnits, setNumberOfRasUnits] = useState('1');
+  const [numberOfBioflocTanks, setNumberOfBioflocTanks] = useState('1');
+  const [numberOfCages, setNumberOfCages] = useState('6');
+  const [cageSpecies, setCageSpecies] = useState<'PANGASIUS' | 'TILAPIA'>('PANGASIUS');
+  const [bioflocSpecies, setBioflocSpecies] = useState<'PANGASIUS' | 'MANGUR'>('PANGASIUS');
+  const RAS_SPECIES_OPTIONS = [
+    { label: 'Auto Recommend', value: '' },
+    { label: 'Monosex GIFT Tilapia', value: 'Oreochromis niloticus' },
+    { label: 'Pangasius', value: 'Pangasianodon hypophthalmus' },
+    // Pearlspot removed — coastal southern India species, not cultivable in Bihar/UP winters
+    { label: 'Pabda / Butter Catfish', value: 'Ompok pabda' },
+  ];
 
   // ── Auto-locate: fill state/district from saved profile or GPS ──────────────
   const handleAutoLocate = async () => {
@@ -58,14 +70,14 @@ export default function EconomicsScreen() {
             setDistrictCode(zoneForState.district_codes[0]);
           }
         }
-        Alert.alert('Location Set', `Using your profile location: ${profile.stateCode}`);
+        Alert.alert(t('economics.locationSet'), t('economics.locationSetBody', { stateCode: profile.stateCode }));
         return;
       }
 
       // Fallback: GPS reverse geocode
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Enable location access in Settings, or select state/district manually.');
+        Alert.alert(t('economics.permissionDenied'), t('economics.permissionDeniedBody'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -85,13 +97,13 @@ export default function EconomicsScreen() {
         const matched = Object.entries(stateCodeMap).find(([k]) => regionLower.includes(k));
         if (matched) {
           setStateCode(matched[1]);
-          Alert.alert('Location Detected', `State set to ${geo.region}. Please select your district.`);
+          Alert.alert(t('economics.locationDetected'), t('economics.locationDetectedWithState', { region: geo.region }));
         } else {
-          Alert.alert('Location Detected', `${geo.region} — please select your state manually.`);
+          Alert.alert(t('economics.locationDetected'), t('economics.locationDetectedManual', { region: geo.region }));
         }
       }
     } catch {
-      Alert.alert('Error', 'Could not detect location. Please select manually.');
+      Alert.alert(t('economics.locationError'), t('economics.locationErrorBody'));
     } finally {
       setLocating(false);
     }
@@ -101,7 +113,7 @@ export default function EconomicsScreen() {
   const SPECIES_OPTIONS = [
     { label: 'Auto Recommend', value: '' },
     { label: 'Vannamei Shrimp', value: 'Litopenaeus vannamei' },
-    { label: 'Black Tiger Shrimp', value: 'Penaeus monodon' },
+    // Black Tiger Shrimp removed — strictly coastal/maritime, not farmed in Bihar/UP
     { label: 'Pangasius', value: 'Pangasianodon hypophthalmus' },
     { label: 'Tilapia', value: 'Oreochromis niloticus' },
     { label: 'Rohu', value: 'Labeo rohita' },
@@ -134,9 +146,13 @@ export default function EconomicsScreen() {
   useEffect(() => {
     if (!stateCode) return;
 
+    // Fix #16: include BIOFLOC in the project type mapping so Biofloc users
+    // get the correct freshwater advisory (Biofloc is a freshwater system).
     let projectType: 'FRESHWATER' | 'BRACKISH' | 'RAS' = 'FRESHWATER';
     if (pondSystem === 'RAS') {
       projectType = 'RAS';
+    } else if (pondSystem === 'BIOFLOC' || pondSystem === 'CAGES') {
+      projectType = 'FRESHWATER'; // Both Biofloc and Cage are freshwater systems
     } else {
       projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
     }
@@ -165,23 +181,155 @@ export default function EconomicsScreen() {
   }, [stateCode, farmerCategory, salinity, pondSystem]);
 
   const runSimulation = async () => {
+    // ── RAS path ──────────────────────────────────────────────────────────────
+    if (pondSystem === 'RAS') {
+      const units = parseInt(numberOfRasUnits || '0');
+      if (!units || units < 1) {
+        Alert.alert('Missing Information', 'Please enter the number of RAS units you want to set up.');
+        return;
+      }
+      if (!stateCode || !districtCode) {
+        Alert.alert('Missing Information', 'Please select your state and district.');
+        return;
+      }
+      if (!capital) {
+        Alert.alert('Missing Information', 'Please enter your available capital.');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const payload: any = {
+          systemType: 'RAS',
+          numberOfRasUnits: units,
+          availableCapitalInr: parseFloat(capital),
+          riskTolerance,
+          farmerCategory,
+          stateCode,
+          districtCode,
+          // These are required by the route schema — send safe defaults for RAS
+          // The backend simulateRAS() ignores them and uses fixed constants
+          landSizeHectares: units * 0.01,    // 100 sqm per unit converted to hectares
+          waterSourceSalinityUsCm: 500,
+        };
+        if (preferredSpecies) payload.preferredSpecies = [preferredSpecies];
+
+        const result = await economicsService.simulate(payload);
+        if (result.success) {
+          navigation.navigate('EconomicsResult', { simulationData: result.data });
+        } else {
+          Alert.alert('Simulation Error', result.message || 'Failed to calculate ROI.');
+        }
+      } catch (error) {
+        Alert.alert('Connection Failed', 'Could not reach simulation server.');
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // ── Biofloc path ──────────────────────────────────────────────────────────
+    if (pondSystem === 'BIOFLOC') {
+      const tanks = parseInt(numberOfBioflocTanks || '0');
+      if (!tanks || tanks < 1) {
+        Alert.alert('Missing Information', 'Please enter the number of Biofloc tanks.');
+        return;
+      }
+      if (!stateCode || !districtCode) {
+        Alert.alert('Missing Information', 'Please select your state and district.');
+        return;
+      }
+      if (!capital) {
+        Alert.alert('Missing Information', 'Please enter your available capital.');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const payload: any = {
+          systemType: 'BIOFLOC',
+          numberOfBioflocTanks: tanks,
+          bioflocSpecies,                    // 'PANGASIUS' or 'MANGUR'
+          availableCapitalInr: parseFloat(capital),
+          riskTolerance,
+          farmerCategory,
+          stateCode,
+          districtCode,
+          // Required by route schema — safe defaults, ignored by simulateBiofloc()
+          landSizeHectares: tanks * 0.0005,  // ~5 sqm per tank to hectares
+          waterSourceSalinityUsCm: 200,
+        };
+
+        const result = await economicsService.simulate(payload);
+        if (result.success) {
+          navigation.navigate('EconomicsResult', { simulationData: result.data });
+        } else {
+          Alert.alert('Simulation Error', result.message || 'Failed to calculate ROI.');
+        }
+      } catch (error) {
+        Alert.alert('Connection Failed', 'Could not reach simulation server.');
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // ── Cage path ─────────────────────────────────────────────────────────────────────────────
+    if (pondSystem === 'CAGES') {
+      const cages = parseInt(numberOfCages || '0');
+      if (!cages || cages < 1) {
+        Alert.alert('Missing Information', 'Please enter the number of cages.');
+        return;
+      }
+      if (!stateCode || !districtCode) {
+        Alert.alert('Missing Information', 'Please select your state and district.');
+        return;
+      }
+      if (!capital) {
+        Alert.alert('Missing Information', 'Please enter your available capital.');
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const payload: any = {
+          systemType: 'CAGES',
+          numberOfCages: cages,
+          cageSpecies,
+          availableCapitalInr: parseFloat(capital),
+          riskTolerance,
+          farmerCategory,
+          stateCode,
+          districtCode,
+          landSizeHectares: cages * 0.0024,
+          waterSourceSalinityUsCm: 200,
+        };
+        const result = await economicsService.simulate(payload);
+        if (result.success) {
+          navigation.navigate('EconomicsResult', { simulationData: result.data });
+        } else {
+          Alert.alert('Simulation Error', result.message || 'Failed to calculate ROI.');
+        }
+      } catch (error) {
+        Alert.alert('Connection Failed', 'Could not reach simulation server.');
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // ── Non-RAS path (EARTHEN) ────────────────────────────────────────────────────────────────────────────────────
     if (!landSize || !capital || !stateCode || !districtCode) {
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
+      Alert.alert(t('economics.missingInformation'), t('economics.missingInformationBody'));
       return;
     }
 
     setIsLoading(true);
     try {
       const landHectares = parseFloat(landSize) * 0.4047;
-
-      let projectType: string;
-      if (pondSystem === 'RAS') {
-        projectType = 'RAS';
-      } else if (pondSystem === 'BIOFLOC') {
-        projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
-      } else {
-        projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
-      }
+      const projectType = parseFloat(salinity || '0') > 1000 ? 'BRACKISH' : 'FRESHWATER';
 
       const payload: any = {
         landSizeHectares: landHectares,
@@ -195,17 +343,16 @@ export default function EconomicsScreen() {
         systemType: pondSystem,
         waterSourceType: waterSource,
       };
-
       if (preferredSpecies) payload.preferredSpecies = [preferredSpecies];
 
       const result = await economicsService.simulate(payload);
       if (result.success) {
         navigation.navigate('EconomicsResult', { simulationData: result.data });
       } else {
-        Alert.alert('Simulation Error', result.message || 'Failed to calculate ROI.');
+        Alert.alert(t('economics.simulationError'), result.message || t('economics.simulationFailed'));
       }
     } catch (error) {
-      Alert.alert('Connection Failed', 'Could not reach simulation server.');
+      Alert.alert(t('economics.connectionFailed'), t('economics.connectionFailedBody'));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -236,8 +383,14 @@ export default function EconomicsScreen() {
   const profileFields = [
     Boolean(stateCode),
     Boolean(districtCode),
-    Boolean(landSize.trim()),
-    Boolean(salinity.trim()),
+    pondSystem === 'RAS'
+      ? Boolean(numberOfRasUnits)
+      : pondSystem === 'BIOFLOC'
+      ? Boolean(numberOfBioflocTanks)
+      : pondSystem === 'CAGES'
+      ? Boolean(numberOfCages)
+      : Boolean(landSize.trim()),
+    pondSystem === 'RAS' || pondSystem === 'BIOFLOC' || pondSystem === 'CAGES' ? true : Boolean(salinity.trim()),
     Boolean(capital.trim()),
     Boolean(farmerCategory),
   ];
@@ -256,8 +409,8 @@ export default function EconomicsScreen() {
       <View style={styles.header}>
         <View style={styles.headerSpacer} />
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Profitability Simulator</Text>
-          <Text style={styles.headerSubtitle}>ROI & subsidy analysis</Text>
+          <Text style={styles.headerTitle}>{t('economics.profitabilitySimulator')}</Text>
+          <Text style={styles.headerSubtitle}>{t('economics.roiSubsidyAnalysis')}</Text>
         </View>
         <TouchableOpacity
           style={styles.headerAction}
@@ -277,7 +430,7 @@ export default function EconomicsScreen() {
         {/* Progress bar */}
         <View style={styles.progressSection}>
           <View style={styles.progressLabelRow}>
-            <Text style={styles.progressEyebrow}>STEP 1 OF 3 — FARM PROFILE</Text>
+            <Text style={styles.progressEyebrow}>{t('economics.stepFarmProfile')}</Text>
             <Text style={styles.progressPercent}>{profileCompletionPercent}%</Text>
           </View>
           <View style={styles.progressTrack}>
@@ -301,13 +454,142 @@ export default function EconomicsScreen() {
             <Ionicons name="school-outline" size={18} color={theme.colors.primary} />
           </View>
           <View style={styles.learnBannerCopy}>
-            <Text style={styles.learnBannerTitle}>New here?</Text>
-            <Text style={styles.learnBannerText}>
-              Learn FCR, BCR, subsidy logic, land needs, and how this business works in simple terms.
-            </Text>
+            <Text style={styles.learnBannerTitle}>{t('economics.newHere')}</Text>
+            <Text style={styles.learnBannerText}>{t('economics.newHereBody')}</Text>
           </View>
           <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
+
+        {/* ── STEP 1: Farming System — must be asked first ── */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.sectionIconWrap}>
+              <Ionicons name="construct-outline" size={16} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.sectionLabel}>FARMING SYSTEM</Text>
+          </View>
+
+          <Text style={styles.chipGroupLabel}>SELECT YOUR SYSTEM TYPE</Text>
+          <View style={styles.chipRow}>
+            {(['EARTHEN', 'BIOFLOC', 'RAS', 'CAGES'] as const).map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={[styles.chip, pondSystem === item && styles.chipActive]}
+                onPress={() => setPondSystem(item)}
+              >
+                <Text style={[styles.chipText, pondSystem === item && styles.chipTextActive]}>
+                  {item === 'EARTHEN' ? 'EARTHEN POND' : item}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* RAS information card — only shown when RAS is selected */}
+          {pondSystem === 'RAS' && (
+            <View style={styles.rasInfoCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Ionicons name="information-circle-outline" size={16} color={theme.colors.primary} />
+                <Text style={[styles.chipGroupLabel, { marginBottom: 0 }]}>ABOUT RAS</Text>
+              </View>
+              <Text style={styles.rasInfoText}>
+                Indoor controlled tank system. Water is recycled through bio-filters — only 10% replaced daily.
+                Each standard unit uses a 90,000-litre tank and produces{' '}
+                <Text style={{ fontWeight: '800', color: theme.colors.textPrimary }}>
+                  1,620 kg per 6-month cycle
+                </Text>
+                , with 2 cycles per year.
+              </Text>
+              <View style={styles.rasStatRow}>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>100 m²</Text>
+                  <Text style={styles.rasStatLabel}>Land/unit</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>Rs 5.6L</Text>
+                  <Text style={styles.rasStatLabel}>Setup/unit</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>2 cycles</Text>
+                  <Text style={styles.rasStatLabel}>Per year</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>Rs 4.86L</Text>
+                  <Text style={styles.rasStatLabel}>Annual rev</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Biofloc information card — only shown when BIOFLOC is selected */}
+          {pondSystem === 'BIOFLOC' && (
+            <View style={styles.rasInfoCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Ionicons name="information-circle-outline" size={16} color={theme.colors.primary} />
+                <Text style={[styles.chipGroupLabel, { marginBottom: 0 }]}>ABOUT BIOFLOC</Text>
+              </View>
+              <Text style={styles.rasInfoText}>
+                Zero water exchange system — fish waste is converted into protein-rich food by beneficial bacteria.
+                Each 10,000-litre tank is a self-contained ecosystem. Feed costs are lower than RAS because fish
+                eat the floc.{' '}
+                <Text style={{ fontWeight: '800', color: theme.colors.error }}>
+                  Requires 24/7 uninterrupted aeration.
+                </Text>
+              </Text>
+              <View style={styles.rasStatRow}>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>10,000 L</Text>
+                  <Text style={styles.rasStatLabel}>Per tank</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>Rs 22K</Text>
+                  <Text style={styles.rasStatLabel}>Setup/tank</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>2 cycles</Text>
+                  <Text style={styles.rasStatLabel}>Per year</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>24/7</Text>
+                  <Text style={[styles.rasStatLabel, { color: theme.colors.error }]}>Aeration</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Cage culture information card */}
+          {pondSystem === 'CAGES' && (
+            <View style={styles.rasInfoCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Ionicons name="information-circle-outline" size={16} color={theme.colors.primary} />
+                <Text style={[styles.chipGroupLabel, { marginBottom: 0 }]}>ABOUT CAGE CULTURE</Text>
+              </View>
+              <Text style={styles.rasInfoText}>
+                Floating cages in reservoirs or lakes. Standard cage: 6m x 4m x 4m (96 m3). NFDB promotes cage culture under Blue Revolution scheme.{" "}
+                <Text style={{ fontWeight: "800", color: theme.colors.error }}>
+                  Requires reservoir 1,000+ ha with 10m+ depth year-round.
+                </Text>
+              </Text>
+              <View style={styles.rasStatRow}>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>96 m3</Text>
+                  <Text style={styles.rasStatLabel}>Per cage</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>Rs 3L</Text>
+                  <Text style={styles.rasStatLabel}>Setup/cage</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>4.6 MT</Text>
+                  <Text style={styles.rasStatLabel}>Yield/cage</Text>
+                </View>
+                <View style={styles.rasStatItem}>
+                  <Text style={styles.rasStatValue}>Rs 1.15L</Text>
+                  <Text style={styles.rasStatLabel}>Net/cage</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Location & Scale */}
         <View style={styles.sectionCard}>
@@ -315,7 +597,7 @@ export default function EconomicsScreen() {
             <View style={styles.sectionIconWrap}>
               <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
             </View>
-            <Text style={[styles.sectionLabel, { flex: 1 }]}>LOCATION & SCALE</Text>
+            <Text style={[styles.sectionLabel, { flex: 1 }]}>{t('economics.locationScale')}</Text>
             <TouchableOpacity
               style={styles.autoLocateBtn}
               onPress={handleAutoLocate}
@@ -328,21 +610,21 @@ export default function EconomicsScreen() {
                 <Ionicons name="navigate-outline" size={14} color={theme.colors.primary} />
               )}
               <Text style={styles.autoLocateText}>
-                {locating ? 'Locating...' : 'Auto Locate'}
+                {locating ? t('economics.locating') : t('economics.autoLocate')}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.row}>
             <GhostPickerField
-              label="STATE"
-              value={statesList.find(s => s.value === stateCode)?.label || 'Select'}
+              label={t('economics.stateLabel')}
+              value={statesList.find(s => s.value === stateCode)?.label || t('common.notSpecified')}
               icon="map-outline"
               onPress={() => setActiveModal('state')}
               theme={theme}
             />
             <GhostPickerField
-              label="DISTRICT"
+              label={t('economics.districtLabel')}
               value={currentDistrictLabel}
               icon="pin-outline"
               onPress={() => setActiveModal('district')}
@@ -350,17 +632,101 @@ export default function EconomicsScreen() {
             />
           </View>
 
-          <GhostInputField
-            label="LAND SIZE"
-            value={landSize}
-            onChangeText={setLandSize}
-            suffix="Acres"
-            icon="resize-outline"
-            isFocused={focusedField === 'land'}
-            onFocus={() => setFocusedField('land')}
-            onBlur={() => setFocusedField(null)}
-            theme={theme}
-          />
+          {pondSystem === 'RAS' ? (
+            <>
+              <GhostInputField
+                label="NUMBER OF RAS UNITS"
+                value={numberOfRasUnits}
+                onChangeText={setNumberOfRasUnits}
+                suffix="Units"
+                icon="cube-outline"
+                isFocused={focusedField === 'rasUnits'}
+                onFocus={() => setFocusedField('rasUnits')}
+                onBlur={() => setFocusedField(null)}
+                theme={theme}
+              />
+              {numberOfRasUnits ? (
+                <View style={styles.rasLandHint}>
+                  <Ionicons name="map-outline" size={13} color={theme.colors.textMuted} />
+                  <Text style={styles.rasLandHintText}>
+                    You will need at least{' '}
+                    <Text style={{ fontWeight: '800', color: theme.colors.textPrimary }}>
+                      {parseInt(numberOfRasUnits || '0') * 100} sq. meters
+                    </Text>{' '}
+                    of land for this setup
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : pondSystem === 'BIOFLOC' ? (
+            <>
+              <GhostInputField
+                label="NUMBER OF BIOFLOC TANKS"
+                value={numberOfBioflocTanks}
+                onChangeText={setNumberOfBioflocTanks}
+                suffix="Tanks"
+                icon="water-outline"
+                isFocused={focusedField === 'bioflocTanks'}
+                onFocus={() => setFocusedField('bioflocTanks')}
+                onBlur={() => setFocusedField(null)}
+                theme={theme}
+              />
+              {numberOfBioflocTanks ? (
+                <View style={styles.rasLandHint}>
+                  <Ionicons name="map-outline" size={13} color={theme.colors.textMuted} />
+                  <Text style={styles.rasLandHintText}>
+                    Each 10,000-litre tank needs approximately{' '}
+                    <Text style={{ fontWeight: '800', color: theme.colors.textPrimary }}>
+                      4–5 sq. meters
+                    </Text>
+                    {' '}of space ({parseInt(numberOfBioflocTanks || '0') * 5} sq. meters total)
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : pondSystem === 'CAGES' ? (
+            <>
+              <GhostInputField
+                label="NUMBER OF CAGES"
+                value={numberOfCages}
+                onChangeText={setNumberOfCages}
+                suffix="Cages"
+                icon="apps-outline"
+                isFocused={focusedField === 'cages'}
+                onFocus={() => setFocusedField('cages')}
+                onBlur={() => setFocusedField(null)}
+                theme={theme}
+              />
+              {numberOfCages ? (
+                <View style={styles.rasLandHint}>
+                  <Ionicons name="information-circle-outline" size={13} color={theme.colors.textMuted} />
+                  <Text style={styles.rasLandHintText}>
+                    Each cage is 6m x 4m x 4m (96 m3). A battery of{' '}
+                    <Text style={{ fontWeight: '800', color: theme.colors.textPrimary }}>
+                      {parseInt(numberOfCages || '0')} cages
+                    </Text>
+                    {' '}yields approx{' '}
+                    <Text style={{ fontWeight: '800', color: theme.colors.textPrimary }}>
+                      {(parseInt(numberOfCages || '0') * 4.608).toFixed(1)} MT
+                    </Text>
+                    {' '}per 8-month cycle. Requires reservoir 1,000+ ha.
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <GhostInputField
+              label={t('economics.landSizeLabel')}
+              value={landSize}
+              onChangeText={setLandSize}
+              suffix="Acres"
+              icon="resize-outline"
+              isFocused={focusedField === 'land'}
+              onFocus={() => setFocusedField('land')}
+              onBlur={() => setFocusedField(null)}
+              theme={theme}
+            />
+          )}
         </View>
 
         {/* Operational Data */}
@@ -369,48 +735,103 @@ export default function EconomicsScreen() {
             <View style={styles.sectionIconWrap}>
               <Ionicons name="water-outline" size={16} color={theme.colors.primary} />
             </View>
-            <Text style={styles.sectionLabel}>OPERATIONAL DATA</Text>
+            <Text style={styles.sectionLabel}>{t('economics.operationalData')}</Text>
           </View>
 
-          <GhostInputField
-            label="WATER SALINITY"
-            value={salinity}
-            onChangeText={setSalinity}
-            suffix="uS/cm"
-            icon="water-outline"
-            isFocused={focusedField === 'salinity'}
-            onFocus={() => setFocusedField('salinity')}
-            onBlur={() => setFocusedField(null)}
-            theme={theme}
-          />
+          {/* Cage species selector */}
+          {pondSystem === 'CAGES' && (
+            <>
+              <Text style={styles.chipGroupLabel}>CAGE SPECIES</Text>
+              <View style={[styles.chipRow, { marginBottom: 16 }]}>
+                <TouchableOpacity
+                  style={[styles.chip, { flex: 1 }, cageSpecies === 'PANGASIUS' && styles.chipActive]}
+                  onPress={() => setCageSpecies('PANGASIUS')}
+                >
+                  <Text style={[styles.chipText, cageSpecies === 'PANGASIUS' && styles.chipTextActive]}>
+                    PANGASIUS
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chip, { flex: 1 }, cageSpecies === 'TILAPIA' && styles.chipActive]}
+                  onPress={() => setCageSpecies('TILAPIA')}
+                >
+                  <Text style={[styles.chipText, cageSpecies === 'TILAPIA' && styles.chipTextActive]}>
+                    GIFT TILAPIA
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.rasLandHint}>
+                <Ionicons name="fish-outline" size={13} color={theme.colors.textMuted} />
+                <Text style={styles.rasLandHintText}>
+                  {cageSpecies === 'PANGASIUS'
+                    ? 'Stocking: 9,600/cage • Survival: 80% • Harvest: 600g • Sale: Rs 90/kg • Yield: 4.6 MT/cage'
+                    : 'Stocking: 9,600/cage • Survival: 82% • Harvest: 500g • Sale: Rs 100/kg • Monosex only'}
+                </Text>
+              </View>
+            </>
+          )}
 
-          <Text style={styles.chipGroupLabel}>FARMER CATEGORY</Text>
+          {pondSystem !== 'RAS' && pondSystem !== 'BIOFLOC' && pondSystem !== 'CAGES' && (
+            <GhostInputField
+              label={t('economics.waterSalinityLabel')}
+              value={salinity}
+              onChangeText={setSalinity}
+              suffix="uS/cm"
+              icon="water-outline"
+              isFocused={focusedField === 'salinity'}
+              onFocus={() => setFocusedField('salinity')}
+              onBlur={() => setFocusedField(null)}
+              theme={theme}
+            />
+          )}
+
+          {/* Biofloc species selector — shown only when BIOFLOC is selected */}
+          {pondSystem === 'BIOFLOC' && (
+            <>
+              <Text style={styles.chipGroupLabel}>BIOFLOC SPECIES</Text>
+              <View style={[styles.chipRow, { marginBottom: 16 }]}>
+                <TouchableOpacity
+                  style={[styles.chip, { flex: 1 }, bioflocSpecies === 'PANGASIUS' && styles.chipActive]}
+                  onPress={() => setBioflocSpecies('PANGASIUS')}
+                >
+                  <Text style={[styles.chipText, bioflocSpecies === 'PANGASIUS' && styles.chipTextActive]}>
+                    PANGASIUS
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chip, { flex: 1 }, bioflocSpecies === 'MANGUR' && styles.chipActive]}
+                  onPress={() => setBioflocSpecies('MANGUR')}
+                >
+                  <Text style={[styles.chipText, bioflocSpecies === 'MANGUR' && styles.chipTextActive]}>
+                    MANGUR / SINGHI
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.rasLandHint}>
+                <Ionicons name="fish-outline" size={13} color={theme.colors.textMuted} />
+                <Text style={styles.rasLandHintText}>
+                  {bioflocSpecies === 'PANGASIUS'
+                    ? 'Stocking: 1,350 fish/tank avg • Harvest: 500g • Sale: Rs 85/kg'
+                    : 'Stocking: 4,500 fish/tank avg • Harvest: 250g • Sale: Rs 180/kg (premium)'}
+                </Text>
+              </View>
+            </>
+          )}
+
+          <Text style={styles.chipGroupLabel}>{t('economics.farmerCategoryLabel')}</Text>
           <View style={styles.chipRow}>
-            {['GENERAL', 'WOMEN', 'SC', 'ST'].map((item) => (
+            {(['GENERAL', 'WOMEN', 'SC', 'ST'] as const).map((item) => (
               <TouchableOpacity
                 key={item}
                 style={[styles.chip, farmerCategory === item && styles.chipActive]}
                 onPress={() => setFarmerCategory(item as any)}
               >
-                <Text style={[styles.chipText, farmerCategory === item && styles.chipTextActive]}>{item}</Text>
+                <Text style={[styles.chipText, farmerCategory === item && styles.chipTextActive]}>{t(`economics.categories.${item}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={[styles.chipGroupLabel, { marginTop: 16 }]}>POND SYSTEM</Text>
-          <View style={styles.chipRow}>
-            {(['EARTHEN', 'BIOFLOC', 'RAS', 'CAGES'] as const).map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={[styles.chip, pondSystem === item && styles.chipActive]}
-                onPress={() => setPondSystem(item)}
-              >
-                <Text style={[styles.chipText, pondSystem === item && styles.chipTextActive]}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={[styles.chipGroupLabel, { marginTop: 16 }]}>WATER SOURCE</Text>
+          <Text style={[styles.chipGroupLabel, { marginTop: 16 }]}>{t('economics.waterSourceLabel')}</Text>
           <View style={styles.chipRow}>
             {WATER_SOURCES.map((item) => (
               <TouchableOpacity
@@ -430,11 +851,11 @@ export default function EconomicsScreen() {
             <View style={styles.sectionIconWrap}>
               <Ionicons name="cash-outline" size={16} color={theme.colors.primary} />
             </View>
-            <Text style={styles.sectionLabel}>FINANCIAL SETTINGS</Text>
+            <Text style={styles.sectionLabel}>{t('economics.financialSettings')}</Text>
           </View>
 
           <GhostInputField
-            label="INITIAL CAPITAL"
+            label={t('economics.initialCapital')}
             value={capital}
             onChangeText={setCapital}
             prefix="Rs"
@@ -445,15 +866,20 @@ export default function EconomicsScreen() {
             theme={theme}
           />
 
-          <Text style={styles.chipGroupLabel}>RISK TOLERANCE</Text>
+          <Text style={styles.chipGroupLabel}>{t('economics.riskTolerance')}</Text>
           <View style={styles.riskRow}>
-            {(['LOW', 'MEDIUM', 'HIGH'] as const).map((risk, idx) => {
+            {(['LOW', 'MEDIUM', 'HIGH'] as const).map((risk) => {
               const isActive = riskTolerance === risk;
               const dotColor = risk === 'LOW'
                 ? theme.colors.success
                 : risk === 'MEDIUM'
                 ? theme.colors.accent
                 : theme.colors.error;
+              const riskLabel = risk === 'LOW'
+                ? t('economics.lowRisk')
+                : risk === 'MEDIUM'
+                ? t('economics.mediumRisk')
+                : t('economics.highRisk');
               return (
                 <TouchableOpacity
                   key={risk}
@@ -461,19 +887,24 @@ export default function EconomicsScreen() {
                   onPress={() => setRiskTolerance(risk)}
                 >
                   <View style={[styles.riskDot, { backgroundColor: dotColor }, !isActive && styles.riskDotInactive]} />
-                  <Text style={[styles.riskText, isActive && { color: dotColor }]}>{risk}</Text>
+                  <Text style={[styles.riskText, isActive && { color: dotColor }]}>{riskLabel}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <GhostPickerField
-            label="PREFERRED SPECIES"
-            value={SPECIES_OPTIONS.find(item => item.value === preferredSpecies)?.label || 'Auto Recommend'}
-            icon="fish-outline"
-            onPress={() => setActiveModal('species')}
-            theme={theme}
-          />
+          {pondSystem !== 'BIOFLOC' && (
+            <GhostPickerField
+              label={t('economics.preferredSpecies')}
+              value={
+                (pondSystem === 'RAS' ? RAS_SPECIES_OPTIONS : SPECIES_OPTIONS)
+                  .find(item => item.value === preferredSpecies)?.label || t('common.notSpecified')
+              }
+              icon="fish-outline"
+              onPress={() => setActiveModal('species')}
+              theme={theme}
+            />
+          )}
         </View>
 
         {/* Subsidy Preview — bento grid if data loaded */}
@@ -624,7 +1055,7 @@ export default function EconomicsScreen() {
       <SelectionModal
         visible={activeModal === 'species'}
         title="Select Species"
-        data={SPECIES_OPTIONS}
+        data={pondSystem === 'RAS' ? RAS_SPECIES_OPTIONS : SPECIES_OPTIONS}
         onClose={() => setActiveModal(null)}
         onSelect={(value: string) => setPreferredSpecies(value)}
         theme={theme}
@@ -991,8 +1422,9 @@ const getStyles = (theme: any) => StyleSheet.create({
     gap: 8,
   },
   chip: {
-    height: 36,
+    minHeight: 36,
     paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 18,
     backgroundColor: theme.colors.surfaceLow,
     borderWidth: 1,
@@ -1023,13 +1455,14 @@ const getStyles = (theme: any) => StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surfaceLow,
+    minHeight: 40,
   },
   riskDot: {
     width: 10,
@@ -1041,8 +1474,10 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   riskText: {
     color: theme.colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
 
   // Subsidy section
@@ -1103,7 +1538,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   },
   subsidySchemeValue: {
     color: theme.colors.primary,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
     marginBottom: 6,
   },
@@ -1197,9 +1632,58 @@ const getStyles = (theme: any) => StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // Modal
-  modalOverlay: {
+  // RAS-specific styles
+  rasInfoCard: {
+    marginTop: 14,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    backgroundColor: theme.colors.primaryLight,
+    padding: 14,
+  },
+  rasInfoText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  rasStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rasStatItem: {
+    alignItems: 'center',
     flex: 1,
+  },
+  rasStatValue: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  rasStatLabel: {
+    color: theme.colors.textMuted,
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  rasLandHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 4,
+  },
+  rasLandHintText: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    flex: 1,
+  },
+
+  // Modal
+  modalOverlay: {    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'flex-end',
   },

@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 import { diseaseService, doctorNetworkService } from '../services/apiService';
@@ -34,6 +35,7 @@ function formatDoctorName(name?: string | null) {
 export default function DoctorNetworkScreen() {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const styles = getStyles(theme);
 
@@ -76,6 +78,7 @@ export default function DoctorNetworkScreen() {
             { text: 'Later', style: 'cancel' },
           ]
         );
+        // Fix #15: must reach finally to stop the spinner — don't return early here
         return;
       }
 
@@ -90,6 +93,7 @@ export default function DoctorNetworkScreen() {
     } catch {
       Alert.alert('Error', 'Could not load doctor booking right now. Please try again.');
     } finally {
+      // Fix #15: always stop the spinner, even when returning early above
       setLoading(false);
     }
   };
@@ -224,7 +228,7 @@ export default function DoctorNetworkScreen() {
       if (res.success) {
         Alert.alert(
           'Appointment Requested',
-          `${doctorDisplayName} will visit${selectedPond ? ` for pond "${selectedPond.name}"` : ''}.\nFarmer pays ₹200, Govt pays ₹100.`
+          `${doctorDisplayName} will visit${selectedPond ? ` for pond "${selectedPond.name}"` : ''}.\nVisit fee: ₹400 total — You pay ₹200, Govt pays ₹200.`
         );
         setIssueDescription('');
         setSugg(null);
@@ -253,7 +257,7 @@ export default function DoctorNetworkScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Doctor Network" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={t('doctor.network')} onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.center}>
@@ -263,7 +267,7 @@ export default function DoctorNetworkScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
           {/* ── Assigned Doctor Card ───────────────────────────── */}
-          <Text style={styles.sectionHeader}>YOUR ASSIGNED DOCTOR</Text>
+          <Text style={styles.sectionHeader}>{t('doctor.myProfile').toUpperCase()}</Text>
           <View style={styles.card}>
             {routingDoctor ? (
               <ActivityIndicator style={{ marginVertical: 16 }} color={c.primary} />
@@ -317,7 +321,7 @@ export default function DoctorNetworkScreen() {
                     style={styles.profileBtn}
                     onPress={() => navigation.navigate('PersonalInfo')}
                   >
-                    <Text style={styles.profileBtnText}>Complete Profile</Text>
+                    <Text style={styles.profileBtnText}>{t('personalInfo.title')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -327,7 +331,7 @@ export default function DoctorNetworkScreen() {
           {/* ── Pond Selector ─────────────────────────────────── */}
           {ponds.length > 0 && (
             <>
-              <Text style={styles.sectionHeader}>SELECT POND</Text>
+              <Text style={styles.sectionHeader}>{t('addEditPond.fields.species').toUpperCase()}</Text>
               <View style={styles.card}>
                 {ponds.length === 1 ? (
                   <View style={styles.singlePondRow}>
@@ -364,21 +368,21 @@ export default function DoctorNetworkScreen() {
           )}
 
           {/* ── Symptom Triage ────────────────────────────────── */}
-          <Text style={styles.sectionHeader}>SYMPTOM TRIAGE</Text>
+          <Text style={styles.sectionHeader}>{t('disease.sections.symptoms').toUpperCase()}</Text>
           <View style={styles.card}>
             <Text style={styles.helper}>Example: {symptomHints.join(', ')}</Text>
             <TextInput
               style={[styles.input, symptomsInputFocused && styles.inputFocused]}
               value={symptoms}
               onChangeText={setSymptoms}
-              placeholder="white spots, fish gasping, lethargy"
+              placeholder={t('disease.searchPlaceholder')}
               placeholderTextColor={c.textMuted}
               onFocus={() => setSymptomsInputFocused(true)}
               onBlur={() => setSymptomsInputFocused(false)}
             />
             <TouchableOpacity style={styles.actionBtn} onPress={runSuggestion}>
               <Ionicons name="flask-outline" size={16} color={c.primary} />
-              <Text style={styles.actionBtnText}>Suggest Disease Risk</Text>
+              <Text style={styles.actionBtnText}>{t('disease.title')}</Text>
             </TouchableOpacity>
 
             {sugg ? (
@@ -401,9 +405,9 @@ export default function DoctorNetworkScreen() {
           </View>
 
           {/* ── Photo ─────────────────────────────────────────── */}
-          <Text style={styles.sectionHeader}>ATTACH PHOTO (OPTIONAL)</Text>
+          <Text style={styles.sectionHeader}>{t('common.add')} {t('common.optional')}</Text>
           <View style={styles.card}>
-            <Text style={styles.helper}>Take a clear picture of the affected fish or pond.</Text>
+            <Text style={styles.helper}>{t('ponds.updatePhotoBody')}</Text>
             {photoPreviewUri ? (
               <View style={styles.photoPreviewWrap}>
                 <Image source={{ uri: photoPreviewUri }} style={styles.photoPreview} />
@@ -415,20 +419,20 @@ export default function DoctorNetworkScreen() {
             ) : (
               <TouchableOpacity style={styles.photoBtn} onPress={handlePickImage}>
                 <Ionicons name="camera-outline" size={22} color={c.textMuted} />
-                <Text style={styles.photoBtnText}>Take Photo</Text>
+                <Text style={styles.photoBtnText}>{t('ponds.takePhoto')}</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* ── Book Appointment ──────────────────────────────── */}
-          <Text style={styles.sectionHeader}>BOOK APPOINTMENT</Text>
+          <Text style={styles.sectionHeader}>{t('doctor.bookAppointment').toUpperCase()}</Text>
           <View style={styles.card}>
             <TextInput
               style={[styles.input, styles.multiline, issueInputFocused && styles.inputFocused]}
               value={issueDescription}
               onChangeText={setIssueDescription}
               multiline
-              placeholder="Describe pond issue and mortality pattern..."
+              placeholder={t('doctor.issue')}
               placeholderTextColor={c.textMuted}
               onFocus={() => setIssueInputFocused(true)}
               onBlur={() => setIssueInputFocused(false)}
@@ -437,7 +441,7 @@ export default function DoctorNetworkScreen() {
             {/* Payment info row */}
             <View style={styles.paymentRow}>
               <Ionicons name="receipt-outline" size={15} color={c.accent} />
-              <Text style={styles.paymentText}>Total ₹300 = Farmer ₹200 + Govt ₹100</Text>
+              <Text style={styles.paymentText}>Visit fee ₹400 — You pay ₹200, Govt pays ₹200</Text>
             </View>
 
             {/* Submit */}
@@ -475,7 +479,7 @@ export default function DoctorNetworkScreen() {
             {/* Handle */}
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Pond</Text>
+              <Text style={styles.modalTitle}>{t('addEditPond.fields.species')}</Text>
               <TouchableOpacity
                 onPress={() => setPondPickerVisible(false)}
                 style={styles.modalCloseBtn}

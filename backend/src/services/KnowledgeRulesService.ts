@@ -90,7 +90,7 @@ const SPECIES_ALIASES: Record<string, string[]> = {
   'labeo rohita': ['labeo rohita', 'rohu'],
   'pangasianodon hypophthalmus': ['pangasianodon hypophthalmus', 'pangasius'],
   'oreochromis niloticus': ['oreochromis niloticus', 'tilapia'],
-  'penaeus monodon': ['penaeus monodon', 'black tiger shrimp'],
+  // Penaeus monodon (Black Tiger Shrimp) removed — not cultivated in Bihar/UP inland systems
 };
 
 export class KnowledgeRulesService {

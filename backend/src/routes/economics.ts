@@ -15,15 +15,27 @@ const router = Router();
 
 // Validation schema for simulation request
 const simulationSchema = z.object({
-  landSizeHectares: z.number().positive().max(1000),
-  waterSourceSalinityUsCm: z.number().min(0).max(50000),
+  landSizeHectares: z.number().positive().max(1000).optional(),
+  waterSourceSalinityUsCm: z.number().min(0).max(50000).optional(),
   availableCapitalInr: z.number().positive(),
   riskTolerance: z.enum(['LOW', 'MEDIUM', 'HIGH']),
   farmerCategory: z.enum(['GENERAL', 'WOMEN', 'SC', 'ST']),
   stateCode: z.string().length(2),
   districtCode: z.string().min(2).max(50),
-  preferredSpecies: z.array(z.string()).optional()
-});
+  preferredSpecies: z.array(z.string()).optional(),
+  systemType: z.enum(['EARTHEN', 'BIOFLOC', 'RAS', 'CAGES']).optional(),
+  waterSourceType: z.string().optional(),
+  projectType: z.string().optional(),
+  numberOfRasUnits: z.number().int().positive().max(100).optional(),
+  numberOfBioflocTanks: z.number().int().positive().max(500).optional(),
+  bioflocSpecies: z.enum(['PANGASIUS', 'MANGUR']).optional(),
+}).refine(
+  data =>
+    data.systemType === 'RAS' ||
+    data.systemType === 'BIOFLOC' ||
+    (data.landSizeHectares != null && data.waterSourceSalinityUsCm != null),
+  { message: 'landSizeHectares and waterSourceSalinityUsCm are required for non-RAS/Biofloc systems' }
+);
 
 // Validation schema for subsidy calculation
 const subsidySchema = z.object({
@@ -54,15 +66,20 @@ router.post('/simulate', async (req, res, next) => {
     });
 
     const result = await EconomicsSimulatorService.simulate({
-      landSizeHectares: validated.landSizeHectares,
-      waterSourceSalinityUsCm: validated.waterSourceSalinityUsCm,
+      landSizeHectares: validated.landSizeHectares ?? 0,
+      waterSourceSalinityUsCm: validated.waterSourceSalinityUsCm ?? 200,
       availableCapitalInr: validated.availableCapitalInr,
       riskTolerance: validated.riskTolerance as RiskTolerance,
       farmerCategory: validated.farmerCategory as FarmerCategory,
       stateCode: validated.stateCode,
       districtCode: validated.districtCode,
-      preferredSpecies: validated.preferredSpecies
-    });
+      preferredSpecies: validated.preferredSpecies,
+      systemType: validated.systemType as any,
+      waterSourceType: validated.waterSourceType,
+      numberOfRasUnits: validated.numberOfRasUnits,
+      numberOfBioflocTanks: validated.numberOfBioflocTanks,
+      bioflocSpecies: validated.bioflocSpecies,
+    } as any);
 
     res.json({
       success: true,

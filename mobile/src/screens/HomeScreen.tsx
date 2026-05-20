@@ -14,6 +14,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import WeatherCard from '../components/WeatherCard';
 import HarvestCountdownCard from '../components/HarvestCountdownCard';
+import HelplineCard from '../components/HelplineCard';
 import { database } from '../database';
 import { fetchSpeciesLookup } from '../utils/speciesLookup';
 import { getUnreadNotificationCount } from '../utils/notificationCenter';
@@ -68,17 +69,18 @@ export default function HomeScreen() {
     { icon: 'calculator-outline' as const,    label: t('home.calculateROI'),     screen: 'Economics' },
     { icon: 'water-outline' as const,         label: t('home.logWaterQuality'),  screen: 'WaterQuality' },
     { icon: 'trending-up-outline' as const,   label: t('home.viewMarkets'),      screen: 'MarketPrices' },
+    { icon: 'map-outline' as const,           label: t('navigation.maps'),       screen: 'Maps' },
     { icon: 'construct-outline' as const,     label: t('home.equipmentCatalog'), screen: 'EquipmentCatalog' },
     { icon: 'restaurant-outline' as const,    label: t('home.feedNutrition'),    screen: 'FeedCatalog' },
-    { icon: 'bug-outline' as const,           label: 'Disease Intelligence',     screen: 'DiseaseList' },
-    { icon: 'medical-outline' as const,       label: 'Doctor Network',           screen: 'DoctorNetwork' },
+    { icon: 'bug-outline' as const,           label: t('home.diseaseIntelligence'),     screen: 'DiseaseList' },
+    { icon: 'medical-outline' as const,       label: t('home.doctorNetwork'),           screen: 'DoctorNetwork' },
   ];
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return t('home.greetingMorning');
+    if (hour < 17) return t('home.greetingAfternoon');
+    return t('home.greetingEvening');
   };
 
   return (
@@ -95,32 +97,35 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.brandText}>MatsyaMitra</Text>
           </View>
-          <TouchableOpacity
-            style={styles.bellButton}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="notifications-outline" size={20} color={theme.colors.textPrimary} />
-            {unreadNotificationCount > 0 && (
-              <View style={styles.badgeDot} />
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <HelplineCard />
+            <TouchableOpacity
+              style={styles.bellButton}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications-outline" size={20} color={theme.colors.textPrimary} />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.badgeDot} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Hero Greeting ── */}
         <View style={styles.heroSection}>
           <Text style={styles.greetingText}>
-            {getGreeting()}, Chief!
+            {getGreeting()}, {t('home.greetingChief')}!
           </Text>
           <Text style={styles.greetingSub}>
             {pondCount > 0
-              ? `${pondCount} pond${pondCount === 1 ? '' : 's'} in your farm${activePonds.length > 0 ? ` · ${activePonds.length} active` : ''}`
-              : 'Add your first pond to start tracking your farm'}
+              ? `${t('home.subtitleWithPonds', { count: pondCount })}${activePonds.length > 0 ? t('home.subtitleActiveSuffix', { count: activePonds.length }) : ''}`
+              : t('home.subtitleNoPonds')}
           </Text>
         </View>
 
         {/* ── Farm Health Bento Grid ── */}
-        <Text style={styles.sectionHeader}>FARM HEALTH</Text>
+        <Text style={styles.sectionHeader}>{t('home.farmHealth')}</Text>
         <View style={styles.bentoGrid}>
           {/* Active Ponds */}
           <TouchableOpacity
@@ -131,7 +136,7 @@ export default function HomeScreen() {
             <View style={[styles.bentoCard, styles.bentoCardLeft]}>
               <View style={[styles.bentoDot, { backgroundColor: theme.colors.secondary }]} />
               <Text style={styles.bentoNumber}>{activePonds.length}</Text>
-              <Text style={styles.bentoLabel}>Active Ponds</Text>
+              <Text style={styles.bentoLabel}>{t('home.activePonds')}</Text>
             </View>
           </TouchableOpacity>
           {/* Critical Alerts */}
@@ -155,7 +160,7 @@ export default function HomeScreen() {
               >
                 {criticalAlerts}
               </Text>
-              <Text style={styles.bentoLabel}>Critical Alerts</Text>
+              <Text style={styles.bentoLabel}>{t('home.criticalAlerts')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -176,7 +181,7 @@ export default function HomeScreen() {
         </View>
 
         {/* ── Quick Actions ── */}
-        <Text style={styles.sectionHeader}>QUICK ACTIONS</Text>
+        <Text style={styles.sectionHeader}>{t('home.quickActions').toUpperCase()}</Text>
         <View style={styles.actionGrid}>
           {quickActions.map((action) => (
             <TouchableOpacity
@@ -205,9 +210,9 @@ export default function HomeScreen() {
             <Ionicons name="school-outline" size={20} color={theme.colors.primary} />
           </View>
           <View style={styles.learnCopy}>
-            <Text style={styles.learnTitle}>New to aquaculture?</Text>
+            <Text style={styles.learnTitle}>{t('home.newToAquaculture')}</Text>
             <Text style={styles.learnText}>
-              Learn business basics, subsidy rules, key terms, and how to read the app&apos;s numbers.
+              {t('home.newToAquacultureBody')}
             </Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.primary} />

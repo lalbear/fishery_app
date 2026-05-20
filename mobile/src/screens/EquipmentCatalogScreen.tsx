@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
 import { economicsService } from '../services/apiService';
@@ -18,6 +19,10 @@ const LOCAL_EQUIPMENT_IMAGES: Record<string, any> = {
     MONITORING: require('../assets/equipment/monitoring.jpg'),
     POWER: require('../assets/equipment/power.jpg'),
     '550W Vortex Blower': require('../assets/equipment/blower.jpg'),
+    // Biofloc items reuse the closest matching category images
+    BIOFLOC: require('../assets/equipment/tank.jpg'),
+    // RAS items reuse the closest matching category images
+    RAS: require('../assets/equipment/circulation.jpg'),
 };
 
 function getLocalEquipmentImage(item: any): any | null {
@@ -29,8 +34,8 @@ function getEquipmentFallbackIcon(item: any): keyof typeof Ionicons.glyphMap {
     const category = String(item?.category || '').toUpperCase();
 
     if (name.includes('paddle') || name.includes('aerator') || category === 'AERATION') return 'refresh-circle-outline';
-    if (name.includes('blower')) return 'speedometer-outline';
-    if (name.includes('tank')) return 'ellipse-outline';
+    if (name.includes('blower') || name.includes('air blower')) return 'speedometer-outline';
+    if (name.includes('tank') || name.includes('tarpaulin')) return 'ellipse-outline';
     if (name.includes('pump') || category === 'CIRCULATION') return 'water-outline';
     if (name.includes('uv') || category === 'FILTRATION') return 'sunny-outline';
     if (name.includes('meter') || name.includes('test kit') || category === 'MONITORING') return 'pulse-outline';
@@ -38,6 +43,22 @@ function getEquipmentFallbackIcon(item: any): keyof typeof Ionicons.glyphMap {
     if (name.includes('crate')) return 'cube-outline';
     if (name.includes('feeder')) return 'restaurant-outline';
     if (name.includes('generator')) return 'flash-outline';
+    // Biofloc-specific items
+    if (name.includes('inverter') || name.includes('battery')) return 'battery-charging-outline';
+    if (name.includes('air stone') || name.includes('oxygen pipe') || name.includes('distribution pipe')) return 'git-branch-outline';
+    if (name.includes('pvc') || name.includes('pipe')) return 'remove-outline';
+    if (name.includes('ammonia') || name.includes('nitrite') || name.includes('nitrate') || name.includes('ph test') || name.includes('alkalinity') || name.includes('dissolved oxygen') || name.includes('do test')) return 'flask-outline';
+    if (name.includes('probiotic')) return 'leaf-outline';
+    if (name.includes('calcium') || name.includes('molasses') || name.includes('salt')) return 'beaker-outline';
+    if (name.includes('imhoff') || name.includes('cone')) return 'funnel-outline';
+    if (name.includes('thermometer')) return 'thermometer-outline';
+    if (name.includes('iron mesh') || name.includes('frame')) return 'apps-outline';
+    if (category === 'BIOFLOC') return 'water-outline';
+    if (name.includes('venturi')) return 'git-merge-outline';
+    if (name.includes('bio-filter') || name.includes('bioreactor') || name.includes('bio filter')) return 'leaf-outline';
+    if (name.includes('floating cage') || name.includes('cage')) return 'apps-outline';
+    if (name.includes('float')) return 'radio-button-on-outline';
+    if (category === 'RAS') return 'sync-circle-outline';
     return 'construct-outline';
 }
 
@@ -51,6 +72,8 @@ function formatEquipmentCategory(category: string): string {
         case 'MONITORING': return 'Testing';
         case 'FEEDING': return 'Feeding';
         case 'POWER': return 'Power';
+        case 'BIOFLOC': return 'Biofloc';
+        case 'RAS': return 'RAS';
         default:
             return String(category || 'Equipment')
                 .toLowerCase()
@@ -89,6 +112,7 @@ function EquipmentImage({ item, style, fallbackStyle, theme }: { item: any; styl
 
 export default function EquipmentCatalogScreen() {
     const { theme } = useTheme();
+    const { t } = useTranslation();
     const styles = getStyles(theme);
     const navigation = useNavigation<any>();
     const [equipment, setEquipment] = useState<any[]>([]);
@@ -99,7 +123,7 @@ export default function EquipmentCatalogScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedItem, setSelectedItem] = useState<any>(null);
 
-    const categories = ['ALL', 'AERATION', 'TANK', 'CIRCULATION', 'FILTRATION', 'MONITORING'];
+    const categories = ['ALL', 'AERATION', 'TANK', 'CIRCULATION', 'FILTRATION', 'MONITORING', 'BIOFLOC', 'RAS'];
 
     const loadData = async () => {
         try {
@@ -119,7 +143,34 @@ export default function EquipmentCatalogScreen() {
     useEffect(() => { loadData(); }, []);
 
     useEffect(() => {
-        let base = activeCategory === 'ALL' ? equipment : equipment.filter(e => e.category === activeCategory);
+        // MONITORING filter: show both MONITORING category AND biofloc test kits
+        // BIOFLOC filter: show all BIOFLOC items (including test kits)
+        // ALL: show everything
+        const BIOFLOC_TEST_KIT_NAMES = [
+            'ammonia test kit',
+            'nitrite test kit',
+            'nitrate test kit',
+            'ph test kit',
+            'alkalinity test kit',
+            'dissolved oxygen',
+            'do test kit',
+        ];
+
+        const isBioflocTestKit = (e: any) => {
+            const n = String(e.name || '').toLowerCase();
+            return e.category === 'BIOFLOC' && BIOFLOC_TEST_KIT_NAMES.some(k => n.includes(k));
+        };
+
+        let base: any[];
+        if (activeCategory === 'ALL') {
+            base = equipment;
+        } else if (activeCategory === 'MONITORING') {
+            // Show MONITORING items + biofloc test kits (they are also testing equipment)
+            base = equipment.filter(e => e.category === 'MONITORING' || isBioflocTestKit(e));
+        } else {
+            base = equipment.filter(e => e.category === activeCategory);
+        }
+
         if (searchQuery.trim()) {
             const q = searchQuery.trim().toLowerCase();
             base = base.filter(e =>
@@ -148,7 +199,7 @@ export default function EquipmentCatalogScreen() {
                 >
                     <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Equipment Catalog</Text>
+                <Text style={styles.headerTitle}>{t('equipment.title')}</Text>
                 <View style={{ width: 38 }} />
             </View>
 
@@ -158,7 +209,7 @@ export default function EquipmentCatalogScreen() {
                     <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search equipment..."
+                        placeholder={t('equipment.searchPlaceholder')}
                         placeholderTextColor={theme.colors.textMuted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -193,6 +244,28 @@ export default function EquipmentCatalogScreen() {
                 <Text style={styles.sectionHeader}>{filtered.length} ITEMS</Text>
             </View>
 
+            {/* Biofloc warning banner — shown only when BIOFLOC filter is active */}
+            {activeCategory === 'BIOFLOC' && (
+                <View style={styles.bioflocBanner}>
+                    <Ionicons name="warning-outline" size={18} color={theme.colors.error} />
+                    <Text style={styles.bioflocBannerText}>
+                        <Text style={{ fontWeight: '800', color: theme.colors.error }}>24/7 Aeration Required. </Text>
+                        If power fails, immediately remove 50% of tank water and replace with fresh water to prevent total fish mortality.
+                    </Text>
+                </View>
+            )}
+
+            {/* RAS info banner — shown only when RAS filter is active */}
+            {activeCategory === 'RAS' && (
+                <View style={styles.rasBanner}>
+                    <Ionicons name="information-circle-outline" size={18} color={theme.colors.primary} />
+                    <Text style={styles.rasBannerText}>
+                        <Text style={{ fontWeight: '800', color: theme.colors.primary }}>Backyard RAS Unit. </Text>
+                        Standard setup: 90,000-litre tank + 3 floating cages (30 m³ each) + 1 pump + 4 Venturi aerators + bio-filter. Produces 1,620 kg per 6-month cycle.
+                    </Text>
+                </View>
+            )}
+
             <FlatList
                 data={filtered}
                 keyExtractor={item => item.id}
@@ -209,7 +282,7 @@ export default function EquipmentCatalogScreen() {
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
                         <Ionicons name="construct-outline" size={48} color={theme.colors.textMuted} />
-                        <Text style={styles.emptyText}>No equipment found.</Text>
+                        <Text style={styles.emptyText}>{t('equipment.noResults')}</Text>
                     </View>
                 }
                 renderItem={({ item }) => (
@@ -221,19 +294,31 @@ export default function EquipmentCatalogScreen() {
                             fallbackStyle={styles.cardImageFallback}
                             theme={theme}
                         />
+                        {/* Biofloc badge — shown on all items when in ALL view if category is BIOFLOC */}
+                        {item.category === 'BIOFLOC' && (activeCategory === 'ALL' || activeCategory === 'MONITORING') && (
+                            <View style={styles.bioflocBadge}>
+                                <Text style={styles.bioflocBadgeText}>BIOFLOC</Text>
+                            </View>
+                        )}
+                        {/* RAS badge — shown on all items when in ALL view if category is RAS */}
+                        {item.category === 'RAS' && activeCategory === 'ALL' && (
+                            <View style={[styles.bioflocBadge, styles.rasBadge]}>
+                                <Text style={styles.bioflocBadgeText}>RAS</Text>
+                            </View>
+                        )}
                         {/* Category — uppercase, textMuted, letterSpacing 2, fontSize 11 */}
                         <Text style={styles.cardCategory}>{formatEquipmentCategory(item.category).toUpperCase()}</Text>
                         {/* Product name — bold, textPrimary */}
                         <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
                         {/* Price — secondary (lime) bold, monospace-style letterSpacing */}
-                        <Text style={styles.cardPrice}>₹{parseFloat(item.cost_inr).toLocaleString('en-IN')}</Text>
+                        <Text style={styles.cardPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>₹{parseFloat(item.cost_inr).toLocaleString('en-IN')}</Text>
                         {/* "View Details" button — secondary outline style */}
                         <TouchableOpacity
                             style={styles.cardBtn}
                             onPress={() => setSelectedItem(item)}
                             activeOpacity={0.82}
                         >
-                            <Text style={styles.cardBtnText}>View Details</Text>
+                            <Text style={styles.cardBtnText}>{t('common.view')}</Text>
                         </TouchableOpacity>
                     </TouchableOpacity>
                 )}
@@ -267,11 +352,15 @@ export default function EquipmentCatalogScreen() {
 
                                 <TouchableOpacity
                                     style={styles.modalButton}
-                                    onPress={() => Linking.openURL(`https://dir.indiamart.com/search.mp?ss=${encodeURIComponent(selectedItem.name || '')}`)}
+                                    onPress={() => {
+                                        const url = selectedItem.specifications?.indiamart_url
+                                            || `https://dir.indiamart.com/search.mp?ss=${encodeURIComponent(selectedItem.name || '')}`;
+                                        Linking.openURL(url);
+                                    }}
                                     activeOpacity={0.85}
                                 >
                                     <Ionicons name="search-outline" size={18} color={theme.colors.textInverse} />
-                                    <Text style={styles.modalButtonText}>Search Suppliers</Text>
+                                    <Text style={styles.modalButtonText}>{t('equipment.shopOnline')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.modalClose} onPress={() => setSelectedItem(null)} activeOpacity={0.82}>
                                     <Text style={styles.modalCloseText}>Close</Text>
@@ -345,11 +434,12 @@ const getStyles = (theme: any) => StyleSheet.create({
     },
 
     // Category filter chips — horizontal scroll, pill shape
-    categoryRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+    categoryRow: { paddingHorizontal: 16, paddingBottom: 12, paddingTop: 2, gap: 8 },
     categoryChip: {
-        height: 34,
+        minHeight: 36,
         borderRadius: 9999,
         paddingHorizontal: 14,
+        paddingVertical: 8,
         backgroundColor: theme.colors.surfaceAlt,
         borderWidth: 1.5,
         borderColor: theme.colors.border,
@@ -446,6 +536,67 @@ const getStyles = (theme: any) => StyleSheet.create({
     emptyState: { alignItems: 'center', paddingVertical: 60 },
     emptyText: { color: theme.colors.textMuted, marginTop: 12, fontSize: 14 },
 
+    // Biofloc warning banner
+    bioflocBanner: {
+        marginHorizontal: 16,
+        marginBottom: 10,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.error + '50',
+        backgroundColor: theme.colors.error + '15',
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    bioflocBannerText: {
+        flex: 1,
+        color: theme.colors.textSecondary,
+        fontSize: 12,
+        lineHeight: 18,
+    },
+
+    // Biofloc badge on cards in ALL view
+    bioflocBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: theme.colors.primary,
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+    },
+    bioflocBadgeText: {
+        color: theme.colors.textInverse,
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    // RAS badge — teal/secondary colour to distinguish from Biofloc
+    rasBadge: {
+        backgroundColor: theme.colors.secondary,
+    },
+
+    // RAS info banner
+    rasBanner: {
+        marginHorizontal: 16,
+        marginBottom: 10,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.primary + '50',
+        backgroundColor: theme.colors.primaryLight,
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    rasBannerText: {
+        flex: 1,
+        color: theme.colors.textSecondary,
+        fontSize: 12,
+        lineHeight: 18,
+    },
+
     // Modal
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.60)' },
     modalCard: {
@@ -453,7 +604,8 @@ const getStyles = (theme: any) => StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: 20,
-        maxHeight: '80%',
+        maxHeight: '85%',
+        flex: 0,
         borderTopWidth: 1,
         borderColor: theme.colors.border,
     },

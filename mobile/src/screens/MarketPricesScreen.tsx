@@ -7,6 +7,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { marketService, speciesService } from '../services/apiService';
 import { useTheme } from '../ThemeContext';
@@ -81,7 +82,8 @@ function TrendIndicator({ price, sparkData, theme }: { price: number | null; spa
   );
 }
 
-// Filter chip definitions
+// Filter chip definitions — values stay in English so backend filtering still works.
+// Display labels come from i18n.
 const FISH_TYPE_FILTERS = ['All', 'Finfish', 'Shrimp', 'Crab', 'Molluscs'];
 const REGION_FILTERS = ['All regions', 'AP', 'WB', 'KL', 'TN', 'MH', 'OD'];
 
@@ -89,6 +91,7 @@ const REGION_FILTERS = ['All regions', 'AP', 'WB', 'KL', 'TN', 'MH', 'OD'];
 
 export default function MarketPricesScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
 
@@ -131,12 +134,12 @@ export default function MarketPricesScreen() {
       if (speciesRes.success && speciesRes.data) setSpeciesData(speciesRes.data);
       if (marketRes.success && marketRes.data) setPrices(marketRes.data);
     } catch {
-      Alert.alert('Error', 'Could not load market prices. Please check your connection.');
+      Alert.alert(t('common.error'), t('markets.loadError'));
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -153,7 +156,7 @@ export default function MarketPricesScreen() {
         id: s.id,
         species_name: commonName,
         price_inr_per_kg: priceEntry?.price_inr_per_kg || null,
-        market_name: priceEntry?.market_name || 'Awaiting market data',
+        market_name: priceEntry?.market_name || t('markets.awaitingData'),
         state_code: priceEntry?.state_code || '',
         grade: priceEntry?.grade,
         image_url: s.data?.image_url || null,
@@ -203,8 +206,8 @@ export default function MarketPricesScreen() {
           <Ionicons name="arrow-back" size={20} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Market Prices</Text>
-          <Text style={styles.headerSub}>{mergedData.length} species tracked</Text>
+          <Text style={styles.headerTitle}>{t('markets.title')}</Text>
+          <Text style={styles.headerSub}>{mergedData.length} {t('species.title').toLowerCase()}</Text>
         </View>
         <View style={{ width: 38 }} />
       </View>
@@ -224,7 +227,7 @@ export default function MarketPricesScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search species..."
+          placeholder={t('markets.searchPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -239,16 +242,26 @@ export default function MarketPricesScreen() {
         )}
       </Animated.View>
 
-      {/* Fish-type filter chips */}
-      <View style={styles.filterSection}>
-        <Text style={styles.filterLabel}>TYPE</Text>
+      {/* Fish-type + Region filters — single row with a divider label */}
+      <View style={styles.filterBlock}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterChips}
         >
+          {/* "TYPE:" label chip */}
+          <View style={styles.filterGroupLabel}>
+            <Text style={styles.filterGroupLabelText}>TYPE</Text>
+          </View>
           {FISH_TYPE_FILTERS.map(f => {
             const active = activeFishType === f;
+            const labelMap: Record<string, string> = {
+              'All': t('markets.filterAll'),
+              'Finfish': t('markets.filterFinfish'),
+              'Shrimp': t('markets.filterShrimp'),
+              'Crab': t('markets.filterCrab'),
+              'Molluscs': t('markets.filterMolluscs'),
+            };
             return (
               <TouchableOpacity
                 key={f}
@@ -256,23 +269,19 @@ export default function MarketPricesScreen() {
                 onPress={() => setActiveFishType(f)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{labelMap[f] || f}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
-      </View>
-
-      {/* Region filter chips */}
-      <View style={styles.filterSection}>
-        <Text style={styles.filterLabel}>REGION</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterChips}
-        >
+          {/* Separator */}
+          <View style={styles.filterSeparator} />
+          {/* "REGION:" label chip */}
+          <View style={styles.filterGroupLabel}>
+            <Text style={styles.filterGroupLabelText}>REGION</Text>
+          </View>
           {REGION_FILTERS.map(r => {
             const active = activeRegion === r;
+            const display = r === 'All regions' ? t('markets.filterAllRegions') : r;
             return (
               <TouchableOpacity
                 key={r}
@@ -280,7 +289,7 @@ export default function MarketPricesScreen() {
                 onPress={() => setActiveRegion(r)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{r}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{display}</Text>
               </TouchableOpacity>
             );
           })}
@@ -289,7 +298,7 @@ export default function MarketPricesScreen() {
 
       {/* Section header — uppercase, textMuted, letterSpacing 2 */}
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionHeader}>LIVE PRICES</Text>
+        <Text style={styles.sectionHeader}>{mergedData.length} {t('markets.currentPrices').toUpperCase()}</Text>
       </View>
 
       <FlatList
@@ -338,7 +347,7 @@ export default function MarketPricesScreen() {
                 <View style={[styles.demandBadge, { borderColor: leftBorderColor }]}>
                   <View style={[styles.demandDot, { backgroundColor: leftBorderColor }]} />
                   <Text style={[styles.demandBadgeText, { color: leftBorderColor }]}>
-                    {demand === 'high' ? 'HIGH DEMAND' : demand === 'low' ? 'LOW DEMAND' : 'NORMAL'}
+                    {demand === 'high' ? t('markets.demandHigh') : demand === 'low' ? t('markets.demandLow') : t('markets.demandNormal')}
                   </Text>
                 </View>
               </View>
@@ -387,7 +396,7 @@ export default function MarketPricesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="trending-up-outline" size={48} color={theme.colors.textMuted} />
-            <Text style={styles.emptyText}>No species match your search.</Text>
+            <Text style={styles.emptyText}>{t('markets.noResults')}</Text>
           </View>
         }
         contentContainerStyle={styles.listContent}
@@ -460,30 +469,44 @@ const getStyles = (theme: any) =>
     },
 
     // ── Filter chips ─────────────────────────────────────────────────────────
-    filterSection: {
-      marginBottom: 4,
-    },
-    filterLabel: {
-      color: theme.colors.textMuted,
-      fontSize: 10,
-      fontWeight: '700',
-      letterSpacing: 2,
-      textTransform: 'uppercase',
-      paddingHorizontal: theme.spacing.gutter,
-      marginBottom: 4,
+    filterBlock: {
+      marginBottom: 6,
     },
     filterChips: {
       paddingHorizontal: theme.spacing.gutter,
+      paddingVertical: 8,
       gap: 8,
       flexDirection: 'row',
+      alignItems: 'center',
+    },
+    filterGroupLabel: {
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      justifyContent: 'center',
+    },
+    filterGroupLabelText: {
+      color: theme.colors.textMuted,
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+    },
+    filterSeparator: {
+      width: 1,
+      height: 20,
+      backgroundColor: theme.colors.border,
+      marginHorizontal: 4,
     },
     chip: {
       paddingHorizontal: 14,
-      paddingVertical: 6,
+      paddingVertical: 7,
       borderRadius: theme.borderRadius.full,
       backgroundColor: theme.colors.surfaceAlt,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      minHeight: 34,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     chipActive: {
       backgroundColor: theme.colors.primary,

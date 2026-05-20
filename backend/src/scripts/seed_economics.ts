@@ -156,42 +156,10 @@ async function seedEconomics() {
             })
         ]);
 
-        // 5. Black Tiger Shrimp (Penaeus monodon)
-        await query(`
-        INSERT INTO knowledge_nodes (node_type, data)
-        VALUES ('ECONOMIC_MODEL', $1::jsonb)
-        `, [
-            JSON.stringify({
-                model_name: "Black Tiger Shrimp Model (1 Hectare)",
-                system_type: CultivationSystem.BRACKISH_POND,
-                target_species: "Penaeus monodon",
-                capital_expenditure: {
-                    land_preparation_inr_per_hectare: 25000,
-                    pond_construction_inr_per_hectare: 90000,
-                    equipment_costs: {
-                        "Aerators (Heavy)": 150000,
-                        "Bio-secure Fencing": 60000
-                    },
-                    initial_stocking_cost_inr: 60000,
-                    contingency_percent: 10
-                },
-                operational_expenditure: {
-                    feed_cost_inr_per_kg_fish: 120, // Premium feed
-                    electricity_cost_inr_per_month: 18000,
-                    labor_cost_inr_per_month: 25000,
-                    medicine_cost_inr_per_cycle: 150000,
-                    miscellaneous_percent: 10
-                },
-                revenue_projections: {
-                    expected_yield_kg_per_hectare: { min: 3000, max: 4000 },
-                    market_price_inr_per_kg: { min: 450, max: 550 },
-                    harvest_cycles_per_year: 2
-                },
-                benefit_cost_ratio: { min: 1.4, max: 1.9 },
-                break_even_months: { min: 5, max: 6 },
-                pmmsy_subsidy_applicable: true
-            })
-        ]);
+        // 5. Black Tiger Shrimp (Penaeus monodon) — REMOVED
+        // This species is strictly coastal/maritime and is not commercially
+        // farmed in inland Bihar or UP. All inland saline shrimp farming in
+        // UP uses L. vannamei exclusively. Model deleted per migration 029.
 
         // 6. Pangasius
         await query(`

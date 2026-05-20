@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import ScreenHeader from '../components/ScreenHeader';
 import { useTheme } from '../ThemeContext';
 import {
@@ -29,6 +30,7 @@ export default function DoctorAppointmentDetailScreen() {
   const route = useRoute<any>();
   const { appointmentId } = route.params as { appointmentId: string };
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(theme);
   const c = theme.colors;
 
@@ -141,7 +143,7 @@ export default function DoctorAppointmentDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Appointment Detail" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={t('doctor.appointmentDetails')} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
           <View style={styles.heroTopRow}>
@@ -168,7 +170,7 @@ export default function DoctorAppointmentDetailScreen() {
           ) : null}
         </View>
 
-        <Text style={styles.sectionLabel}>FARMER EVIDENCE</Text>
+        <Text style={styles.sectionLabel}>{t('disease.affected').toUpperCase()}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageStrip}>
           {appointment.images.length > 0 ? (
             appointment.images.map((uri, index) => (
@@ -177,12 +179,12 @@ export default function DoctorAppointmentDetailScreen() {
           ) : (
             <View style={styles.placeholderImage}>
               <Ionicons name="images-outline" size={28} color={c.textMuted} />
-              <Text style={styles.placeholderText}>No image captured for this appointment yet</Text>
+              <Text style={styles.placeholderText}>{t('common.notAvailable')}</Text>
             </View>
           )}
         </ScrollView>
 
-        <Text style={styles.sectionLabel}>POND SNAPSHOT</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.patientPond').toUpperCase()}</Text>
         <View style={styles.panel}>
           <MetaLine icon="water-outline" text={`Water source: ${appointment.waterSourceType || 'Not provided'}`} />
           <MetaLine icon="resize-outline" text={`Area: ${appointment.pondAreaHectares ? `${appointment.pondAreaHectares} ha` : 'Not recorded'}`} />
@@ -196,48 +198,48 @@ export default function DoctorAppointmentDetailScreen() {
               <SnapshotPill label="NH3" value={appointment.waterQualitySnapshot.ammonia ? `${appointment.waterQualitySnapshot.ammonia}` : '—'} />
             </View>
           ) : (
-            <Text style={styles.supportText}>No water-quality log was attached to this booking.</Text>
+            <Text style={styles.supportText}>{t('common.notAvailable')}</Text>
           )}
         </View>
 
-        <Text style={styles.sectionLabel}>VISIT REPORT</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.submitReport').toUpperCase()}</Text>
         <View style={styles.panel}>
-          <ReportInput label="Diagnosis" value={diagnosis} onChangeText={setDiagnosis} placeholder="Observed disease / pond condition" multiline />
-          <ReportInput label="Treatment Plan" value={treatmentPlan} onChangeText={setTreatmentPlan} placeholder="Medicines, aeration, feeding, or operational steps" multiline />
-          <ReportInput label="Doctor Notes" value={visitNotes} onChangeText={setVisitNotes} placeholder="Field notes, mortality count, farmer instructions" multiline />
+          <ReportInput label={t('doctor.diagnosis')} value={diagnosis} onChangeText={setDiagnosis} placeholder={t('doctor.diagnosis')} multiline />
+          <ReportInput label={t('doctor.treatmentPlan')} value={treatmentPlan} onChangeText={setTreatmentPlan} placeholder={t('doctor.treatmentPlan')} multiline />
+          <ReportInput label={t('doctor.notes')} value={visitNotes} onChangeText={setVisitNotes} placeholder={t('doctor.notes')} multiline />
 
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Follow-up required</Text>
             <Switch value={followUpRequired} onValueChange={setFollowUpRequired} trackColor={{ false: c.border, true: c.primaryLight }} thumbColor={followUpRequired ? c.primary : c.textMuted} />
           </View>
           {followUpRequired ? (
-            <ReportInput label="Follow-up date" value={followUpDate} onChangeText={setFollowUpDate} placeholder="YYYY-MM-DD" />
+            <ReportInput label={t('doctor.followUpDate')} value={followUpDate} onChangeText={setFollowUpDate} placeholder="YYYY-MM-DD" />
           ) : null}
 
-          <Text style={styles.checklistLabel}>Completion checklist</Text>
-          <ChecklistToggle label="Pond inspected" value={pondInspected} onValueChange={setPondInspected} />
-          <ChecklistToggle label="Fish observed directly" value={fishObserved} onValueChange={setFishObserved} />
+          <Text style={styles.checklistLabel}>{t('doctor.completionChecklist')}</Text>
+          <ChecklistToggle label={t('doctor.pondInspected')} value={pondInspected} onValueChange={setPondInspected} />
+          <ChecklistToggle label={t('doctor.fishObserved')} value={fishObserved} onValueChange={setFishObserved} />
           <ChecklistToggle label="Farmer counseled" value={farmerCounseled} onValueChange={setFarmerCounseled} />
 
           {appointment.derivedStatus !== 'COMPLETED' ? (
             <TouchableOpacity style={styles.completeButton} onPress={() => void markCompleted()}>
-              <Text style={styles.completeButtonText}>Mark appointment complete</Text>
+              <Text style={styles.completeButtonText}>{t('doctor.markCompleted')}</Text>
               <Ionicons name="checkmark-done-outline" size={18} color={c.textInverse} />
             </TouchableOpacity>
           ) : (
             <View style={styles.completedBanner}>
               <Ionicons name="checkmark-circle-outline" size={18} color={c.secondary} />
-              <Text style={styles.completedBannerText}>This appointment has already been completed and counted in the doctor progress report.</Text>
+              <Text style={styles.completedBannerText}>{t('doctor.statusValues.COMPLETED')}</Text>
             </View>
           )}
         </View>
 
-        <Text style={styles.sectionLabel}>NOTES TIMELINE</Text>
+        <Text style={styles.sectionLabel}>{t('doctor.notes').toUpperCase()}</Text>
         <View style={styles.panel}>
           <View style={styles.quickNoteRow}>
             <TextInput
               style={styles.quickNoteInput}
-              placeholder="Add a quick field note"
+              placeholder={t('doctor.quickNotePlaceholder')}
               placeholderTextColor={c.textMuted}
               value={quickNote}
               onChangeText={setQuickNote}

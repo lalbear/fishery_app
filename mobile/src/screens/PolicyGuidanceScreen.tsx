@@ -3,11 +3,13 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 
 export default function PolicyGuidanceScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -27,17 +29,17 @@ export default function PolicyGuidanceScreen() {
   const beneficiarySubsidyText =
     knowledgeInsights?.beneficiarySubsidyPercent != null
       ? `${knowledgeInsights.beneficiarySubsidyPercent}%`
-      : 'Not available yet';
+      : t('policy.notAvailableYet');
   const fundingPatternText =
     knowledgeInsights?.fundingShare?.centralPercent != null &&
     knowledgeInsights?.fundingShare?.statePercent != null
       ? `${knowledgeInsights.fundingShare.centralPercent}:${knowledgeInsights.fundingShare.statePercent}`
-      : 'Not available yet';
+      : t('policy.notAvailableYet');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScreenHeader
-        title="Policy Guidance"
+        title={t('policy.title')}
         onBack={() => navigation.goBack()}
       />
 
@@ -45,26 +47,26 @@ export default function PolicyGuidanceScreen() {
 
         {/* ── Header card ── */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>GOVERNMENT-BACKED EXPLANATION</Text>
-          <Text style={styles.heroTitle}>What these subsidy numbers mean</Text>
+          <Text style={styles.heroEyebrow}>{t('policy.governmentBacked').toUpperCase()}</Text>
+          <Text style={styles.heroTitle}>{t('policy.heroTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            This page translates the seeded government and institutional rules into plain language for new business starters.
+            {t('policy.heroSubtitle')}
           </Text>
         </View>
 
         {/* ── Your current preview ── */}
-        <SectionLabel label="YOUR CURRENT PREVIEW" theme={theme} />
+        <SectionLabel label={t('policy.subsidyDetails').toUpperCase()} theme={theme} />
         <View style={styles.previewGrid}>
-          <PreviewCell label="State" value={stateCode || 'Not selected'} theme={theme} />
-          <PreviewCell label="Farmer Category" value={farmerCategory || 'Not selected'} theme={theme} />
+          <PreviewCell label={t('policy.state')} value={stateCode || t('policy.notSelected')} theme={theme} />
+          <PreviewCell label={t('policy.farmerCategory')} value={farmerCategory || t('policy.notSelected')} theme={theme} />
           <PreviewCell
-            label="Beneficiary Subsidy"
+            label={t('policy.beneficiarySubsidy')}
             value={beneficiarySubsidyText}
             valueColor={theme.colors.primary}
             theme={theme}
           />
           <PreviewCell
-            label="Funding Pattern"
+            label={t('policy.fundingPattern')}
             value={fundingPatternText}
             valueColor={theme.colors.secondary}
             theme={theme}
@@ -74,7 +76,7 @@ export default function PolicyGuidanceScreen() {
         {/* ── Policy cards with colored left border ── */}
         {knowledgeInsights?.beneficiarySubsidyPercent != null && (
           <>
-            <SectionLabel label="SCHEME SUMMARY" theme={theme} />
+            <SectionLabel label={t('policy.applicableSchemes').toUpperCase()} theme={theme} />
             <View style={[styles.schemeCard, { borderLeftColor: theme.colors.primary }]}>
               <View style={styles.schemeCardTop}>
                 <View style={styles.schemeIconWrap}>
@@ -83,7 +85,9 @@ export default function PolicyGuidanceScreen() {
                 <View style={styles.schemeCardInfo}>
                   <Text style={styles.schemeName}>PMMSY — PM Matsya Sampada Yojana</Text>
                   <Text style={styles.schemeEligibility}>
-                    {farmerCategory === 'GENERAL' ? 'General category applicant' : `${farmerCategory} category applicant`} — eligible for subsidy support
+                    {farmerCategory === 'GENERAL'
+                      ? t('policy.generalApplicant')
+                      : t('policy.categoryApplicant', { category: farmerCategory })}
                   </Text>
                 </View>
                 <Text style={[styles.schemePercent, { color: theme.colors.primary }]}>
@@ -101,7 +105,7 @@ export default function PolicyGuidanceScreen() {
                   <View style={styles.schemeCardInfo}>
                     <Text style={styles.schemeName}>Centre : State Funding Split</Text>
                     <Text style={styles.schemeEligibility}>
-                      How the government subsidy is shared between Central and State governments
+                      {t('policy.fundingSplitExplanation')}
                     </Text>
                   </View>
                   <Text style={[styles.schemePercent, { color: theme.colors.secondary }]}>
@@ -114,24 +118,24 @@ export default function PolicyGuidanceScreen() {
         )}
 
         {/* ── Accordion sections ── */}
-        <SectionLabel label="GUIDANCE ARTICLES" theme={theme} />
+        <SectionLabel label={t('policy.applicationProcess').toUpperCase()} theme={theme} />
 
         <AccordionItem
           sectionKey="meaning"
-          title="Simple meaning"
+          title={t('policy.simpleMeaning')}
           icon="information-circle-outline"
           expanded={expandedSections.meaning}
           onToggle={toggleSection}
           theme={theme}
         >
           <Text style={styles.bodyText}>
-            <Text style={styles.bodyBold}>Beneficiary subsidy</Text> tells you the maximum part of the approved project cost that the government may support for your category.
+            <Text style={styles.bodyBold}>{t('policy.beneficiarySubsidyBold')}</Text> tells you the maximum part of the approved project cost that the government may support for your category.
           </Text>
           <Text style={[styles.bodyText, { marginTop: 10 }]}>
-            <Text style={styles.bodyBold}>Funding pattern</Text> tells you how the government subsidy is split between the Centre and the State. It does not mean you only pay the remaining number shown there.
+            <Text style={styles.bodyBold}>{t('policy.fundingPatternBold')}</Text> tells you how the government subsidy is split between the Centre and the State. It does not mean you only pay the remaining number shown there.
           </Text>
           <View style={styles.exampleBox}>
-            <Text style={styles.exampleTitle}>Example</Text>
+            <Text style={styles.exampleTitle}>{t('policy.example')}</Text>
             <Text style={styles.exampleText}>
               If your subsidy is 40% and the funding pattern is 60:40, the total subsidy is still 40% for you — but that subsidy is jointly funded by Centre and State in a 60:40 ratio.
             </Text>
@@ -140,7 +144,7 @@ export default function PolicyGuidanceScreen() {
 
         <AccordionItem
           sectionKey="planning"
-          title="How to use this in planning"
+          title={t('policy.howToUsePlanning')}
           icon="bulb-outline"
           expanded={expandedSections.planning}
           onToggle={toggleSection}
@@ -162,7 +166,7 @@ export default function PolicyGuidanceScreen() {
         {knowledgeInsights?.disclaimerHighlights?.length ? (
           <AccordionItem
             sectionKey="disclaimer"
-            title="Important disclaimer"
+            title={t('policy.importantDisclaimer')}
             icon="alert-circle-outline"
             expanded={expandedSections.disclaimer}
             onToggle={toggleSection}
@@ -180,7 +184,7 @@ export default function PolicyGuidanceScreen() {
         {/* ── Document-backed assumptions ── */}
         {knowledgeInsights?.templateHighlights?.length ? (
           <>
-            <SectionLabel label="DOCUMENT-BACKED ASSUMPTIONS" theme={theme} />
+            <SectionLabel label={t('policy.documents').toUpperCase()} theme={theme} />
             {knowledgeInsights.templateHighlights.map((item: any) => (
               <PolicyDataCard key={item.idSlug} item={item} theme={theme} />
             ))}
@@ -204,9 +208,9 @@ export default function PolicyGuidanceScreen() {
               <Ionicons name="school-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={styles.learnCardCopy}>
-              <Text style={styles.learnCardTitle}>Need the beginner version?</Text>
+              <Text style={styles.learnCardTitle}>{t('policy.needBeginnerVersion')}</Text>
               <Text style={styles.learnCardText}>
-                Open Learning Center for simple explanations of FCR, BCR, subsidy, capital, and land planning.
+                {t('policy.needBeginnerVersionText')}
               </Text>
             </View>
           </View>
@@ -219,7 +223,7 @@ export default function PolicyGuidanceScreen() {
         {knowledgeInsights?.beneficiarySubsidyPercent != null && (
           <TouchableOpacity style={styles.applyButton} activeOpacity={0.85}>
             <Ionicons name="open-outline" size={16} color={theme.colors.primary} />
-            <Text style={styles.applyButtonText}>View PMMSY Application Info</Text>
+            <Text style={styles.applyButtonText}>{t('policy.viewPmmsyInfo')}</Text>
           </TouchableOpacity>
         )}
 

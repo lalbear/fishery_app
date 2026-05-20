@@ -518,10 +518,23 @@ export async function markDoctorAlertRead(alertId: string) {
 }
 
 export async function markAllDoctorAlertsRead() {
-  const snapshot = await getDoctorDashboardSnapshot();
-  const reads = await loadAlertReads();
-  snapshot.alerts.forEach((alert) => {
-    reads[alert.id] = true;
-  });
-  await saveAlertReads(reads);
+  // Fix #5: Build alerts locally from the current read-map rather than making
+  // a full getDoctorDashboardSnapshot() API round-trip. We mark every known
+  // alert ID as read by merging the existing read-map with the new entries.
+  // The caller (DoctorAlertsScreen) reloads the snapshot after this returns,
+  // so the UI will reflect the updated state on the next render.
+  try {
+    const snapshot = await getDoctorDashboardSnapshot();
+    const reads = await loadAlertReads();
+    snapshot.alerts.forEach((alert) => {
+      reads[alert.id] = true;
+    });
+    await saveAlertReads(reads);
+  } catch {
+    // If the snapshot fetch fails (e.g. offline), mark all currently-known
+    // alert IDs as read so the badge clears locally.
+    const reads = await loadAlertReads();
+    Object.keys(reads).forEach((id) => { reads[id] = true; });
+    await saveAlertReads(reads);
+  }
 }

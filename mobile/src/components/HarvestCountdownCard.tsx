@@ -7,7 +7,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
-import { getHarvestMetrics } from '../utils/pondLifecycle';
+import { getHarvestMetrics, getCultureProfile } from '../utils/pondLifecycle';
 
 interface Pond {
     id: string;
@@ -73,7 +73,8 @@ export default function HarvestCountdownCard({ ponds, onPressPond }: HarvestCoun
                     stockingDate: pond.stocking_date,
                     speciesScientificName: pond.species_name,
                 });
-                const displaySpecies = pond.species_label || harvest.culture.label;
+                const culture = getCultureProfile(pond.species_name);
+                const displaySpecies = pond.species_label || culture.label;
 
                 const ringColor = harvest.isReady
                     ? theme.colors.success
@@ -88,7 +89,7 @@ export default function HarvestCountdownCard({ ponds, onPressPond }: HarvestCoun
                             ? `⏳ Harvest window in ${harvest.daysRemaining} days`
                             : harvest.daysElapsed < 30
                                 ? '🐟 Early growth stage'
-                                : harvest.daysElapsed < harvest.culture.days * 0.5
+                                : harvest.daysElapsed < culture.days * 0.5
                                     ? '📈 Active growth phase'
                                     : '🔄 Final grow-out stage';
 
