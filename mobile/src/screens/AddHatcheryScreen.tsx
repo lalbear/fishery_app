@@ -3,7 +3,7 @@
  * Create a new hatchery record for the operator.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 import api from '../services/apiService';
+import LocationCascadePicker, { LocationSelection } from '../components/LocationCascadePicker';
+import { loadProfile } from './PersonalInfoScreen';
 
 export default function AddHatcheryScreen() {
   const { theme } = useTheme();
@@ -29,11 +31,30 @@ export default function AddHatcheryScreen() {
   const navigation = useNavigation<any>();
 
   const [name, setName] = useState('');
-  const [district, setDistrict] = useState('');
-  const [block, setBlock] = useState('');
-  const [panchayat, setPanchayat] = useState('');
+  const [hatcheryStateCode, setHatcheryStateCode] = useState('BR');
+  const [hatcheryLocation, setHatcheryLocation] = useState<Partial<LocationSelection>>({});
   const [capacityKg, setCapacityKg] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const prefillLocation = async () => {
+      try {
+        const profile = await loadProfile();
+        if (profile.stateCode) setHatcheryStateCode(profile.stateCode);
+        if (profile.panchayatCode) {
+          setHatcheryLocation({
+            districtCode: profile.districtCode,
+            districtName: profile.districtName,
+            blockCode: profile.blockCode,
+            blockName: profile.blockName,
+            panchayatCode: profile.panchayatCode,
+            panchayatName: profile.panchayatName,
+          });
+        }
+      } catch {}
+    };
+    void prefillLocation();
+  }, []);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -45,9 +66,9 @@ export default function AddHatcheryScreen() {
     try {
       await api.post('/api/v1/hatcheries', {
         name: name.trim(),
-        district: district.trim() || undefined,
-        block: block.trim() || undefined,
-        panchayat: panchayat.trim() || undefined,
+        district: hatcheryLocation.districtName || undefined,
+        block: hatcheryLocation.blockName || undefined,
+        panchayat: hatcheryLocation.panchayatName || undefined,
         capacity_kg: capacityKg ? parseFloat(capacityKg) : undefined,
       });
 
@@ -72,9 +93,14 @@ export default function AddHatcheryScreen() {
             <Text style={styles.sectionTitle}>Hatchery Details</Text>
 
             <FormField label="Hatchery Name *" value={name} onChangeText={setName} placeholder="e.g. Sri Gopal Fish Hatchery" icon="business-outline" theme={theme} />
-            <FormField label="District" value={district} onChangeText={setDistrict} placeholder="e.g. Patna" icon="location-outline" theme={theme} />
-            <FormField label="Block" value={block} onChangeText={setBlock} placeholder="e.g. Danapur" icon="map-outline" theme={theme} />
-            <FormField label="Panchayat" value={panchayat} onChangeText={setPanchayat} placeholder="e.g. Khagaul" icon="home-outline" theme={theme} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, marginTop: 4, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Hatchery Location
+            </Text>
+            <LocationCascadePicker
+              stateCode={hatcheryStateCode}
+              value={hatcheryLocation}
+              onChange={setHatcheryLocation}
+            />
             <FormField label="Capacity (kg/year)" value={capacityKg} onChangeText={setCapacityKg} placeholder="e.g. 5000" icon="scale-outline" keyboardType="decimal-pad" theme={theme} />
           </View>
 

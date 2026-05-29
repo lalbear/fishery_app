@@ -77,6 +77,16 @@ const fingerlingSaleSchema = z.object({
   species_variant: z.string().max(100).optional(),
 });
 
+const STAGE_GUIDELINES: Record<string, string> = {
+  broodstock: 'Batch moved to Broodstock stage. Conditioning guidelines: Maintain controlled density (100-200 kg/ha) and feed high-protein diet (30-35% protein). Optimal water temperature is 26-32°C.',
+  spawning: 'Batch advanced to Induced Spawning stage. Induced spawning protocol: Females get primary/secondary hormone dose (Ovaprim/HCG); latency period is 6-12 hours in aerated circular spawning tanks. Monitor and log estimated egg count.',
+  hatching: 'Batch advanced to Hatching stage. Fertilized eggs hatch in 12-20 hours (at 28°C). Keep circular troughs circulating. Sac fry will absorb yolk sacs over the next 48-72 hours (do not feed externally).',
+  nursery: 'Batch advanced to Nursery Pond. Stocking density: 3-5 million spawn/hectare in shallow ponds. Ensure pre-treatment with lime and organic manure for zooplankton bloom. Supplemental feeding begins Day 5-7.',
+  rearing: 'Batch advanced to Rearing Pond. Stocking density: 0.2-0.5 million fry/hectare. Supplemental feeding continues twice daily. Monitor water quality (DO, pH, ammonia) closely.',
+  fingerling_ready: 'Batch advanced to Fingerling Ready stage. Average weight is typically 8-15g. Record fingerling sales to generate transaction QR codes for grow-out farmers.',
+  sold: 'Batch completed and sold. Fingerling sales recorded and handoff transaction finalized.'
+};
+
 // ─── GET /api/v1/hatcheries ───────────────────────────────────────────────────
 // List all hatcheries (operators see their own; anyone can browse public list)
 
@@ -264,8 +274,39 @@ router.post('/:id/batches', requireAuth, async (req, res, next) => {
       data.notes ?? null,
     ]);
 
-    logger.info('Batch created', { batchId: result.rows[0].id, hatcheryId: id });
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const newBatch = result.rows[0];
+
+    // Log the initial broodstock stage transition
+    await query(`
+      INSERT INTO hatchery_stage_logs (
+        batch_id, stage, count_at_entry, observations, logged_by
+      )
+      VALUES ($1, 'broodstock', NOW(), $2, $3)
+    `, [
+      newBatch.id,
+      data.broodstock_male_count ? (data.broodstock_male_count + (data.broodstock_female_count || 0)) : null,
+      'Batch created',
+      userId,
+    ]);
+
+    // Send initial notification
+    const initialGuide = STAGE_GUIDELINES.broodstock;
+    const hatcheryInfo = await query('SELECT name FROM hatcheries WHERE id = $1', [id]);
+    const hatcheryName = hatcheryInfo.rows[0]?.name || 'Hatchery';
+
+    await query(`
+      INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+      VALUES ($1, 'hatchery_alert', $2, $3, FALSE, NOW())
+    `, [userId, 'Hatchery Stage: BROODSTOCK', initialGuide]);
+
+    await query(`
+      INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+      SELECT id, 'hatchery_alert', $1, $2, FALSE, NOW()
+      FROM users WHERE role = 'ADMIN'
+    `, [`Hatchery Alert — ${hatcheryName}`, `New batch created. ${initialGuide}`]);
+
+    logger.info('Batch created', { batchId: newBatch.id, hatcheryId: id });
+    res.status(201).json({ success: true, data: newBatch });
   } catch (error) {
     next(error);
   }
@@ -381,6 +422,33 @@ router.patch('/batches/:batchId/stage', requireAuth, async (req, res, next) => {
     });
 
     logger.info('Batch stage advanced', { batchId, newStage: data.new_stage });
+
+    // Insert real-time notification on stage advancement
+    const guideMessage = STAGE_GUIDELINES[data.new_stage];
+    if (guideMessage) {
+      // Get hatchery name
+      const hatcheryInfo = await query(`
+        SELECT h.name as hatchery_name
+        FROM hatcheries h
+        JOIN hatchery_batches b ON b.hatchery_id = h.id
+        WHERE b.id = $1
+      `, [batchId]);
+      const hatcheryName = hatcheryInfo.rows[0]?.hatchery_name || 'Hatchery';
+
+      // Insert for operator
+      await query(`
+        INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+        VALUES ($1, 'hatchery_alert', $2, $3, FALSE, NOW())
+      `, [userId, `Hatchery Stage Advanced: ${data.new_stage.toUpperCase()}`, guideMessage]);
+
+      // Notify admins
+      await query(`
+        INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+        SELECT id, 'hatchery_alert', $1, $2, FALSE, NOW()
+        FROM users WHERE role = 'ADMIN'
+      `, [`Hatchery Alert — ${hatcheryName}`, `Batch advanced to ${data.new_stage.toUpperCase()}. ${guideMessage}`]);
+    }
+
     res.json({ success: true, data: updatedBatch });
   } catch (error) {
     next(error);
