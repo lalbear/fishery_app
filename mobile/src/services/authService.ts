@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './apiService';
 import { type LocationSelection } from '../components/LocationCascadePicker';
-import { type UserProfile, saveProfile, loadProfile } from '../screens/PersonalInfoScreen';
+import { type UserProfile, saveProfile, loadProfile } from './profileService';
 
 const TOKEN_KEY = '@fishing_god_token';
 const AUTH_USER_KEY = '@fishing_god_auth_user';

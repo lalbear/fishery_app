@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { speciesService } from '../services/apiService';
 import { getSpeciesDisplay } from '../utils/speciesLookup';
 import LocationCascadePicker, { LocationSelection } from '../components/LocationCascadePicker';
-import { loadProfile } from './PersonalInfoScreen';
+import { loadProfile } from '../services/profileService';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

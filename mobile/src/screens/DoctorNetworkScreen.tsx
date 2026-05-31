@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 import { diseaseService, doctorNetworkService } from '../services/apiService';
-import { loadProfile, isProfileLocationComplete, UserProfile } from './PersonalInfoScreen';
+import { loadProfile, isProfileLocationComplete, type UserProfile } from '../services/profileService';
 import database, { Pond } from '../database';
 import { Q } from '@nozbe/watermelondb';
 

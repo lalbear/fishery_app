@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useTheme } from '../ThemeContext';
 import { geoService, economicsService } from '../services/apiService';
-import { loadProfile } from './PersonalInfoScreen';
+import { loadProfile } from '../services/profileService';
 
 export default function EconomicsScreen() {
   const { theme } = useTheme();
