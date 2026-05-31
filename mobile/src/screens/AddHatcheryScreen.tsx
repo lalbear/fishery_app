@@ -23,7 +23,7 @@ import { useTheme } from '../ThemeContext';
 import ScreenHeader from '../components/ScreenHeader';
 import api from '../services/apiService';
 import LocationCascadePicker, { LocationSelection } from '../components/LocationCascadePicker';
-import { loadProfile } from './PersonalInfoScreen';
+import { loadProfile } from '../services/profileService';
 
 export default function AddHatcheryScreen() {
   const { theme } = useTheme();

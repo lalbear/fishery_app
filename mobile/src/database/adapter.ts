@@ -6,31 +6,50 @@
  */
 import { NativeModules } from 'react-native';
 import LokiJSAdapter from '@nozbe/watermelondb/adapters/lokijs';
-import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
+import type SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import schema from './schema';
 import migrations from './migrations';
 
-const hasWatermelonNativeBridge = Boolean(NativeModules.WMDatabaseBridge);
+const hasWatermelonNativeBridge = Boolean(NativeModules.WMDatabaseBridge || NativeModules.DatabaseBridge);
 
-const adapter = hasWatermelonNativeBridge ? new SQLiteAdapter({
-    schema,
-    migrations,
-    dbName: 'fishing_god_db',
-    // jsi: true enables the faster JSI bridge if the native module supports it.
-    // Set to false if you hit a build error — it gracefully falls back.
-    jsi: true,
-    onSetUpError: (error: Error) => {
-        console.error('[WatermelonDB] Database setup error:', error);
-    },
-}) : new LokiJSAdapter({
-    schema,
-    migrations,
-    dbName: 'fishing_god_db_expo_go',
-    useWebWorker: false,
-    useIncrementalIndexedDB: false,
-    onSetUpError: (error: Error) => {
-        console.error('[WatermelonDB] Expo Go database setup error:', error);
-    },
-});
+let adapter: LokiJSAdapter | SQLiteAdapter;
+
+if (hasWatermelonNativeBridge) {
+    try {
+        const SQLiteAdapter = require('@nozbe/watermelondb/adapters/sqlite').default;
+        adapter = new SQLiteAdapter({
+            schema,
+            migrations,
+            dbName: 'fishing_god_db',
+            jsi: true,
+            onSetUpError: (error: Error) => {
+                console.error('[WatermelonDB] Database setup error:', error);
+            },
+        });
+    } catch (err) {
+        console.warn('[WatermelonDB] Failed to initialize SQLiteAdapter, falling back to LokiJS:', err);
+        adapter = new LokiJSAdapter({
+            schema,
+            migrations,
+            dbName: 'fishing_god_db_expo_go',
+            useWebWorker: false,
+            useIncrementalIndexedDB: false,
+            onSetUpError: (error: Error) => {
+                console.error('[WatermelonDB] Expo Go database setup error:', error);
+            },
+        });
+    }
+} else {
+    adapter = new LokiJSAdapter({
+        schema,
+        migrations,
+        dbName: 'fishing_god_db_expo_go',
+        useWebWorker: false,
+        useIncrementalIndexedDB: false,
+        onSetUpError: (error: Error) => {
+            console.error('[WatermelonDB] Expo Go database setup error:', error);
+        },
+    });
+}
 
 export default adapter;

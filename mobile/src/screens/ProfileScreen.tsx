@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { loadProfile, UserProfile } from './PersonalInfoScreen';
+import { loadProfile, type UserProfile } from '../services/profileService';
 import { syncService } from '../services/syncService';
 import { useAuth } from '../AuthContext';
 import { useTheme } from '../ThemeContext';
