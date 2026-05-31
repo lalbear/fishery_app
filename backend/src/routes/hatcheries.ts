@@ -63,19 +63,29 @@ const stageLogSchema = z.object({
 });
 
 const fingerlingSaleSchema = z.object({
-  buyer_name: z.string().min(2).max(100).trim().optional(),
-  buyer_phone: z.string().max(20).optional(),
-  buyer_district: z.string().max(120).optional(),
+  buyer_uid: z.string().max(32).optional().nullable(),
+  buyer_name: z.string().min(2).max(100).trim().optional().nullable(),
+  buyer_phone: z.string().max(20).optional().nullable(),
+  buyer_district: z.string().max(120).optional().nullable(),
   pricing_model: z.enum(['per_piece', 'per_kg']),
-  quantity_pieces: z.number().int().nonnegative().optional(),
-  quantity_kg: z.number().nonnegative().optional(),
-  avg_weight_g: z.number().nonnegative().optional(),
-  price_per_piece: z.number().nonnegative().optional(),
-  price_per_kg: z.number().nonnegative().optional(),
+  quantity_pieces: z.number().int().nonnegative().optional().nullable(),
+  quantity_kg: z.number().nonnegative().optional().nullable(),
+  avg_weight_g: z.number().nonnegative().optional().nullable(),
+  total_amount: z.number().nonnegative(),
   delivery_date: z.string().datetime({ offset: true }).optional(),
   species_name: z.string().min(2).max(100).optional(),
   species_variant: z.string().max(100).optional(),
 });
+
+const STAGE_GUIDELINES: Record<string, string> = {
+  broodstock: 'Batch moved to Broodstock stage. Conditioning guidelines: Maintain controlled density (100-200 kg/ha) and feed high-protein diet (30-35% protein). Optimal water temperature is 26-32°C.',
+  spawning: 'Batch advanced to Induced Spawning stage. Induced spawning protocol: Females get primary/secondary hormone dose (Ovaprim/HCG); latency period is 6-12 hours in aerated circular spawning tanks. Monitor and log estimated egg count.',
+  hatching: 'Batch advanced to Hatching stage. Fertilized eggs hatch in 12-20 hours (at 28°C). Keep circular troughs circulating. Sac fry will absorb yolk sacs over the next 48-72 hours (do not feed externally).',
+  nursery: 'Batch advanced to Nursery Pond. Stocking density: 3-5 million spawn/hectare in shallow ponds. Ensure pre-treatment with lime and organic manure for zooplankton bloom. Supplemental feeding begins Day 5-7.',
+  rearing: 'Batch advanced to Rearing Pond. Stocking density: 0.2-0.5 million fry/hectare. Supplemental feeding continues twice daily. Monitor water quality (DO, pH, ammonia) closely.',
+  fingerling_ready: 'Batch advanced to Fingerling Ready stage. Average weight is typically 8-15g. Record fingerling sales to generate transaction QR codes for grow-out farmers.',
+  sold: 'Batch completed and sold. Fingerling sales recorded and handoff transaction finalized.'
+};
 
 // ─── GET /api/v1/hatcheries ───────────────────────────────────────────────────
 // List all hatcheries (operators see their own; anyone can browse public list)
@@ -164,6 +174,57 @@ router.get('/marketplace', requireAuth, async (req, res, next) => {
     `, params);
 
     res.json({ success: true, data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── GET /api/v1/hatcheries/lookup-farmer ──────────────────────────────────────
+// Lookup a farmer by UID and district to autofill sales details
+
+router.get('/lookup-farmer', requireAuth, async (req, res, next) => {
+  try {
+    const { uid, district } = req.query;
+    if (!uid) {
+      return res.status(400).json({ success: false, error: 'UID is required' });
+    }
+
+    const result = await query(`
+      SELECT u.id, u.name, u.phone_number AS phone, u.district_code AS "districtCode", ld.name AS "districtName"
+      FROM users u
+      LEFT JOIN loc_districts ld ON ld.code = u.district_code
+      WHERE u.role = 'FARMER' AND UPPER(u.uid) = UPPER($1)
+    `, [String(uid).trim()]);
+
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, error: 'Farmer not found with the given UID.' });
+    }
+
+    const farmer = result.rows[0];
+
+    if (district) {
+      const selectedDist = String(district).trim().toLowerCase();
+      const farmerDistCode = (farmer.districtCode || '').toLowerCase();
+      const farmerDistName = (farmer.districtName || '').toLowerCase();
+
+      // Check if it matches code or name
+      if (selectedDist !== farmerDistCode && selectedDist !== farmerDistName) {
+        return res.status(400).json({
+          success: false,
+          error: `Farmer district mismatch. Selected: ${district}, Farmer registered in: ${farmer.districtName || farmer.districtCode || 'Not Specified'}`
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        name: farmer.name,
+        phone: farmer.phone,
+        districtCode: farmer.districtCode,
+        districtName: farmer.districtName
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -264,8 +325,39 @@ router.post('/:id/batches', requireAuth, async (req, res, next) => {
       data.notes ?? null,
     ]);
 
-    logger.info('Batch created', { batchId: result.rows[0].id, hatcheryId: id });
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const newBatch = result.rows[0];
+
+    // Log the initial broodstock stage transition
+    await query(`
+      INSERT INTO hatchery_stage_logs (
+        batch_id, stage, count_at_entry, observations, logged_by
+      )
+      VALUES ($1, 'broodstock', $2, $3, $4)
+    `, [
+      newBatch.id,
+      data.broodstock_male_count ? (data.broodstock_male_count + (data.broodstock_female_count || 0)) : null,
+      'Batch created',
+      userId,
+    ]);
+
+    // Send initial notification
+    const initialGuide = STAGE_GUIDELINES.broodstock;
+    const hatcheryInfo = await query('SELECT name FROM hatcheries WHERE id = $1', [id]);
+    const hatcheryName = hatcheryInfo.rows[0]?.name || 'Hatchery';
+
+    await query(`
+      INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+      VALUES ($1, 'hatchery_alert', $2, $3, FALSE, NOW())
+    `, [userId, 'Hatchery Stage: BROODSTOCK', initialGuide]);
+
+    await query(`
+      INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+      SELECT id, 'hatchery_alert', $1, $2, FALSE, NOW()
+      FROM users WHERE role = 'ADMIN'
+    `, [`Hatchery Alert — ${hatcheryName}`, `New batch created. ${initialGuide}`]);
+
+    logger.info('Batch created', { batchId: newBatch.id, hatcheryId: id });
+    res.status(201).json({ success: true, data: newBatch });
   } catch (error) {
     next(error);
   }
@@ -381,6 +473,33 @@ router.patch('/batches/:batchId/stage', requireAuth, async (req, res, next) => {
     });
 
     logger.info('Batch stage advanced', { batchId, newStage: data.new_stage });
+
+    // Insert real-time notification on stage advancement
+    const guideMessage = STAGE_GUIDELINES[data.new_stage];
+    if (guideMessage) {
+      // Get hatchery name
+      const hatcheryInfo = await query(`
+        SELECT h.name as hatchery_name
+        FROM hatcheries h
+        JOIN hatchery_batches b ON b.hatchery_id = h.id
+        WHERE b.id = $1
+      `, [batchId]);
+      const hatcheryName = hatcheryInfo.rows[0]?.hatchery_name || 'Hatchery';
+
+      // Insert for operator
+      await query(`
+        INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+        VALUES ($1, 'hatchery_alert', $2, $3, FALSE, NOW())
+      `, [userId, `Hatchery Stage Advanced: ${data.new_stage.toUpperCase()}`, guideMessage]);
+
+      // Notify admins
+      await query(`
+        INSERT INTO farmer_notifications (farmer_id, type, title, message, is_read, created_at)
+        SELECT id, 'hatchery_alert', $1, $2, FALSE, NOW()
+        FROM users WHERE role = 'ADMIN'
+      `, [`Hatchery Alert — ${hatcheryName}`, `Batch advanced to ${data.new_stage.toUpperCase()}. ${guideMessage}`]);
+    }
+
     res.json({ success: true, data: updatedBatch });
   } catch (error) {
     next(error);
@@ -455,6 +574,17 @@ router.post('/batches/:batchId/logs', requireAuth, async (req, res, next) => {
 
 // ─── POST /api/v1/hatcheries/batches/:batchId/sales ──────────────────────────
 // Record a fingerling sale and return the transaction reference
+function normalizePhone(phone?: string | null): string | null {
+  if (!phone) return null;
+  const cleaned = phone.replace(/[^\d]/g, '');
+  if (cleaned.length === 10) {
+    return `+91${cleaned}`;
+  }
+  if (cleaned.length === 12 && cleaned.startsWith('91')) {
+    return `+91${cleaned.substring(2)}`;
+  }
+  return phone.startsWith('+') ? phone : `+${cleaned}`;
+}
 
 router.post('/batches/:batchId/sales', requireAuth, async (req, res, next) => {
   try {
@@ -479,12 +609,54 @@ router.post('/batches/:batchId/sales', requireAuth, async (req, res, next) => {
 
     const batch = batchCheck.rows[0];
 
-    // Calculate total amount
-    let totalAmount: number | null = null;
-    if (data.pricing_model === 'per_piece' && data.quantity_pieces && data.price_per_piece) {
-      totalAmount = data.quantity_pieces * data.price_per_piece;
-    } else if (data.pricing_model === 'per_kg' && data.quantity_kg && data.price_per_kg) {
-      totalAmount = data.quantity_kg * data.price_per_kg;
+    // Resolve buyer info
+    let buyerName = data.buyer_name ? data.buyer_name.trim() : null;
+    let normalizedPhone = normalizePhone(data.buyer_phone);
+    let buyerDistrict = data.buyer_district ? data.buyer_district.trim() : null;
+    const resolvedUid = data.buyer_uid ? data.buyer_uid.trim().toUpperCase() : null;
+
+    if (resolvedUid) {
+      const farmerRes = await query(`
+        SELECT u.name, u.phone_number, ld.name AS district_name
+        FROM users u
+        LEFT JOIN loc_districts ld ON ld.code = u.district_code
+        WHERE u.role = 'FARMER' AND UPPER(u.uid) = $1
+      `, [resolvedUid]);
+
+      if (!farmerRes.rows.length) {
+        return res.status(404).json({ success: false, error: 'Buyer farmer not found with the given UID.' });
+      }
+
+      const farmer = farmerRes.rows[0];
+      buyerName = farmer.name;
+      normalizedPhone = farmer.phone_number;
+      buyerDistrict = farmer.district_name || farmer.district_code || buyerDistrict;
+    }
+
+    // Calculations
+    let calculatedPieces: number | null = null;
+    let calculatedKg: number | null = null;
+    let pricePerPiece: number | null = null;
+    let pricePerKg: number | null = null;
+    let avgWeightG: number | null = data.avg_weight_g || null;
+
+    if (data.pricing_model === 'per_piece') {
+      if (!data.quantity_pieces || data.quantity_pieces <= 0) {
+        return res.status(400).json({ success: false, error: 'Quantity in pieces is required and must be positive for per-piece model.' });
+      }
+      calculatedPieces = data.quantity_pieces;
+      pricePerPiece = data.total_amount / calculatedPieces;
+    } else { // per_kg
+      if (!data.quantity_kg || data.quantity_kg <= 0) {
+        return res.status(400).json({ success: false, error: 'Quantity in kg is required and must be positive for per-kg model.' });
+      }
+      if (!avgWeightG || avgWeightG <= 0) {
+        return res.status(400).json({ success: false, error: 'Average weight is required and must be positive for per-kg model to calculate piece count.' });
+      }
+      calculatedKg = data.quantity_kg;
+      pricePerKg = data.total_amount / calculatedKg;
+      calculatedPieces = Math.round((calculatedKg * 1000) / avgWeightG);
+      pricePerPiece = data.total_amount / calculatedPieces;
     }
 
     const saleResult = await query(`
@@ -492,25 +664,26 @@ router.post('/batches/:batchId/sales', requireAuth, async (req, res, next) => {
         batch_id, buyer_name, buyer_phone, buyer_district,
         pricing_model, quantity_pieces, quantity_kg, avg_weight_g,
         price_per_piece, price_per_kg, total_amount, delivery_date,
-        species_name, species_variant
+        species_name, species_variant, buyer_uid
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `, [
       batchId,
-      data.buyer_name ?? null,
-      data.buyer_phone ?? null,
-      data.buyer_district ?? null,
+      buyerName,
+      normalizedPhone,
+      buyerDistrict,
       data.pricing_model,
-      data.quantity_pieces ?? null,
-      data.quantity_kg ?? null,
-      data.avg_weight_g ?? null,
-      data.price_per_piece ?? null,
-      data.price_per_kg ?? null,
-      totalAmount,
+      calculatedPieces,
+      calculatedKg,
+      avgWeightG,
+      pricePerPiece,
+      pricePerKg,
+      data.total_amount,
       data.delivery_date ? new Date(data.delivery_date) : null,
-      data.species_name ?? batch.species_name,
-      data.species_variant ?? batch.species_variant ?? null,
+      data.species_name || batch.species_name,
+      data.species_variant || batch.species_variant || null,
+      resolvedUid
     ]);
 
     logger.info('Fingerling sale recorded', {
@@ -524,7 +697,6 @@ router.post('/batches/:batchId/sales', requireAuth, async (req, res, next) => {
     next(error);
   }
 });
-
 // ─── GET /api/v1/hatcheries/sales/:ref ───────────────────────────────────────
 // Farmer looks up a fingerling sale by transaction reference
 

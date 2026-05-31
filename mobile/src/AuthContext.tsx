@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authService, type AuthUser } from './services/authService';
 import { processPendingProfileSync, startProfileSyncListener, stopProfileSyncListener } from './services/profileSyncService';
 
-export type AuthRole = 'farmer' | 'doctor';
+export type AuthRole = 'farmer' | 'doctor' | 'hatchery';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -24,7 +24,9 @@ export const AuthContext = createContext<AuthContextValue>({
 
 function mapRole(user: AuthUser | null): AuthRole | null {
   if (!user) return null;
-  return user.role === 'DOCTOR' ? 'doctor' : 'farmer';
+  if (user.role === 'DOCTOR') return 'doctor';
+  if (user.role === 'HATCHERY') return 'hatchery';
+  return 'farmer';
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {

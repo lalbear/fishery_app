@@ -45,7 +45,7 @@ type LocItem = { code: string; name: string };
 const SUPPORTED_STATES = new Set(['BR']);
 
 // ── Bihar district data (38 districts, offline fallback) ─────────────────────
-const BIHAR_DISTRICTS: LocItem[] = [
+export const BIHAR_DISTRICTS: LocItem[] = [
   { code: 'araria', name: 'Araria' },
   { code: 'arwal', name: 'Arwal' },
   { code: 'aurangabad', name: 'Aurangabad' },

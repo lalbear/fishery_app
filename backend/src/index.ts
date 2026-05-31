@@ -29,6 +29,8 @@ import { locationsRouter } from './routes/locations';
 import { treatmentsRouter } from './routes/treatments';
 import { labReportsRouter } from './routes/labReports';
 import { hatcheriesRouter } from './routes/hatcheries';
+import { notificationsRouter } from './routes/notifications';
+import { startHatcheryCron } from './cron/hatcheryNotifications';
 
 // Load environment variables
 dotenv.config();
@@ -182,6 +184,7 @@ app.use('/api/v1/diseases', diseasesRouter);
 app.use('/api/v1/doctors', doctorsRouter);
 app.use('/api/v1/appointments', appointmentsRouter);
 app.use('/api/v1/hatcheries', hatcheriesRouter);
+app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/treatments', treatmentsRouter);
 app.use('/api/v1/lab-reports', labReportsRouter);
 app.use('/api/v1/locations', locationsRouter);
@@ -240,6 +243,9 @@ async function startServer() {
     logger.info(`Fishing God API server running on http://${HOST}:${PORT}`);
   });
 }
+
+// Start hatchery stage-by-stage notifications cron job
+startHatcheryCron();
 
 // Start server only when executed directly so tests can import the app safely.
 if (require.main === module) {

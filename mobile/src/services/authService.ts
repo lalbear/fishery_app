@@ -6,13 +6,14 @@ import { type UserProfile, saveProfile, loadProfile } from '../screens/PersonalI
 const TOKEN_KEY = '@fishing_god_token';
 const AUTH_USER_KEY = '@fishing_god_auth_user';
 
-export type BackendUserRole = 'FARMER' | 'DOCTOR' | 'ADMIN';
+export type BackendUserRole = 'FARMER' | 'DOCTOR' | 'ADMIN' | 'HATCHERY';
 
 export interface AuthUser {
     id: string;
     role: BackendUserRole;
     name: string;
     phone: string;
+    uid?: string;
     farmerCategory?: UserProfile['farmerCategory'];
     stateCode?: string;
     districtCode?: string;
@@ -54,7 +55,22 @@ interface DoctorSignupPayload {
     panchayatName: string;
 }
 
-export type SignupPayload = FarmerSignupPayload | DoctorSignupPayload;
+interface HatcherySignupPayload {
+    role: 'HATCHERY';
+    phone: string;
+    password: string;
+    name: string;
+    stateCode: string;
+    districtCode: string;
+    districtName: string;
+    blockCode: string;
+    blockName: string;
+    panchayatCode: string;
+    panchayatName: string;
+}
+
+export type SignupPayload = FarmerSignupPayload | DoctorSignupPayload | HatcherySignupPayload;
+
 export interface PersistedProfilePayload {
     userId: string;
     name: string;
@@ -96,6 +112,7 @@ function normalizeAuthUser(raw: any): AuthUser {
         role: raw.role,
         name: raw.name,
         phone: raw.phone || raw.phone_number,
+        uid: raw.uid,
         farmerCategory: raw.farmerCategory,
         stateCode: raw.stateCode,
         districtCode: raw.districtCode,

@@ -23,7 +23,7 @@ interface Props {
     onLoginSuccess: (user: AuthUser) => Promise<void> | void;
 }
 
-type AppRole = 'FARMER' | 'DOCTOR';
+type AppRole = 'FARMER' | 'DOCTOR' | 'HATCHERY';
 
 const STATE_CODE_BY_LABEL: Record<string, string> = {
     'andhra pradesh': 'AP',
@@ -61,6 +61,7 @@ function normalizeStateCode(value: string): string | null {
 
 function mapRoleLabel(role: BackendUserRole, t: (k: string) => string) {
     if (role === 'DOCTOR') return t('auth.roles.doctor');
+    if (role === 'HATCHERY') return 'Hatchery';
     if (role === 'ADMIN') return t('auth.roles.admin');
     return t('auth.roles.farmer');
 }
@@ -209,6 +210,36 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                 return;
             }
 
+            if (selectedRole === 'HATCHERY') {
+                if (!isDoctorLocationComplete(location)) {
+                    Alert.alert(t('auth.errors.locationRequired'), t('auth.errors.locationRequiredBody'));
+                    return;
+                }
+
+                const res = await authService.signup({
+                    role: 'HATCHERY',
+                    phone: formattedPhone,
+                    password: password.trim(),
+                    name: name.trim(),
+                    stateCode: normalizedStateCode,
+                    districtCode: location.districtCode!,
+                    districtName: location.districtName || location.districtCode!,
+                    blockCode: location.blockCode!,
+                    blockName: location.blockName || location.blockCode!,
+                    panchayatCode: location.panchayatCode!,
+                    panchayatName: location.panchayatName || location.panchayatCode!,
+                });
+
+                if (!res.success) {
+                    Alert.alert(t('auth.errors.signupFailed'), res.error || 'Failed to create hatchery account');
+                    return;
+                }
+
+                Alert.alert('Account Created', 'Hatchery account created successfully.');
+                await onLoginSuccess(res.user!);
+                return;
+            }
+
             const res = await authService.signup({
                 role: 'FARMER',
                 phone: formattedPhone,
@@ -260,8 +291,18 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
 
                     <View style={styles.card}>
                         <View style={styles.roleRow}>
-                            {(['FARMER', 'DOCTOR'] as AppRole[]).map((role) => {
+                            {(['FARMER', 'DOCTOR', 'HATCHERY'] as AppRole[]).map((role) => {
                                 const active = selectedRole === role;
+                                const getRoleIcon = () => {
+                                    if (role === 'DOCTOR') return 'medkit-outline';
+                                    if (role === 'HATCHERY') return 'business-outline';
+                                    return 'leaf-outline';
+                                };
+                                const getRoleLabel = () => {
+                                    if (role === 'DOCTOR') return t('auth.roleDoctor');
+                                    if (role === 'HATCHERY') return 'Hatchery';
+                                    return t('auth.roleFarmer');
+                                };
                                 return (
                                     <TouchableOpacity
                                         key={role}
@@ -270,12 +311,12 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                         onPress={() => handleRoleSwitch(role)}
                                     >
                                         <Ionicons
-                                            name={role === 'DOCTOR' ? 'medkit-outline' : 'leaf-outline'}
+                                            name={getRoleIcon()}
                                             size={16}
                                             color={active ? c.textInverse : c.primary}
                                         />
                                         <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>
-                                            {role === 'DOCTOR' ? t('auth.roleDoctor') : t('auth.roleFarmer')}
+                                            {getRoleLabel()}
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -317,11 +358,13 @@ export default function AuthScreen({ onLoginSuccess }: Props) {
                                         autoCapitalize="characters"
                                         autoCorrect={false}
                                     />
-                                    {selectedRole === 'DOCTOR' ? (
+                                    {selectedRole === 'DOCTOR' || selectedRole === 'HATCHERY' ? (
                                         <View style={styles.locationCard}>
-                                            <Text style={styles.locationTitle}>{t('auth.assignedServiceArea')}</Text>
+                                            <Text style={styles.locationTitle}>
+                                                {selectedRole === 'DOCTOR' ? t('auth.assignedServiceArea') : 'Hatchery Location'}
+                                            </Text>
                                             <Text style={styles.locationHelp}>
-                                                {t('auth.doctorAreaHelp')}
+                                                {selectedRole === 'DOCTOR' ? t('auth.doctorAreaHelp') : 'Select the location where the hatchery is operated'}
                                             </Text>
                                             <LocationCascadePicker
                                                 stateCode={normalizeStateCode(stateCode) || 'BR'}

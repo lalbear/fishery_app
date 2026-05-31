@@ -21,7 +21,7 @@ import { database } from '../database';
 
 export default function ProfileScreen({ navigation }: any) {
   const { t, i18n } = useTranslation();
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
   const styles = getStyles(theme);
 
@@ -134,10 +134,17 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{displayName}</Text>
-            <View style={styles.badgePill}>
-              <Ionicons name="checkmark-circle" size={12} color={theme.colors.primary} />
-              <Text style={styles.badgePillText}>{categoryLabel}</Text>
-            </View>
+            {currentUser?.uid ? (
+              <View style={[styles.badgePill, { backgroundColor: theme.colors.primaryLight || '#e0fdf4' }]}>
+                <Ionicons name="card-outline" size={12} color={theme.colors.primary} />
+                <Text style={[styles.badgePillText, { color: theme.colors.primary }]}>{currentUser.uid}</Text>
+              </View>
+            ) : (
+              <View style={styles.badgePill}>
+                <Ionicons name="checkmark-circle" size={12} color={theme.colors.primary} />
+                <Text style={styles.badgePillText}>{categoryLabel}</Text>
+              </View>
+            )}
           </View>
           {profile.phone ? (
             <Text style={styles.profilePhone}>{profile.phone}</Text>
@@ -166,18 +173,22 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* ── Section: My Ponds ── */}
-        <Text style={styles.sectionLabel}>{t('profile.myPonds').toUpperCase()}</Text>
-        <View style={styles.sectionPanel}>
-          <MenuRow
-            icon="water-outline"
-            title={t('profile.myPonds')}
-            value={pondCount > 0 ? `${pondCount} ${pondCount === 1 ? t('ponds.title').replace('मेरे ', '').replace('My ', '') : t('ponds.title').replace('मेरे ', '').replace('My ', '')}` : undefined}
-            onPress={() => navigation.navigate('PondsList')}
-            theme={theme}
-            isFirst
-            isLast
-          />
-        </View>
+        {currentUser?.role !== 'HATCHERY' && (
+          <>
+            <Text style={styles.sectionLabel}>{t('profile.myPonds').toUpperCase()}</Text>
+            <View style={styles.sectionPanel}>
+              <MenuRow
+                icon="water-outline"
+                title={t('profile.myPonds')}
+                value={pondCount > 0 ? `${pondCount} ${pondCount === 1 ? t('ponds.title').replace('मेरे ', '').replace('My ', '') : t('ponds.title').replace('मेरे ', '').replace('My ', '')}` : undefined}
+                onPress={() => navigation.navigate('PondsList')}
+                theme={theme}
+                isFirst
+                isLast
+              />
+            </View>
+          </>
+        )}
 
         {/* ── Section: Preferences ── */}
         <Text style={styles.sectionLabel}>{t('profile.preferences').toUpperCase()}</Text>
