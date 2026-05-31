@@ -36,7 +36,21 @@ const doctorSignupSchema = z.object({
     panchayatName: z.string().min(2).max(120),
 });
 
-const signupSchema = z.discriminatedUnion('role', [farmerSignupSchema, doctorSignupSchema]);
+const hatcherySignupSchema = z.object({
+    role: z.literal('HATCHERY'),
+    phone: z.string().min(10).max(20),
+    password: z.string().min(8).max(128),
+    name: z.string().min(2).max(100).trim(),
+    stateCode: z.string().length(2),
+    districtCode: z.string().min(2).max(120),
+    districtName: z.string().min(2).max(120),
+    blockCode: z.string().min(2).max(160),
+    blockName: z.string().min(2).max(120),
+    panchayatCode: z.string().min(2).max(200),
+    panchayatName: z.string().min(2).max(120),
+});
+
+const signupSchema = z.discriminatedUnion('role', [farmerSignupSchema, doctorSignupSchema, hatcherySignupSchema]);
 
 const loginSchema = z.object({
     phone: z.string().min(10).max(20),
@@ -107,7 +121,7 @@ async function ensureAuthRuntimeSchema(): Promise<void> {
                     WHERE conname = 'users_role_check'
                 ) THEN
                     ALTER TABLE users
-                    ADD CONSTRAINT users_role_check CHECK (role IN ('FARMER', 'DOCTOR', 'ADMIN'));
+                    ADD CONSTRAINT users_role_check CHECK (role IN ('FARMER', 'DOCTOR', 'ADMIN', 'HATCHERY'));
                 END IF;
             END $$;
         `);
@@ -260,6 +274,54 @@ router.post('/signup', async (req, res) => {
                     data.panchayatCode,
                     data.panchayatName,
                     data.panchayatCode,
+                ]);
+
+                return data.phone;
+            }
+
+            if (data.role === 'HATCHERY') {
+                const userResult = await client.query(`
+                    INSERT INTO users (
+                        phone_number,
+                        password_hash,
+                        name,
+                        role,
+                        farmer_category,
+                        state_code,
+                        district_code,
+                        block_code,
+                        panchayat_code
+                    )
+                    VALUES ($1, $2, $3, 'HATCHERY', 'GENERAL', $4, $5, $6, $7)
+                    RETURNING id
+                `, [
+                    data.phone,
+                    hashed,
+                    data.name,
+                    data.stateCode,
+                    data.districtCode,
+                    data.blockCode,
+                    data.panchayatCode,
+                ]);
+
+                const userId = userResult.rows[0].id;
+
+                await client.query(`
+                    INSERT INTO hatcheries (
+                        name,
+                        operator_id,
+                        district,
+                        block,
+                        panchayat,
+                        capacity_kg
+                    )
+                    VALUES ($1, $2, $3, $4, $5, 0)
+                `, [
+                    `${data.name}'s Hatchery`,
+                    userId,
+                    data.districtName || data.districtCode,
+                    data.blockName || data.blockCode,
+                    data.panchayatName || data.panchayatCode,
                 ]);
 
                 return data.phone;

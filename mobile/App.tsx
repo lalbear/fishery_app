@@ -52,6 +52,7 @@ import StageLogScreen from './src/screens/StageLogScreen';
 import FingerlingSalesScreen from './src/screens/FingerlingSalesScreen';
 import HatcheryMarketplaceScreen from './src/screens/HatcheryMarketplaceScreen';
 import StockFingerlingsFromMarketScreen from './src/screens/StockFingerlingsFromMarketScreen';
+import HatcheryROIScreen from './src/screens/HatcheryROIScreen';
 
 // Doctor screens
 import DoctorDashboardScreen from './src/screens/DoctorDashboardScreen';
@@ -115,6 +116,29 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 const DoctorTab = createBottomTabNavigator<DoctorTabParamList>();
 const DoctorStack = createStackNavigator<DoctorRootStackParamList>();
+
+export type HatcheryRootStackParamList = {
+  HatcheryMain: undefined;
+  AddHatchery: undefined;
+  AddEditBatch: { hatcheryId: string };
+  BatchDetail: { batchId: string };
+  StageLog: { batchId: string; currentStage: string };
+  FingerlingSales: { batchId: string };
+  PersonalInfo: undefined;
+  Notifications: undefined;
+  SpeciesDetail: { speciesId: string };
+};
+
+export type HatcheryTabParamList = {
+  HatcheryDashboard: undefined;
+  HatcherySpecies: undefined;
+  HatcheryEquipments: undefined;
+  HatcheryROI: undefined;
+  HatcheryProfile: undefined;
+};
+
+const HatcheryTab = createBottomTabNavigator<HatcheryTabParamList>();
+const HatcheryStack = createStackNavigator<HatcheryRootStackParamList>();
 
 function MainTabs() {
   const { t } = useTranslation();
@@ -319,6 +343,120 @@ function DoctorNavigator() {
   );
 }
 
+function HatcheryTabs() {
+  const { theme } = useTheme();
+
+  return (
+    <HatcheryTab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap;
+
+          switch (route.name) {
+            case 'HatcheryDashboard':
+              iconName = focused ? 'speedometer' : 'speedometer-outline';
+              break;
+            case 'HatcherySpecies':
+              iconName = focused ? 'fish' : 'fish-outline';
+              break;
+            case 'HatcheryEquipments':
+              iconName = focused ? 'construct' : 'construct-outline';
+              break;
+            case 'HatcheryROI':
+              iconName = focused ? 'cash' : 'cash-outline';
+              break;
+            case 'HatcheryProfile':
+              iconName = focused ? 'person' : 'person-outline';
+              break;
+            default:
+              iconName = 'help-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '700',
+          marginBottom: 2,
+          textTransform: 'uppercase',
+          letterSpacing: 0.2,
+        },
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+          elevation: 0,
+          height: 72,
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
+        tabBarItemStyle: {
+          borderRadius: 16,
+          marginHorizontal: 2,
+          paddingHorizontal: 2,
+        },
+        headerShown: false,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderTopWidth: 1, borderTopColor: theme.colors.border }} />
+        ),
+      })}
+    >
+      <HatcheryTab.Screen
+        name="HatcheryDashboard"
+        component={HatcheryDashboardScreen}
+        options={{ title: 'Overview' }}
+      />
+      <HatcheryTab.Screen
+        name="HatcherySpecies"
+        component={SpeciesScreen}
+        options={{ title: 'Species' }}
+      />
+      <HatcheryTab.Screen
+        name="HatcheryEquipments"
+        component={EquipmentCatalogScreen}
+        options={{ title: 'Equipments' }}
+      />
+      <HatcheryTab.Screen
+        name="HatcheryROI"
+        component={HatcheryROIScreen}
+        options={{ title: 'Hatchery ROI' }}
+      />
+      <HatcheryTab.Screen
+        name="HatcheryProfile"
+        component={ProfileScreen}
+        options={{ title: 'Profile' }}
+      />
+    </HatcheryTab.Navigator>
+  );
+}
+
+function HatcheryNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <NavigationContainer>
+      <HatcheryStack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.primary,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      >
+        <HatcheryStack.Screen name="HatcheryMain" component={HatcheryTabs} options={{ headerShown: false }} />
+        <HatcheryStack.Screen name="AddHatchery" component={AddHatcheryScreen} options={{ headerShown: false, presentation: 'modal' }} />
+        <HatcheryStack.Screen name="AddEditBatch" component={AddEditBatchScreen} options={{ headerShown: false, presentation: 'modal' }} />
+        <HatcheryStack.Screen name="BatchDetail" component={BatchDetailScreen} options={{ headerShown: false }} />
+        <HatcheryStack.Screen name="StageLog" component={StageLogScreen} options={{ headerShown: false, presentation: 'modal' }} />
+        <HatcheryStack.Screen name="FingerlingSales" component={FingerlingSalesScreen} options={{ headerShown: false }} />
+        <HatcheryStack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }} />
+        <HatcheryStack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+        <HatcheryStack.Screen name="SpeciesDetail" component={SpeciesDetailScreen} options={{ headerShown: false }} />
+      </HatcheryStack.Navigator>
+    </NavigationContainer>
+  );
+}
+
 function MainApp() {
   const { isAuthenticated, authRole, establishSession } = useAuth();
   const { mode } = useTheme();
@@ -327,9 +465,15 @@ function MainApp() {
     return <AuthScreen onLoginSuccess={establishSession} />;
   }
 
+  const renderNavigator = () => {
+    if (authRole === 'doctor') return <DoctorNavigator />;
+    if (authRole === 'hatchery') return <HatcheryNavigator />;
+    return <FarmerNavigator />;
+  };
+
   return (
     <>
-      {authRole === 'doctor' ? <DoctorNavigator /> : <FarmerNavigator />}
+      {renderNavigator()}
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
     </>
   );
