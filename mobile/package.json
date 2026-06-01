@@ -48,7 +48,7 @@
     "react-native-web-maps": "^0.3.0",
     "react-native-worklets": "^0.7.4",
     "react-native-worklets-core": "^1.6.3",
-    "uuid": "^7.0.3",
+    "uuid": "^11.1.1",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
@@ -71,16 +71,21 @@
       "**/__tests__/**/*.test.ts",
       "**/__tests__/**/*.test.tsx"
     ],
-    "modulePathIgnorePatterns": ["<rootDir>/node_modules/"],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/node_modules/"
+    ],
     "transform": {
-      "^.+\\.tsx?$": ["ts-jest", {
-        "tsconfig": {
-          "jsx": "react",
-          "esModuleInterop": true,
-          "strict": false
-        },
-        "diagnostics": false
-      }]
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "jsx": "react",
+            "esModuleInterop": true,
+            "strict": false
+          },
+          "diagnostics": false
+        }
+      ]
     },
     "moduleNameMapper": {
       "^@react-native-async-storage/async-storage$": "<rootDir>/src/__mocks__/async-storage.ts"
